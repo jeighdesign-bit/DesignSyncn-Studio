@@ -1,0 +1,55 @@
+:root {
+  /* Matte Black / Charcoal Color Palette */
+  --bg-primary: #09090b;       /* Pure Dark Matte Black */
+  --bg-secondary: #111115;     /* Dark Charcoal Panels */
+  --bg-tertiary: #181820;      /* Slightly Lighter Accent Panels */
+  --bg-hover: #22222e;         /* Hover state panel backgrounds */
+  
+  /* Accent Colors */
+  --accent-blue: #0070f3;      /* Clean industrial Electric Blue */
+  --accent-blue-hover: #3291ff;
+  --accent-blue-rgb: 0, 112, 243;
+  --accent-purple: #7928ca;    /* Sleek creative highlight Muted Purple */
+  --accent-purple-hover: #9b51e0;
+  
+  /* Borders and Grids */
+  --border-muted: #1e1e26;      /* Extremely soft dark borders */
+  --border-active: #2e2e3f;     /* Active borders for selected components */
+  --border-focus: #0070f3;      /* Blue focused input borders */
+  
+  /* Status Colors */
+  --color-success: #00e676;
+  --color-warning: #f5a623;
+  --color-error: #ff0055;
+  
+  /* Typography Colors */
+  --text-primary: #f4f4f7;     /* High-contrast Clean White/Grey */
+  --text-secondary: #8e8e9f;   /* Muted labels and secondary descriptions */
+  --text-disabled: #4c4c5a;    /* Disabled text / placeholders */
+  
+  /* Dimensions & Spacing */
+  --topbar-height: 48px;
+  --sidebar-width: 64px;       /* Collapsed / Compact Icon Sidebar */
+  --sidebar-expanded-width: 240px;
+  --inspector-width: 320px;
+  --dock-height: 200px;
+  
+  /* Grid & Pattern Styles */
+  --grid-line-color: rgba(36, 36, 46, 0.45);
+  --grid-line-major-color: rgba(36, 36, 46, 0.85);
+  --radial-glow-color: rgba(0, 112, 243, 0.04);
+  
+  /* Fonts and Transitions */
+  --font-family: 'Outfit', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --transition-fast: 0.15s ease;
+  --transition-medium: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --border-radius-sm: 4px;
+  --border-radius-md: 6px;
+  --border-radius-lg: 10px;
+  
+  /* Box Shadow */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+  --shadow-inset: inset 0 1px 2px rgba(255, 255, 255, 0.02);
+}

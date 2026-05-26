@@ -1,0 +1,17 @@
+{
+  "name": "T-Shirt",
+  "category": "sportswear",
+  "baseSize": "M",
+  "baseMeasurements": {
+    "frontWidth": 21,
+    "frontHeight": 30,
+    "backWidth": 21,
+    "backHeight": 30,
+    "sleeveWidth": 10,
+    "sleeveHeight": 15,
+    "collarWidth": 14,
+    "collarHeight": 8
+  },
+  "sizeStep": 2,
+  "supportedSizes": ["XS", "S", "M", "L", "XL", "2XL", "3XL"]
+}

@@ -1,0 +1,149 @@
+@import './variables.css';
+@import './projects.css';
+
+/* Normalization & Base Reset */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-family);
+  overflow-x: hidden; /* Allow vertical scroll, prevent horizontal */
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-active);
+  border-radius: var(--border-radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-disabled);
+}
+
+/* Base Typography */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--text-primary);
+}
+
+p, span, label, input, button, textarea, select {
+  font-family: var(--font-family);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+input, select, textarea {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-muted);
+  color: var(--text-primary);
+  border-radius: var(--border-radius-md);
+  padding: 8px 12px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--border-focus);
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.15);
+}
+
+button {
+  background-color: var(--bg-tertiary);
+  border: 1px solid var(--border-muted);
+  color: var(--text-primary);
+  border-radius: var(--border-radius-md);
+  padding: 8px 16px;
+  cursor: pointer;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all var(--transition-fast);
+}
+
+button:hover {
+  background-color: var(--bg-hover);
+  border-color: var(--border-active);
+}
+
+button:active {
+  transform: translateY(0.5px);
+}
+
+button.primary {
+  background-color: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #ffffff;
+}
+
+button.primary:hover {
+  background-color: var(--accent-blue-hover);
+  border-color: var(--accent-blue-hover);
+}
+
+button.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-secondary);
+}
+
+button.ghost:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Premium Layout Utilities */
+.glassmorphism {
+  background: rgba(17, 17, 21, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--border-muted);
+}
+
+.blueprint-grid {
+  background-size: 20px 20px, 100px 100px;
+  background-image: 
+    linear-gradient(to right, var(--grid-line-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line-color) 1px, transparent 1px),
+    linear-gradient(to right, var(--grid-line-major-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line-major-color) 1px, transparent 1px);
+  background-position: center;
+}
+
+/* radial gradients to light up UI corners */
+.radial-glow {
+  position: absolute;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--radial-glow-color) 0%, transparent 70%);
+  z-index: 0;
+}
+
+/* Animation utilities */
+@keyframes grid-slide {
+  from { background-position: 0 0; }
+  to { background-position: 100px 100px; }
+}
+
+.animate-grid {
+  animation: grid-slide 40s linear infinite;
+}

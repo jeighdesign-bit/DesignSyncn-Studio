@@ -1,0 +1,250 @@
+/**
+ * DesignSync Production Measurement System
+ * Pure math utility — no React/Fabric.js dependencies.
+ *
+ * Scene coordinate space: 40px = 1 inch (fixed internal scale).
+ * DPI only affects export resolution, not the scene scale.
+ */
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Scene pixels per inch — the fixed internal coordinate scale. */
+export const PX_PER_INCH = 40;
+
+/** Scene pixels per centimetre. */
+export const PX_PER_CM = PX_PER_INCH / 2.54; // ≈ 15.748
+
+/** Scene pixels per millimetre. */
+export const PX_PER_MM = PX_PER_INCH / 25.4; // ≈ 1.5748
+
+/** Physical canvas dimensions per view (in inches). */
+export const VIEW_DIMENSIONS: Record<string, { w: number; h: number }> = {
+  front:   { w: 28, h: 34 },
+  back:    { w: 28, h: 34 },
+  sleeves: { w: 14, h: 18 },
+  collar:  { w: 14, h:  8 },
+  full:    { w: 60, h: 60 },
+};
+
+// ─── Garment Templates ────────────────────────────────────────────────────────
+
+export interface GarmentTemplate {
+  id: string;
+  name: string;
+  category: string;
+  baseSize: string;
+  baseMeasurements: {
+    frontWidth: number;
+    frontHeight: number;
+    backWidth: number;
+    backHeight: number;
+    sleeveWidth: number;
+    sleeveHeight: number;
+    collarWidth?: number;
+    collarHeight?: number;
+  };
+  sizeStep: number;
+  supportedSizes: string[];
+  files: Record<string, string>;
+}
+
+export function getGarmentDimensions(
+  template: GarmentTemplate,
+  size: string
+): Record<string, { w: number; h: number }> {
+  const sizes = template.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
+  const baseSizeIndex = sizes.indexOf(template.baseSize || "M");
+  const currentSizeIndex = sizes.indexOf(size);
+  
+  const sizeDiff = currentSizeIndex !== -1 ? currentSizeIndex - baseSizeIndex : 0;
+  
+  const frontBaseWidth = template.baseMeasurements.frontWidth;
+  const frontWidth = frontBaseWidth + sizeDiff * template.sizeStep;
+  const scaleFactor = frontWidth / frontBaseWidth;
+
+  const getDim = (baseW: number, baseH: number) => ({
+    w: Number((baseW * scaleFactor).toFixed(3)),
+    h: Number((baseH * scaleFactor).toFixed(3))
+  });
+
+  const bm = template.baseMeasurements;
+  return {
+    front: getDim(bm.frontWidth, bm.frontHeight),
+    back: getDim(bm.backWidth, bm.backHeight),
+    sleeves: getDim(bm.sleeveWidth, bm.sleeveHeight),
+    'left-sleeve': getDim(bm.sleeveWidth, bm.sleeveHeight),
+    'right-sleeve': getDim(bm.sleeveWidth, bm.sleeveHeight),
+    collar: getDim(bm.collarWidth ?? 14, bm.collarHeight ?? 8),
+  };
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type MeasurementUnit = 'inches' | 'cm' | 'mm' | 'px';
+
+export interface ObjectBounds {
+  widthPx:  number;
+  heightPx: number;
+  leftPx:   number;
+  topPx:    number;
+  angleDeg: number;
+}
+
+export interface SafeZoneRects {
+  /** Bleed zone outer rect in scene px from artboard origin */
+  bleed:  { x: number; y: number; w: number; h: number } | null;
+  /** Print-safe inner rect */
+  safe:   { x: number; y: number; w: number; h: number } | null;
+  /** Seam allowance rect (innermost) */
+  seam:   { x: number; y: number; w: number; h: number } | null;
+}
+
+// ─── Unit conversion ──────────────────────────────────────────────────────────
+
+/** Returns the number of scene pixels per unit. */
+export function pxPerUnit(unit: MeasurementUnit): number {
+  switch (unit) {
+    case 'inches': return PX_PER_INCH;
+    case 'cm':     return PX_PER_CM;
+    case 'mm':     return PX_PER_MM;
+    case 'px':     return 1;
+  }
+}
+
+/** Convert scene pixels → display unit. */
+export function fromPx(px: number, unit: MeasurementUnit): number {
+  return px / pxPerUnit(unit);
+}
+
+/** Convert display unit → scene pixels. */
+export function toPx(value: number, unit: MeasurementUnit): number {
+  return value * pxPerUnit(unit);
+}
+
+/**
+ * Format a pixel value as a human-readable measurement string.
+ * e.g. formatMeasurement(420, 'inches') → "10.50"
+ */
+export function formatMeasurement(
+  px: number,
+  unit: MeasurementUnit,
+  decimals = 2,
+): string {
+  if (unit === 'px') return Math.round(px).toString();
+  return fromPx(px, unit).toFixed(decimals);
+}
+
+/** Returns the unit abbreviation label. */
+export function unitLabel(unit: MeasurementUnit): string {
+  switch (unit) {
+    case 'inches': return 'in';
+    case 'cm':     return 'cm';
+    case 'mm':     return 'mm';
+    case 'px':     return 'px';
+  }
+}
+
+// ─── Ruler tick system ────────────────────────────────────────────────────────
+
+/**
+ * Returns the major tick interval in scene pixels, adapted to zoom and unit.
+ * Ensures ticks are never too dense or too sparse on screen.
+ */
+export function majorTickIntervalPx(zoom: number, unit: MeasurementUnit): number {
+  const ppUnit = pxPerUnit(unit);
+  // Target: major ticks 40–120px apart on screen
+  const targetScreenPx = 60;
+  // How many scene-px per unit
+  const screenPxPerUnit = ppUnit * zoom;
+
+  let interval = 1; // 1 unit
+  if (screenPxPerUnit < targetScreenPx / 8)  interval = 64;
+  else if (screenPxPerUnit < targetScreenPx / 4)  interval = 16;
+  else if (screenPxPerUnit < targetScreenPx / 2)  interval = 8;
+  else if (screenPxPerUnit < targetScreenPx)      interval = 4;
+  else if (screenPxPerUnit < targetScreenPx * 2)  interval = 2;
+  else if (screenPxPerUnit < targetScreenPx * 4)  interval = 1;
+  else if (screenPxPerUnit < targetScreenPx * 8)  interval = 0.5;
+  else                                             interval = 0.25;
+
+  // For px mode, keep intervals as whole numbers
+  if (unit === 'px') {
+    const candidates = [1, 5, 10, 20, 50, 100, 200, 500, 1000];
+    const targetScene = targetScreenPx / zoom;
+    return candidates.reduce((best, c) =>
+      Math.abs(c - targetScene) < Math.abs(best - targetScene) ? c : best
+    );
+  }
+
+  return interval * ppUnit; // scene pixels
+}
+
+/** Number of minor subdivisions per major tick. */
+export function minorDivisions(unit: MeasurementUnit): number {
+  switch (unit) {
+    case 'inches': return 4;  // quarter-inch marks
+    case 'cm':     return 5;  // 2mm marks
+    case 'mm':     return 5;  // 0.2mm marks
+    case 'px':     return 5;
+  }
+}
+
+// ─── Safe zone geometry ───────────────────────────────────────────────────────
+
+/**
+ * Calculate safe zone rect coordinates in scene pixels.
+ * Rects are inset from the artboard edges.
+ */
+export function calcSafeZones(
+  canvasWPx: number,
+  canvasHPx: number,
+  bleedInches: number,
+  safeMarginInches: number,
+  seamAllowanceInches: number,
+): SafeZoneRects {
+  const bleedPx = bleedInches * PX_PER_INCH;
+  const safePx  = safeMarginInches * PX_PER_INCH;
+  const seamPx  = seamAllowanceInches * PX_PER_INCH;
+
+  return {
+    bleed: bleedPx > 0 ? {
+      x: -bleedPx, y: -bleedPx,
+      w: canvasWPx + bleedPx * 2,
+      h: canvasHPx + bleedPx * 2,
+    } : null,
+    safe: safePx > 0 ? {
+      x: safePx, y: safePx,
+      w: canvasWPx - safePx * 2,
+      h: canvasHPx - safePx * 2,
+    } : null,
+    seam: seamPx > 0 ? {
+      x: seamPx, y: seamPx,
+      w: canvasWPx - seamPx * 2,
+      h: canvasHPx - seamPx * 2,
+    } : null,
+  };
+}
+
+// ─── DPI export calibration ───────────────────────────────────────────────────
+
+/**
+ * Scale factor to multiply scene pixels to get export raster pixels at target DPI.
+ * scene scale = 40px/in. At 300 DPI export: 300/40 = 7.5×
+ */
+export function exportScaleFactor(targetDpi: number): number {
+  return targetDpi / PX_PER_INCH;
+}
+
+/**
+ * Returns the export raster size in pixels for a given canvas view and DPI.
+ */
+export function exportDimensions(
+  view: string,
+  dpi: number,
+): { w: number; h: number } {
+  const dims = VIEW_DIMENSIONS[view] ?? VIEW_DIMENSIONS.front;
+  return {
+    w: Math.round(dims.w * dpi),
+    h: Math.round(dims.h * dpi),
+  };
+}
