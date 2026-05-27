@@ -10,7 +10,7 @@ import { AIDesignStudio } from './components/AIDesignStudio';
 import { 
   Layers, FileText, Download,
   ChevronLeft, ArrowRight, Sparkles, Menu, Upload, ChevronDown,
-  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy
+  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy, Sliders
 } from 'lucide-react';
 
 // Default Project Settings
@@ -135,6 +135,7 @@ const createNewProject = (details: {
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'dashboard' | 'editor'>('landing');
+  const [isEditingSetup, setIsEditingSetup] = useState<boolean>(false);
   
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -1577,168 +1578,220 @@ export default function App() {
                     {/* LEFT COLUMN: Inputs & Options */}
                     <div className="brief-column left-column">
                       
-                      {/* Section: Apparel Type Selection */}
-                      <div className="brief-section-premium">
-                        <div className="section-header-premium">
-                          <span className="section-step-badge">Step 1</span>
-                          <h3 className="section-title-premium">Select Apparel Type</h3>
-                        </div>
-                        <p className="section-desc-premium">Choose your garment silhouette. This establishes sublimation zones and future production templates.</p>
-                        
-                        <div className="apparel-cards-grid">
-                          {[
-                            { id: 'esports_jersey', label: 'Esports Jersey', desc: 'Competitive sublimation layout with sponsor zones.' },
-                            { id: 'tshirt', label: 'T-Shirt', desc: 'Standard street fit with flat-lay preview borders.' },
-                            { id: 'hoodie', label: 'Hoodie', desc: 'Premium fleece fit with full pouch print bleed.' },
-                            { id: 'longsleeve', label: 'Long Sleeve', desc: 'Sleeve cuff wrapping & arm print boundaries.' },
-                            { id: 'basketball_jersey', label: 'Basketball Jersey', desc: 'Sleeveless cut layout with shoulder strap margins.' },
-                            { id: 'polo_shirt', label: 'Polo Shirt', desc: 'Collared pattern with front placket exclusions.' },
-                            { id: 'compression_wear', label: 'Compression Wear', desc: 'High-stretch active panels and seam safety limits.' },
-                            { id: 'cycling_jersey', label: 'Cycling Jersey', desc: 'Aerodynamic rear pocket division templates.' },
-                            { id: 'custom_apparel', label: 'Custom Apparel', desc: 'Create dynamic guidelines for atypical silhouettes.' }
-                          ].map(app => (
-                            <div 
-                              key={app.id} 
-                              className={`apparel-card-premium ${project.apparelType === app.id ? 'active' : ''}`}
-                              onClick={() => handleUpdateProject({ apparelType: app.id })}
-                            >
-                              <div className="apparel-card-icon-wrapper">
-                                {app.id === 'esports_jersey' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                                {app.id === 'tshirt' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                                {app.id === 'hoodie' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                  </svg>
-                                )}
-                                {app.id === 'longsleeve' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                                {app.id === 'basketball_jersey' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                                {app.id === 'polo_shirt' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="2" />
-                                  </svg>
-                                )}
-                                {app.id === 'compression_wear' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                                {app.id === 'cycling_jersey' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
-                                  </svg>
-                                )}
-                                {app.id === 'custom_apparel' && (
-                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                    <path d="M 50,10 L 90,30 L 90,70 L 50,90 L 10,70 L 10,30 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                              </div>
-                              <div className="apparel-card-details">
-                                <span className="apparel-card-title">{app.label}</span>
-                                <span className="apparel-card-desc">{app.desc}</span>
-                              </div>
+                      {!isEditingSetup ? (
+                        /* SUMMARY ONLY VIEW CARD */
+                        <div className="brief-section-premium animate-fade-in">
+                          <div className="section-header-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span className="section-step-badge">Step 1</span>
+                              <h3 className="section-title-premium" style={{ margin: 0 }}>Apparel & Style Specifications</h3>
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Section: Creative Direction & Prompt Help Chips */}
-                      <div className="brief-section-premium">
-                        <div className="section-header-premium">
-                          <span className="section-step-badge">Step 2</span>
-                          <h3 className="section-title-premium">Creative Direction</h3>
-                        </div>
-                        <p className="section-desc-premium">Outline your design vision. What are the key elements, graphic symbols, or creative themes the AI should integrate?</p>
-                        
-                        <div className="creative-direction-wrapper">
-                          <textarea 
-                            className="premium-textarea"
-                            placeholder="Describe your vision (e.g. 'Sleek esports jersey featuring dark gradient hues, glowing cyberpunk wireframes, and sharp geometry overlays...')"
-                            value={project.designVision || ''}
-                            onChange={(e) => handleUpdateProject({ designVision: e.target.value })}
-                          />
+                            <button 
+                              className="premium-ghost-btn" 
+                              onClick={() => setIsEditingSetup(true)}
+                              style={{ padding: '4px 10px', fontSize: '11px', gap: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', borderRadius: '4px', color: 'var(--text-primary)' }}
+                            >
+                              <Sliders size={12} /> Edit Setup
+                            </button>
+                          </div>
+                          <p className="section-desc-premium">Your primary garment outlines, visual preferences, and print specifications established during project creation.</p>
                           
-                          <div className="helper-chips-container">
-                            <span className="helper-chips-label">Inspire prompt:</span>
-                            <div className="helper-chips-grid">
-                              {[
-                                'Aggressive', 'Minimal', 'Cyberpunk', 'Tournament Ready', 'Futuristic',
-                                'Streetwear', 'Techwear', 'Sharp Geometry', 'Neon', 'Premium'
-                              ].map(chip => (
-                                <button 
-                                  key={chip}
-                                  type="button"
-                                  className="helper-chip"
-                                  onClick={() => {
-                                    const currentVision = project.designVision || '';
-                                    const appendix = currentVision ? ` ${chip}` : chip;
-                                    handleUpdateProject({ designVision: currentVision + appendix });
-                                  }}
-                                >
-                                  + {chip}
-                                </button>
-                              ))}
+                          <div className="inspector-card" style={{ display: 'flex', gap: '16px', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-muted)', background: 'var(--bg-secondary)', width: '100%', alignItems: 'center' }}>
+                            <div style={{
+                              width: '72px',
+                              height: '72px',
+                              background: 'var(--bg-tertiary)',
+                              borderRadius: '8px',
+                              border: '1px solid var(--border-muted)',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              color: 'var(--accent-blue)',
+                              flexShrink: 0
+                            }}>
+                              {project.apparelType === 'esports_jersey' && (
+                                <svg viewBox="0 0 100 120" width="40" height="48" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: '1.8' }}>
+                                  <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
+                                </svg>
+                              )}
+                              {project.apparelType === 'crewneck_sweatshirt' && (
+                                <svg viewBox="0 0 100 120" width="40" height="48" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: '1.8' }}>
+                                  <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" />
+                                </svg>
+                              )}
+                              {project.apparelType !== 'esports_jersey' && project.apparelType !== 'crewneck_sweatshirt' && (
+                                <svg viewBox="0 0 100 120" width="40" height="48" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: '1.8' }}>
+                                  <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" />
+                                </svg>
+                              )}
+                            </div>
+                            
+                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Garment silhouette</span>
+                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
+                                  {project.apparelType ? project.apparelType.replace('_', ' ') : 'Esports Jersey'}
+                                </span>
+                              </div>
+                              
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Aesthetic Vibe</span>
+                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-blue)' }}>
+                                  {project.stylePreference || 'Generic'}
+                                </span>
+                              </div>
+                              
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Fit Profile</span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  {project.templateChoice || 'Pro Athletic Fit'}
+                                </span>
+                              </div>
+
+                              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Sublimation Matrix</span>
+                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                                  {project.dpi || 300} DPI • {project.colorMode || 'CMYK'}
+                                </span>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-
-                      {/* Section: Creative Style Selection */}
-                      <div className="brief-section-premium">
-                        <div className="section-header-premium">
-                          <span className="section-step-badge">Step 3</span>
-                          <h3 className="section-title-premium">Creative Style Selection</h3>
-                        </div>
-                        <p className="section-desc-premium">Specify the aesthetic mood profile. This directs the complexity limits of synthesized patterns.</p>
-                        
-                        <div className="style-cards-grid">
-                          {[
-                            { id: 'Cyberpunk', title: 'Cyberpunk', desc: 'Electric high-voltage lines, neon highlights, and terminal interface themes.' },
-                            { id: 'Minimalist', title: 'Minimalist', desc: 'Flat shapes, spacious layouts, lightweight patterns, and clean negative space.' },
-                            { id: 'Tournament', title: 'Tournament', desc: 'Sharp geometric dividers, bold sports stripes, and speed trails.' },
-                            { id: 'Streetwear', title: 'Streetwear', desc: 'Heavy canvas grunge, graffiti splashbacks, and offset abstract forms.' },
-                            { id: 'Techwear', title: 'Techwear', desc: 'Tactical cargo grids, modular blueprint structures, and monochrome plates.' },
-                            { id: 'Retro / Vintage', title: 'Retro / Vintage', desc: '80s arcade vaporwave, pixel patterns, and saturated sunset stripes.' },
-                            { id: 'Clean Tech', title: 'Clean Tech', desc: 'Sophisticated matte layering, metallic gloss overlays, and professional club status.' }
-                          ].map(style => (
-                            <div 
-                              key={style.id}
-                              className={`style-card-premium ${project.stylePreference === style.id ? 'active' : ''}`}
-                              onClick={() => handleUpdateProject({ stylePreference: style.id })}
-                            >
-                              <div className="style-card-accent" />
-                              <div className="style-card-body">
-                                <span className="style-card-title">{style.title}</span>
-                                <span className="style-card-desc">{style.desc}</span>
+                      ) : (
+                        /* EDITABLE SELECTION VIEW */
+                        <>
+                          {/* Section: Apparel Type Selection */}
+                          <div className="brief-section-premium">
+                            <div className="section-header-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span className="section-step-badge">Step 1</span>
+                                <h3 className="section-title-premium" style={{ margin: 0 }}>Select Apparel Type</h3>
                               </div>
+                              <button 
+                                className="primary" 
+                                onClick={() => setIsEditingSetup(false)}
+                                style={{ padding: '4px 12px', fontSize: '11px', cursor: 'pointer', borderRadius: '4px', border: 'none', background: 'var(--accent-blue)', color: '#fff', fontWeight: 'bold' }}
+                              >
+                                Lock Specifications ✓
+                              </button>
                             </div>
-                          ))}
-                        </div>
-                      </div>
+                            <p className="section-desc-premium">Choose your garment silhouette. This establishes sublimation zones and future production templates.</p>
+                            
+                            <div className="apparel-cards-grid">
+                              {[
+                                { id: 'esports_jersey', label: 'Esports Jersey', desc: 'Competitive sublimation layout with sponsor zones.' },
+                                { id: 'tshirt', label: 'T-Shirt', desc: 'Standard street fit with flat-lay preview borders.' },
+                                { id: 'hoodie', label: 'Hoodie', desc: 'Premium fleece fit with full pouch print bleed.' },
+                                { id: 'longsleeve', label: 'Long Sleeve', desc: 'Sleeve cuff wrapping & arm print boundaries.' },
+                                { id: 'basketball_jersey', label: 'Basketball Jersey', desc: 'Sleeveless cut layout with shoulder strap margins.' },
+                                { id: 'polo_shirt', label: 'Polo Shirt', desc: 'Collared pattern with front placket exclusions.' },
+                                { id: 'compression_wear', label: 'Compression Wear', desc: 'High-stretch active panels and seam safety limits.' },
+                                { id: 'cycling_jersey', label: 'Cycling Jersey', desc: 'Aerodynamic rear pocket division templates.' },
+                                { id: 'custom_apparel', label: 'Custom Apparel', desc: 'Create dynamic guidelines for atypical silhouettes.' }
+                              ].map(app => (
+                                <div 
+                                  key={app.id} 
+                                  className={`apparel-card-premium ${project.apparelType === app.id ? 'active' : ''}`}
+                                  onClick={() => handleUpdateProject({ apparelType: app.id })}
+                                >
+                                  <div className="apparel-card-icon-wrapper">
+                                    {app.id === 'esports_jersey' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'tshirt' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'hoodie' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'longsleeve' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'basketball_jersey' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'polo_shirt' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="2" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'compression_wear' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'cycling_jersey' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                        <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
+                                      </svg>
+                                    )}
+                                    {app.id === 'custom_apparel' && (
+                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                        <path d="M 50,10 L 90,30 L 90,70 L 50,90 L 10,70 L 10,30 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <div className="apparel-card-details">
+                                    <span className="apparel-card-title">{app.label}</span>
+                                    <span className="apparel-card-desc">{app.desc}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Section: Creative Style Selection */}
+                          <div className="brief-section-premium">
+                            <div className="section-header-premium">
+                              <span className="section-step-badge">Step 2</span>
+                              <h3 className="section-title-premium">Creative Style Selection</h3>
+                            </div>
+                            <p className="section-desc-premium">Specify the aesthetic mood profile. This directs the complexity limits of synthesized patterns.</p>
+                            
+                            <div className="style-cards-grid">
+                              {[
+                                { id: 'Cyberpunk', title: 'Cyberpunk', desc: 'Electric high-voltage lines, neon highlights, and terminal interface themes.' },
+                                { id: 'Minimalist', title: 'Minimalist', desc: 'Flat shapes, spacious layouts, lightweight patterns, and clean negative space.' },
+                                { id: 'Tournament', title: 'Tournament', desc: 'Sharp geometric dividers, bold sports stripes, and speed trails.' },
+                                { id: 'Streetwear', title: 'Streetwear', desc: 'Heavy canvas grunge, graffiti splashbacks, and offset abstract forms.' },
+                                { id: 'Techwear', title: 'Techwear', desc: 'Tactical cargo grids, modular blueprint structures, and monochrome plates.' },
+                                { id: 'Retro / Vintage', title: 'Retro / Vintage', desc: '80s arcade vaporwave, pixel patterns, and saturated sunset stripes.' },
+                                { id: 'Clean Tech', title: 'Clean Tech', desc: 'Sophisticated matte layering, metallic gloss overlays, and professional club status.' }
+                              ].map(style => (
+                                <div 
+                                  key={style.id}
+                                  className={`style-card-premium ${project.stylePreference === style.id ? 'active' : ''}`}
+                                  onClick={() => handleUpdateProject({ stylePreference: style.id })}
+                                >
+                                  <div className="style-card-accent" />
+                                  <div className="style-card-body">
+                                    <span className="style-card-title">{style.title}</span>
+                                    <span className="style-card-desc">{style.desc}</span>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </>
+                      )}
 
                       {/* Section: Reference Assets */}
                       <div className="brief-section-premium">
                         <div className="section-header-premium">
-                          <span className="section-step-badge">Step 4</span>
+                          <span className="section-step-badge">{!isEditingSetup ? 'Step 2' : 'Step 3'}</span>
                           <h3 className="section-title-premium">Reference Assets</h3>
                         </div>
                         <p className="section-desc-premium">Provide reference logs, sponsor branding vector silhouettes, or custom texture files.</p>

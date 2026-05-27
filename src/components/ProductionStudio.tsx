@@ -670,7 +670,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 
   // Load templates manifest dynamically
   const [templates, setTemplates] = useState<GarmentTemplate[]>([]);
-  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const [, setLoadingTemplates] = useState(true);
 
   useEffect(() => {
     fetch('/templates/manifest.json')
@@ -1114,28 +1114,26 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           {/* Garment Selector */}
           <div className="studio-ctrl-group">
             <span className="studio-ctrl-label">Garment</span>
-            <select
-              value={project.apparelType}
-              onChange={(e) => onUpdateProject({ apparelType: e.target.value })}
+            <div
               style={{
-                background: '#1c1c28',
-                border: '1px solid #2d2d3f',
-                color: '#fff',
+                background: 'rgba(0, 112, 243, 0.08)',
+                border: '1px solid rgba(0, 112, 243, 0.25)',
+                color: 'var(--accent-blue)',
                 fontSize: '11px',
-                padding: '3px 8px',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                outline: 'none'
+                fontWeight: 'bold',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                letterSpacing: '0.02em',
+                textTransform: 'uppercase',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)'
               }}
             >
-              {loadingTemplates ? (
-                <option>Loading...</option>
-              ) : (
-                templates.map(t => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))
-              )}
-            </select>
+              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)' }}></span>
+              {activeTemplate.name || project.apparelType.toUpperCase().replace('_', ' ')}
+            </div>
           </div>
 
           {/* Size Switcher */}
