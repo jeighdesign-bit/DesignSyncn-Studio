@@ -2,10 +2,13 @@
    STAGE 1: BRIEF SPECIFICATIONS - CINEMATIC REDESIGN
    ==================================================== */
 .brief-workspace-premium {
-  position: relative;
-  width: 100%;
-  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   overflow-y: auto;
+  box-sizing: border-box;
   background-color: #050508;
   background-image: 
     linear-gradient(rgba(18, 18, 30, 0.3) 1px, transparent 1px),
@@ -16,7 +19,12 @@
   color: var(--text-primary);
 }
 
-/* Atmosphere background glows */
+.brief-workspace-premium * {
+  box-sizing: border-box;
+}
+
+
+
 .atmosphere-glow {
   position: absolute;
   border-radius: 50%;
