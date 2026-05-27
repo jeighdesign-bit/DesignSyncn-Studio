@@ -7,6 +7,8 @@ import {
   TriangleAlert, CircleCheck, Info, ArrowRight,
   Ruler, Palette, Cpu, Eye, Activity
 } from 'lucide-react';
+import { generateProductionCanvasStates } from '../lib/measurements';
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -540,13 +542,39 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
   const handleHandoff = () => {
     setHandoffProcessing(true);
-    pushLog('Sending approved panels to Production Studio...');
-    setTimeout(() => {
-      pushLog('✓ All garment panels mapped. Production Studio is ready.');
-      setHandoffProcessing(false);
-      setHandoffDone(true);
-      setTimeout(() => onHandoffToProduction(), 700);
-    }, 1800);
+    pushLog('Initializing Apparel Production AI Mapping Engine...');
+    
+    let currentStep = 0;
+    const steps = [
+      'Analyzing generated artwork patterns and dye-sub color mode...',
+      'Detecting brand assets: primary crest, sponsor branding...',
+      'Loading customizable rules: collar spacing, margins, safety bounds...',
+      'Identifying zones: Front chest logo, Back upper surname, Sleeve sponsors...',
+      'Mapping elements: splitting graphics into flat sublimation patterns...',
+      'Finalizing vector layout sheets for Front, Back, Sleeves, and Collar...'
+    ];
+
+    const interval = setInterval(() => {
+      if (currentStep < steps.length) {
+        pushLog(steps[currentStep]);
+        currentStep++;
+      } else {
+        clearInterval(interval);
+        
+        // Generate Fabric JSON canvas states based on project parameters
+        const generatedStates = generateProductionCanvasStates(project);
+        
+        // Save back to project state
+        onUpdateProject({
+          canvasStates: generatedStates
+        });
+        
+        pushLog('✓ Production mapping completed successfully.');
+        setHandoffProcessing(false);
+        setHandoffDone(true);
+        setTimeout(() => onHandoffToProduction(), 600);
+      }
+    }, 600);
   };
 
   // ── Zone Compliance ────────────────────────────────────────────────────────
@@ -896,6 +924,33 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 <div className="ap-gen-spinner" />
                 <div className="ap-gen-label">{loadingMsg}</div>
                 <div className="ap-gen-sub">Panel-aware AI composition engine active</div>
+              </div>
+            </div>
+          )}
+
+          {handoffProcessing && (
+            <div className="ap-generation-overlay" style={{ background: 'rgba(7, 10, 18, 0.96)', backdropFilter: 'blur(4px)', zIndex: 50 }}>
+              <div style={{ width: '85%', maxWidth: '480px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-blue)', fontWeight: 'bold', fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.08em' }}>
+                  <Cpu size={14} className="animate-pulse" /> APPAREL PRODUCTION AI ENGINE
+                </div>
+                <div style={{ background: '#04060a', border: '1px solid var(--border-muted)', borderRadius: '8px', padding: '16px', fontFamily: 'monospace', fontSize: '10.5px', color: '#4ade80', display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '170px', textAlign: 'left', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                  <div style={{ borderBottom: '1px solid rgba(74, 222, 128, 0.12)', paddingBottom: '6px', marginBottom: '6px', color: 'var(--text-disabled)', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                    <span>Vector Diagnostics Module v4.2</span>
+                    <span className="animate-pulse" style={{ color: 'var(--accent-blue)' }}>● RUNNING</span>
+                  </div>
+                  {actionLog.slice(0, 5).reverse().map((log, index) => (
+                    <div key={index} style={{ opacity: index === 4 ? 1 : 0.4 + (index * 0.15), transition: 'opacity 0.2s', lineHeight: '1.4' }}>
+                      {log}
+                    </div>
+                  ))}
+                  <div className="animate-pulse" style={{ color: '#fff', marginTop: 'auto' }}>_</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
+                  <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden', position: 'relative' }}>
+                    <div className="animate-pulse" style={{ height: '100%', width: '100%', background: 'linear-gradient(90deg, transparent, var(--accent-blue), transparent)' }} />
+                  </div>
+                </div>
               </div>
             </div>
           )}

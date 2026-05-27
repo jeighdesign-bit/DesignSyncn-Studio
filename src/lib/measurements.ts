@@ -6,6 +6,8 @@
  * DPI only affects export resolution, not the scene scale.
  */
 
+import type { Project } from '../types';
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Scene pixels per inch — the fixed internal coordinate scale. */
@@ -249,3 +251,348 @@ export function exportDimensions(
     h: Math.round(dims.h * dpi),
   };
 }
+
+/**
+ * Generate default production canvas states in Fabric.js JSON format based on
+ * project colors, Style presets (Style DNA), brand logos, and customizable production rules.
+ */
+export function generateProductionCanvasStates(project: Project): Record<string, string> {
+  const { baseColors, rules, logos } = project;
+  const prim = baseColors?.primary || '#09090b';
+  const sec = baseColors?.secondary || '#111115';
+  const acc = baseColors?.accent || '#0070f3';
+  const hig = baseColors?.highlight || '#ffffff';
+
+  // Identify logos
+  const primaryLogo = logos && logos.length > 0 ? logos[0] : null;
+  const sponsorLogo = logos && logos.length > 1 ? logos[1] : null;
+
+  // ─── 1. FRONT PANEL STATE ───
+  const frontObjects: any[] = [
+    // Background Rect
+    {
+      type: 'rect',
+      version: '6.0.0-beta.7',
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      width: 1120,
+      height: 1360,
+      fill: prim,
+      selectable: true,
+      evented: true,
+      __id: 'bg-front',
+      __layerName: 'Front Background'
+    }
+  ];
+
+  // Add decorative AI-generated elements based on Style DNA
+  const dna = project.selectedPresetId || 'cyber-hex';
+  if (dna === 'cyber-hex' || dna === 'esports-pro') {
+    frontObjects.push(
+      {
+        type: 'polygon',
+        version: '6.0.0-beta.7',
+        points: [{ x: 50, y: 0 }, { x: 150, y: 0 }, { x: 100, y: 150 }, { x: 0, y: 150 }],
+        left: 200,
+        top: 400,
+        fill: sec,
+        opacity: 0.35,
+        __id: 'design-cyber-poly1',
+        __layerName: 'Cyber Overlay Left'
+      },
+      {
+        type: 'polygon',
+        version: '6.0.0-beta.7',
+        points: [{ x: 100, y: 0 }, { x: 0, y: 0 }, { x: 50, y: 150 }, { x: 150, y: 150 }],
+        left: 770,
+        top: 400,
+        fill: sec,
+        opacity: 0.35,
+        __id: 'design-cyber-poly2',
+        __layerName: 'Cyber Overlay Right'
+      },
+      {
+        type: 'rect',
+        version: '6.0.0-beta.7',
+        left: 220,
+        top: 550,
+        width: 10,
+        height: 400,
+        angle: 15,
+        fill: acc,
+        __id: 'design-cyber-line1',
+        __layerName: 'Cyber Stripe Accent L'
+      },
+      {
+        type: 'rect',
+        version: '6.0.0-beta.7',
+        left: 890,
+        top: 550,
+        width: 10,
+        height: 400,
+        angle: -15,
+        fill: acc,
+        __id: 'design-cyber-line2',
+        __layerName: 'Cyber Stripe Accent R'
+      }
+    );
+  } else if (dna === 'retro-grid' || dna === 'retro') {
+    // Add grid lines
+    for (let x = 120; x < 1000; x += 160) {
+      frontObjects.push({
+        type: 'rect',
+        version: '6.0.0-beta.7',
+        left: x,
+        top: 200,
+        width: 2,
+        height: 1000,
+        fill: acc,
+        opacity: 0.15,
+        __id: `design-grid-v-${x}`,
+        __layerName: 'Retro Grid Line'
+      });
+    }
+    for (let y = 300; y < 1200; y += 160) {
+      frontObjects.push({
+        type: 'rect',
+        version: '6.0.0-beta.7',
+        left: 100,
+        top: y,
+        width: 920,
+        height: 2,
+        fill: acc,
+        opacity: 0.15,
+        __id: `design-grid-h-${y}`,
+        __layerName: 'Retro Grid Line'
+      });
+    }
+  } else if (dna === 'street-league' || dna === 'street') {
+    frontObjects.push(
+      {
+        type: 'rect',
+        version: '6.0.0-beta.7',
+        left: 0,
+        top: 900,
+        width: 1120,
+        height: 460,
+        fill: sec,
+        __id: 'design-street-block',
+        __layerName: 'Street Color Block'
+      },
+      {
+        type: 'rect',
+        version: '6.0.0-beta.7',
+        left: 100,
+        top: 890,
+        width: 920,
+        height: 10,
+        fill: acc,
+        __id: 'design-street-stripe',
+        __layerName: 'Street Accent Bar'
+      }
+    );
+  }
+
+  // Add primary logo
+  if (primaryLogo) {
+    const chestAlign = rules?.chestAlignment || 'center';
+    const logoSpacingCollar = rules?.frontLogoSpacingCollarInches ?? 3.5;
+    const logoInches = primaryLogo.sizeInches || 2.5;
+
+    const targetW = logoInches * PX_PER_INCH;
+    const ratio = primaryLogo.heightPx && primaryLogo.widthPx ? primaryLogo.heightPx / primaryLogo.widthPx : 1.0;
+    const targetH = targetW * ratio;
+
+    let leftPos = 560; // center
+    if (chestAlign === 'left') leftPos = 360;
+    if (chestAlign === 'right') leftPos = 760;
+
+    const topPos = 240 + (logoSpacingCollar * PX_PER_INCH);
+
+    frontObjects.push({
+      type: 'image',
+      version: '6.0.0-beta.7',
+      src: primaryLogo.url,
+      left: leftPos,
+      top: topPos,
+      originX: 'center',
+      originY: 'center',
+      width: primaryLogo.widthPx || 200,
+      height: primaryLogo.heightPx || 200,
+      scaleX: targetW / (primaryLogo.widthPx || 200),
+      scaleY: targetH / (primaryLogo.heightPx || 200),
+      selectable: true,
+      evented: true,
+      __id: 'logo-primary',
+      __layerName: `Primary Crest Logo (${primaryLogo.name})`
+    });
+  }
+
+  // ─── 2. BACK PANEL STATE ───
+  const backObjects: any[] = [
+    // Background Rect
+    {
+      type: 'rect',
+      version: '6.0.0-beta.7',
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      width: 1120,
+      height: 1360,
+      fill: prim,
+      selectable: true,
+      evented: true,
+      __id: 'bg-back',
+      __layerName: 'Back Background'
+    }
+  ];
+
+  if (dna === 'cyber-hex' || dna === 'esports-pro') {
+    backObjects.push(
+      {
+        type: 'polygon',
+        version: '6.0.0-beta.7',
+        points: [{ x: 50, y: 0 }, { x: 150, y: 0 }, { x: 100, y: 150 }, { x: 0, y: 150 }],
+        left: 200,
+        top: 400,
+        fill: sec,
+        opacity: 0.35,
+        __id: 'design-cyber-poly1-back',
+        __layerName: 'Cyber Overlay Left'
+      },
+      {
+        type: 'polygon',
+        version: '6.0.0-beta.7',
+        points: [{ x: 100, y: 0 }, { x: 0, y: 0 }, { x: 50, y: 150 }, { x: 150, y: 150 }],
+        left: 770,
+        top: 400,
+        fill: sec,
+        opacity: 0.35,
+        __id: 'design-cyber-poly2-back',
+        __layerName: 'Cyber Overlay Right'
+      }
+    );
+  }
+
+  // Surname Text (Player Name)
+  const nameHeight = rules?.playerNameHeightInches ?? 2.0;
+  const nameCollarSpacing = rules?.surnameSpacingCollarInches ?? 4.5;
+  backObjects.push({
+    type: 'i-text',
+    version: '6.0.0-beta.7',
+    left: 560,
+    top: 180 + nameCollarSpacing * PX_PER_INCH,
+    text: 'SURNAME',
+    fontFamily: 'Outfit',
+    fontSize: nameHeight * PX_PER_INCH,
+    fontWeight: '800',
+    fill: hig,
+    textAlign: 'center',
+    originX: 'center',
+    originY: 'top',
+    selectable: true,
+    evented: true,
+    __id: 'text-name',
+    __layerName: 'Player Name',
+    __isNameText: true
+  });
+
+  // Player Number Text
+  const numberHeight = rules?.playerNumberHeightInches ?? 8.0;
+  backObjects.push({
+    type: 'i-text',
+    version: '6.0.0-beta.7',
+    left: 560,
+    top: 180 + nameCollarSpacing * PX_PER_INCH + nameHeight * PX_PER_INCH + 40,
+    text: '00',
+    fontFamily: 'monospace',
+    fontSize: numberHeight * PX_PER_INCH,
+    fontWeight: '900',
+    fill: acc,
+    textAlign: 'center',
+    originX: 'center',
+    originY: 'top',
+    selectable: true,
+    evented: true,
+    __id: 'text-number',
+    __layerName: 'Player Number',
+    __isNumberText: true
+  });
+
+  // ─── 3. SLEEVES PANEL STATE ───
+  const sleevesObjects: any[] = [
+    // Background Rect
+    {
+      type: 'rect',
+      version: '6.0.0-beta.7',
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      width: 960,
+      height: 640,
+      fill: sec,
+      selectable: true,
+      evented: true,
+      __id: 'bg-sleeves',
+      __layerName: 'Sleeves Background'
+    }
+  ];
+
+  // Add Sleeve Sponsor Logo if present
+  const sleeveLogo = sponsorLogo || primaryLogo;
+  if (sleeveLogo) {
+    const targetW = 3.0 * PX_PER_INCH; // 3 inches
+    const ratio = sleeveLogo.heightPx && sleeveLogo.widthPx ? sleeveLogo.heightPx / sleeveLogo.widthPx : 1.0;
+    const targetH = targetW * ratio;
+
+    sleevesObjects.push({
+      type: 'image',
+      version: '6.0.0-beta.7',
+      src: sleeveLogo.url,
+      left: 480,
+      top: 320,
+      originX: 'center',
+      originY: 'center',
+      width: sleeveLogo.widthPx || 200,
+      height: sleeveLogo.heightPx || 200,
+      scaleX: targetW / (sleeveLogo.widthPx || 200),
+      scaleY: targetH / (sleeveLogo.heightPx || 200),
+      selectable: true,
+      evented: true,
+      __id: 'logo-sleeve',
+      __layerName: `Sleeve Sponsor Logo (${sleeveLogo.name})`
+    });
+  }
+
+  // ─── 4. COLLAR PANEL STATE ───
+  const collarObjects: any[] = [
+    // Background Rect
+    {
+      type: 'rect',
+      version: '6.0.0-beta.7',
+      originX: 'left',
+      originY: 'top',
+      left: 0,
+      top: 0,
+      width: 560,
+      height: 320,
+      fill: acc,
+      selectable: true,
+      evented: true,
+      __id: 'bg-collar',
+      __layerName: 'Collar Background'
+    }
+  ];
+
+  return {
+    front: JSON.stringify({ version: '6.0.0-beta.7', objects: frontObjects }),
+    back: JSON.stringify({ version: '6.0.0-beta.7', objects: backObjects }),
+    sleeves: JSON.stringify({ version: '6.0.0-beta.7', objects: sleevesObjects }),
+    collar: JSON.stringify({ version: '6.0.0-beta.7', objects: collarObjects }),
+  };
+}
+

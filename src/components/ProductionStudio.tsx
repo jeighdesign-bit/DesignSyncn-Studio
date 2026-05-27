@@ -8,6 +8,8 @@ import {
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
+import { RuleEngine } from './RuleEngine';
+
 import {
   formatMeasurement, unitLabel, calcSafeZones,
   getGarmentDimensions, PX_PER_INCH, type MeasurementUnit, type ObjectBounds,
@@ -1493,6 +1495,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
   const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
   const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
+  const [configTab, setConfigTab] = useState<'workspace' | 'rules'>('workspace');
+
 
 
   // ── Measurement system state ──────────────────────────────────────────────
@@ -1726,27 +1730,146 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     
     let mappedName = false;
     let mappedNum = false;
+    let logoRealigned = false;
+    
+    const rules = project.rules;
+    const view = project.activeCanvasView;
+    const roster = project.roster;
     
     canvas.getObjects().forEach((obj: any) => {
       if (obj.__isArtboard) return;
+      
+      // 1. Text layers mapping & re-alignment
       if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
         const textVal = (obj.text || '').trim().toUpperCase();
         
-        if (textVal === 'SURNAME' || textVal === 'PLAYER NAME' || textVal === 'NAME' || project.roster.some(p => p.name.toUpperCase() === textVal)) {
+        const isName = obj.__isNameText ||
+          textVal === 'SURNAME' ||
+          textVal === 'PLAYER NAME' ||
+          textVal === 'NAME' ||
+          roster.some(p => p.name.toUpperCase() === textVal);
+          
+        const isNumber = obj.__isNumberText ||
+          textVal === '00' ||
+          textVal === 'PLAYER NUMBER' ||
+          textVal === 'NUMBER' ||
+          roster.some(p => p.number === textVal);
+          
+        if (isName) {
           obj.__isNameText = true;
           mappedName = true;
-        } else if (textVal === '00' || textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || project.roster.some(p => p.number === textVal)) {
+          
+          // Re-apply typography rules
+          obj.set({
+            fontSize: rules.playerNameHeightInches * PX_PER_INCH,
+            originX: 'center'
+          });
+          
+          if (view === 'back') {
+            obj.set({
+              top: 180 + rules.surnameSpacingCollarInches * PX_PER_INCH
+            });
+          }
+          
+          if (rules.autoCenter) {
+            obj.set({ left: canvas.width / 2 });
+          }
+          
+          obj.setCoords();
+        } else if (isNumber) {
           obj.__isNumberText = true;
           mappedNum = true;
+          
+          // Re-apply typography rules
+          obj.set({
+            fontSize: rules.playerNumberHeightInches * PX_PER_INCH,
+            originX: 'center'
+          });
+          
+          if (view === 'back') {
+            const nameY = 180 + rules.surnameSpacingCollarInches * PX_PER_INCH;
+            const nameHeightPx = rules.playerNameHeightInches * PX_PER_INCH;
+            obj.set({
+              top: nameY + nameHeightPx + 40
+            });
+          }
+          
+          if (rules.autoCenter) {
+            obj.set({ left: canvas.width / 2 });
+          }
+          
+          obj.setCoords();
+        }
+      }
+      
+      // 2. Logo layers mapping & re-alignment
+      if (obj.type === 'image') {
+        if (view === 'front') {
+          // Re-align primary chest logo
+          const chestAlign = rules.chestAlignment || 'center';
+          const logoSpacingCollar = rules.frontLogoSpacingCollarInches ?? 3.5;
+          
+          // Get logo dimension specs (size in inches)
+          const logoSpec = project.logos[0];
+          const logoSizeInches = logoSpec?.sizeInches || 2.5;
+          const targetW = logoSizeInches * PX_PER_INCH;
+          const ratio = obj.height && obj.width ? obj.height / obj.width : 1.0;
+          const targetH = targetW * ratio;
+          
+          let leftPos = canvas.width / 2;
+          if (chestAlign === 'left') leftPos = canvas.width / 2 - 200;
+          if (chestAlign === 'right') leftPos = canvas.width / 2 + 200;
+          
+          const topPos = 240 + logoSpacingCollar * PX_PER_INCH;
+          
+          obj.set({
+            left: leftPos,
+            top: topPos,
+            originX: 'center',
+            originY: 'center',
+            scaleX: targetW / (obj.width || 1),
+            scaleY: targetH / (obj.height || 1)
+          });
+          
+          obj.setCoords();
+          logoRealigned = true;
+        } else if (view === 'sleeves') {
+          // Center logo on sleeve
+          const targetW = 3.0 * PX_PER_INCH;
+          const ratio = obj.height && obj.width ? obj.height / obj.width : 1.0;
+          const targetH = targetW * ratio;
+          
+          obj.set({
+            left: canvas.width / 2,
+            top: canvas.height / 2,
+            originX: 'center',
+            originY: 'center',
+            scaleX: targetW / (obj.width || 1),
+            scaleY: targetH / (obj.height || 1)
+          });
+          
+          obj.setCoords();
+          logoRealigned = true;
         }
       }
     });
     
-    if (mappedName || mappedNum) {
-      if (activePlayer) {
-        syncPlayerOnCanvas(canvas, activePlayer, undefined);
-      }
-      alert(`Auto-mapping complete! Bound ${mappedName ? 'Player Name layer' : ''} ${mappedName && mappedNum ? 'and' : ''} ${mappedNum ? 'Player Number layer' : ''} successfully.`);
+    // Sync current active player's name & number value
+    if (activePlayer && (mappedName || mappedNum)) {
+      syncPlayerOnCanvas(canvas, activePlayer, undefined);
+    }
+    
+    canvas.requestRenderAll();
+    fabricRef.current?.saveHistory();
+    
+    // Construct message
+    const msgs: string[] = [];
+    if (mappedName) msgs.push('Player Name');
+    if (mappedNum) msgs.push('Player Number');
+    if (logoRealigned) msgs.push('Logo Layout');
+    
+    if (msgs.length > 0) {
+      alert(`Auto-mapping complete! Re-aligned and formatted: ${msgs.join(', ')} to conform to current rules.`);
     } else {
       alert('Could not find matches on the canvas. Please select a text object and use the typography presets to label Surname / Number.');
     }
@@ -2418,7 +2541,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           <span className="inspector-header-title">
             {inspectorMode === 'text' ? 'Text Inspector' :
               inspectorMode === 'shape' ? 'Shape Inspector' :
-                inspectorMode === 'image' ? 'Logo Properties' : 'Workspace Configuration'}
+                inspectorMode === 'image' ? 'Logo Properties' :
+                  configTab === 'workspace' ? 'Workspace Configuration' : 'Production Rule Settings'}
           </span>
           {inspectorMode !== 'calibration' && (
             <span className="inspector-header-badge">
@@ -2478,103 +2602,147 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               }}
             />
           ) : (
-            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              
-              {/* Garment Selector */}
-              <div>
-                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>GARMENT</span>
-                <div
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
+              {/* Configuration Sub-tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-muted)', padding: '0 8px', background: 'var(--bg-secondary)', gap: '4px', flexShrink: 0 }}>
+                <button
                   style={{
-                    background: 'rgba(0, 112, 243, 0.08)',
-                    border: '1px solid rgba(0, 112, 243, 0.25)',
-                    color: 'var(--accent-blue)',
+                    padding: '10px 12px',
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    padding: '0',
-                    borderRadius: '6px',
-                    letterSpacing: '0.02em',
-                    textTransform: 'uppercase',
-                    display: 'flex',
-                    alignItems: 'center',
-                    boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)',
-                    position: 'relative'
+                    color: configTab === 'workspace' ? '#fff' : 'var(--text-disabled)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: configTab === 'workspace' ? '2px solid var(--accent-blue)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
                   }}
+                  onClick={() => setConfigTab('workspace')}
                 >
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)', position: 'absolute', left: '12px', pointerEvents: 'none' }}></span>
-                  <select
-                    style={{
-                      width: '100%',
-                      background: 'transparent',
-                      border: 'none',
-                      color: 'var(--accent-blue)',
-                      padding: '8px 12px 8px 26px',
-                      fontSize: '11px',
-                      fontWeight: 'bold',
-                      textTransform: 'uppercase',
-                      outline: 'none',
-                      cursor: 'pointer',
-                      appearance: 'none',
-                      WebkitAppearance: 'none'
-                    }}
-                    value={project.apparelType}
-                    onChange={(e) => onUpdateProject({ apparelType: e.target.value as any })}
-                  >
-                    <option value="tshirt" style={{ background: '#0a0a0f', color: '#fff' }}>T-Shirt (Sport)</option>
-                    <option value="jersey" style={{ background: '#0a0a0f', color: '#fff' }}>Jersey (Pro)</option>
-                    <option value="hoodie" style={{ background: '#0a0a0f', color: '#fff' }}>Hoodie</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Size Switcher */}
-              <div>
-                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>SIZE</span>
-                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                  {(activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"]).map(s => (
-                    <button
-                      key={s}
-                      className={`studio-ctrl-btn ${activeSize === s ? 'active' : ''}`}
-                      onClick={() => handleSizeChange(s)}
-                      style={{ padding: '6px 12px', flex: '1 0 20%', minWidth: '40px', fontSize: '11px' }}
-                    >
-                      {s}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Canvas Background */}
-              <div>
-                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>CANVAS</span>
+                  Workspace
+                </button>
                 <button
-                  className="studio-ctrl-btn active"
-                  style={{ width: '100%', padding: '6px 12px', pointerEvents: 'none' }}
+                  style={{
+                    padding: '10px 12px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: configTab === 'rules' ? '#fff' : 'var(--text-disabled)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: configTab === 'rules' ? '2px solid var(--accent-blue)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onClick={() => setConfigTab('rules')}
                 >
-                  White
+                  Production Rules
                 </button>
               </div>
 
-              {/* Advanced Mode Calibration Controls */}
-              {workspaceMode === 'advanced' && (
-                <div>
-                  <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
-                    <Ruler size={11} /> UNIT
-                  </span>
-                  <div style={{ display: 'flex', gap: '4px' }}>
-                    {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
-                      <button
-                        key={u}
-                        className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
-                        style={{ flex: 1, padding: '6px 0', fontSize: '11px' }}
-                        onClick={() => onUpdateProject({ measurementUnit: u as any })}
-                        title={`Switch to ${u}`}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {configTab === 'workspace' ? (
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                    
+                    {/* Garment Selector */}
+                    <div>
+                      <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>GARMENT</span>
+                      <div
+                        style={{
+                          background: 'rgba(0, 112, 243, 0.08)',
+                          border: '1px solid rgba(0, 112, 243, 0.25)',
+                          color: 'var(--accent-blue)',
+                          fontSize: '11px',
+                          fontWeight: 'bold',
+                          padding: '0',
+                          borderRadius: '6px',
+                          letterSpacing: '0.02em',
+                          textTransform: 'uppercase',
+                          display: 'flex',
+                          alignItems: 'center',
+                          boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)',
+                          position: 'relative'
+                        }}
                       >
-                        {u === 'inches' ? 'in' : u}
+                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)', position: 'absolute', left: '12px', pointerEvents: 'none' }}></span>
+                        <select
+                          style={{
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--accent-blue)',
+                            padding: '8px 12px 8px 26px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            outline: 'none',
+                            cursor: 'pointer',
+                            appearance: 'none',
+                            WebkitAppearance: 'none'
+                          }}
+                          value={project.apparelType}
+                          onChange={(e) => onUpdateProject({ apparelType: e.target.value as any })}
+                        >
+                          <option value="tshirt" style={{ background: '#0a0a0f', color: '#fff' }}>T-Shirt (Sport)</option>
+                          <option value="jersey" style={{ background: '#0a0a0f', color: '#fff' }}>Jersey (Pro)</option>
+                          <option value="hoodie" style={{ background: '#0a0a0f', color: '#fff' }}>Hoodie</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Size Switcher */}
+                    <div>
+                      <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>SIZE</span>
+                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                        {(activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"]).map(s => (
+                          <button
+                            key={s}
+                            className={`studio-ctrl-btn ${activeSize === s ? 'active' : ''}`}
+                            onClick={() => handleSizeChange(s)}
+                            style={{ padding: '6px 12px', flex: '1 0 20%', minWidth: '40px', fontSize: '11px' }}
+                          >
+                            {s}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Canvas Background */}
+                    <div>
+                      <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>CANVAS</span>
+                      <button
+                        className="studio-ctrl-btn active"
+                        style={{ width: '100%', padding: '6px 12px', pointerEvents: 'none' }}
+                      >
+                        White
                       </button>
-                    ))}
+                    </div>
+
+                    {/* Advanced Mode Calibration Controls */}
+                    {workspaceMode === 'advanced' && (
+                      <div>
+                        <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
+                          <Ruler size={11} /> UNIT
+                        </span>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
+                            <button
+                              key={u}
+                              className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
+                              style={{ flex: 1, padding: '6px 0', fontSize: '11px' }}
+                              onClick={() => onUpdateProject({ measurementUnit: u as any })}
+                              title={`Switch to ${u}`}
+                            >
+                              {u === 'inches' ? 'in' : u}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <RuleEngine project={project} onUpdateProject={onUpdateProject} />
+                )}
+              </div>
             </div>
           )}
         </div>
