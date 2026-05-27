@@ -656,7 +656,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   setPan,
 }) => {
   const [toolMode, setToolMode] = useState<ToolMode>('select');
-  const [canvasBg, setCanvasBg] = useState<'white' | 'dark' | 'transparent' | 'checkerboard'>('white');
+  const [canvasBg] = useState<'white' | 'dark' | 'transparent' | 'checkerboard'>('white');
   const [layers, setLayers] = useState<FabricLayer[]>([]);
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [activeTextObj, setActiveTextObj] = useState<fabric.IText | null>(null);
@@ -1200,15 +1200,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           {/* Canvas background */}
           <div className="studio-ctrl-group">
             <span className="studio-ctrl-label">Canvas</span>
-            {(['white', 'dark', 'transparent', 'checkerboard'] as const).map(bg => (
-              <button
-                key={bg}
-                onClick={() => { setCanvasBg(bg); fabricRef.current?.setBackground(bg); }}
-                className={`studio-ctrl-btn ${canvasBg === bg ? 'active' : ''}`}
-              >
-                {bg === 'checkerboard' ? 'Grid' : bg.charAt(0).toUpperCase() + bg.slice(1)}
-              </button>
-            ))}
+            <button
+              className="studio-ctrl-btn active"
+              style={{ pointerEvents: 'none' }}
+            >
+              White
+            </button>
           </div>
 
           {/* Advanced Mode Calibration Controls */}
