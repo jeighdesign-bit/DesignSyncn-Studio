@@ -829,8 +829,8 @@
 .ai-studio-layout {
   display: grid;
   grid-template-columns: 320px 1fr 280px;
-  height: 100vh;
-  width: 100vw;
+  height: 100%;
+  width: 100%;
   overflow: hidden;
 }
 
