@@ -1315,18 +1315,39 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                     color: 'var(--accent-blue)',
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    padding: '8px 12px',
+                    padding: '0',
                     borderRadius: '6px',
                     letterSpacing: '0.02em',
                     textTransform: 'uppercase',
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '8px',
-                    boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)'
+                    boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)',
+                    position: 'relative'
                   }}
                 >
-                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)' }}></span>
-                  {activeTemplate.name || project.apparelType.toUpperCase().replace('_', ' ')}
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)', position: 'absolute', left: '12px', pointerEvents: 'none' }}></span>
+                  <select
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--accent-blue)',
+                      padding: '8px 12px 8px 26px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      WebkitAppearance: 'none'
+                    }}
+                    value={project.apparelType}
+                    onChange={(e) => onUpdateProject({ apparelType: e.target.value as any })}
+                  >
+                    <option value="tshirt" style={{ background: '#0a0a0f', color: '#fff' }}>T-Shirt (Sport)</option>
+                    <option value="jersey" style={{ background: '#0a0a0f', color: '#fff' }}>Jersey (Pro)</option>
+                    <option value="hoodie" style={{ background: '#0a0a0f', color: '#fff' }}>Hoodie</option>
+                  </select>
                 </div>
               </div>
 
