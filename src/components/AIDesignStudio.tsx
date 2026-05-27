@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Project } from '../types';
 import {
-  Sparkles, RefreshCw, ChevronDown, ChevronRight,
-  Check, Clock, Send, Zap, AlertTriangle,
+  Sparkles, RefreshCw,
+  Check, Clock, AlertTriangle,
   Shield, Shirt, Layers, Settings, Target,
   TriangleAlert, CircleCheck, Info, ArrowRight,
   Ruler, Palette, Cpu, Eye, Activity
@@ -177,7 +177,7 @@ const GarmentFlat: React.FC<{
   safeZone: number;
   seamBleed: number;
   onPanelClick: (id: GarmentPanel) => void;
-}> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, safeZone, onPanelClick }) => {
+}> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, onPanelClick }) => {
 
   const getPanelConcept = (id: GarmentPanel) => concepts.find(c => c.panelId === id);
 
@@ -442,7 +442,6 @@ const GarmentFlat: React.FC<{
 
 export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   project,
-  aiGenerating,
   onUpdateProject,
   onGenerate,
   onHandoffToProduction,
@@ -511,7 +510,6 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     setTimeout(() => {
       const newConcepts: GeneratedConcept[] = targetPanels.map(pid => {
         const panel = panels.find(p => p.id === pid);
-        const colorShift = pid === 'back' ? 0.8 : pid.includes('sleeve') ? 0.6 : 1;
         return {
           id: `c-${pid}-${Date.now()}`,
           panelId: pid,
