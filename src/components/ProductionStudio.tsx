@@ -709,9 +709,10 @@ const createMasterCanvasJSON = (views: { front: string; back: string; sleeves: s
 
 interface StatusBadgeProps {
   status?: 'Pending' | 'Mapped' | 'Ready for Export' | string;
+  isMinimal?: boolean;
 }
 
-const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status, isMinimal }) => {
   let bg = 'rgba(255,255,255,0.05)';
   let color = 'rgba(255,255,255,0.4)';
   let label = status || 'Mapped';
@@ -719,15 +720,15 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
   if (status === 'Ready for Export') {
     bg = 'rgba(74, 222, 128, 0.1)';
     color = '#4ade80';
-    label = '✓ Ready';
+    label = isMinimal ? '✓' : '✓ Ready';
   } else if (status === 'Mapped') {
     bg = 'rgba(59, 130, 246, 0.1)';
     color = '#60a5fa';
-    label = 'Mapped';
+    label = isMinimal ? 'M' : 'Mapped';
   } else if (status === 'Pending') {
     bg = 'rgba(245, 158, 11, 0.1)';
     color = '#fbbf24';
-    label = 'Pending';
+    label = isMinimal ? 'P' : 'Pending';
   }
 
   return (
@@ -737,11 +738,12 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
         fontWeight: '700',
         color,
         background: bg,
-        padding: '2px 6px',
+        padding: isMinimal ? '1px 3px' : '2px 6px',
         borderRadius: '3px',
         whiteSpace: 'nowrap',
         display: 'inline-block',
       }}
+      title={isMinimal ? status : undefined}
     >
       {label}
     </span>
@@ -777,6 +779,7 @@ const ProductionProgressBar: React.FC<ProductionProgressBarProps> = ({ scale }) 
 };
 
 interface RosterToolbarProps {
+  sidebarWidth: number;
   onGenerateAll: () => void;
   onImportCsv: () => void;
   onImportExcel: () => void;
@@ -785,26 +788,31 @@ interface RosterToolbarProps {
 }
 
 const RosterToolbar: React.FC<RosterToolbarProps> = ({
+  sidebarWidth,
   onGenerateAll,
   onImportCsv,
   onImportExcel,
   onAutoMap,
   onSync,
 }) => {
+  const isMinimal = sidebarWidth < 240;
+  const isCompact = sidebarWidth >= 240 && sidebarWidth < 320;
+
   return (
-    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: '#09090d', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+    <div style={{ padding: isMinimal ? '8px 10px' : '12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: '#09090d', display: 'flex', flexDirection: 'column', gap: '6px', flexShrink: 0 }}>
       {/* Primary CTA */}
       <button
         onClick={onGenerateAll}
+        title={isMinimal ? "Generate All Variations" : undefined}
         style={{
           width: '100%',
           background: 'rgba(0, 112, 243, 0.1)',
           border: '1px solid rgba(0, 112, 243, 0.35)',
           borderRadius: '6px',
           color: '#3b9eff',
-          fontSize: '11px',
+          fontSize: isMinimal ? '10px' : '11px',
           fontWeight: 'bold',
-          padding: '8px 0',
+          padding: isMinimal ? '6px 0' : '8px 0',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
@@ -815,13 +823,20 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
         onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.18)'; }}
         onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)'; }}
       >
-        <Sparkles size={11} /> Generate All Variations
+        <Sparkles size={11} /> {isMinimal ? "Gen All" : "Generate All Variations"}
       </button>
 
-      {/* Symmetric 2x2 Grid of Secondary Compact Buttons */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+      {/* Symmetric Grid based on mode */}
+      <div 
+        style={{ 
+          display: 'grid', 
+          gridTemplateColumns: isMinimal ? 'repeat(4, 1fr)' : isCompact ? '1fr' : '1fr 1fr', 
+          gap: '4px' 
+        }}
+      >
         <button
           onClick={onImportCsv}
+          title="Import CSV"
           style={{
             background: 'transparent',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -829,20 +844,22 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
             color: 'var(--text-secondary)',
             fontSize: '9.5px',
             fontWeight: 'bold',
-            height: '24px',
+            height: isMinimal ? '22px' : '24px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px'
+            gap: '3px',
+            padding: isMinimal ? '0' : '0 4px',
           }}
           onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
           onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
         >
-          <Upload size={9} /> Import CSV
+          <Upload size={9} /> {!isMinimal && "CSV"}
         </button>
         <button
           onClick={onImportExcel}
+          title="Import Excel"
           style={{
             background: 'transparent',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -850,20 +867,22 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
             color: 'var(--text-secondary)',
             fontSize: '9.5px',
             fontWeight: 'bold',
-            height: '24px',
+            height: isMinimal ? '22px' : '24px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px'
+            gap: '3px',
+            padding: isMinimal ? '0' : '0 4px',
           }}
           onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
           onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
         >
-          <FileDown size={9} /> Import Excel
+          <FileDown size={9} /> {!isMinimal && "Excel"}
         </button>
         <button
           onClick={onAutoMap}
+          title="Auto Map Layers"
           style={{
             background: 'transparent',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -871,20 +890,22 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
             color: 'var(--text-secondary)',
             fontSize: '9.5px',
             fontWeight: 'bold',
-            height: '24px',
+            height: isMinimal ? '22px' : '24px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px'
+            gap: '3px',
+            padding: isMinimal ? '0' : '0 4px',
           }}
           onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
           onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
         >
-          <MapPin size={9} /> Auto Map
+          <MapPin size={9} /> {!isMinimal && "Auto Map"}
         </button>
         <button
           onClick={onSync}
+          title="Sync Design"
           style={{
             background: 'transparent',
             border: '1px solid rgba(255, 255, 255, 0.08)',
@@ -892,17 +913,18 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
             color: 'var(--text-secondary)',
             fontSize: '9.5px',
             fontWeight: 'bold',
-            height: '24px',
+            height: isMinimal ? '22px' : '24px',
             cursor: 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: '4px'
+            gap: '3px',
+            padding: isMinimal ? '0' : '0 4px',
           }}
           onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
           onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
         >
-          <RefreshCw size={9} /> Sync
+          <RefreshCw size={9} /> {!isMinimal && "Sync"}
         </button>
       </div>
     </div>
@@ -911,9 +933,10 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
 
 interface AddPlayerCardProps {
   onAdd: () => void;
+  isMinimal: boolean;
 }
 
-const AddPlayerCard: React.FC<AddPlayerCardProps> = ({ onAdd }) => {
+const AddPlayerCard: React.FC<AddPlayerCardProps> = ({ onAdd, isMinimal }) => {
   return (
     <button
       onClick={onAdd}
@@ -925,7 +948,7 @@ const AddPlayerCard: React.FC<AddPlayerCardProps> = ({ onAdd }) => {
         color: 'var(--text-secondary)',
         fontSize: '10px',
         fontWeight: '600',
-        padding: '8px 0',
+        padding: isMinimal ? '5px 0' : '8px 0',
         cursor: 'pointer',
         display: 'flex',
         alignItems: 'center',
@@ -945,12 +968,13 @@ const AddPlayerCard: React.FC<AddPlayerCardProps> = ({ onAdd }) => {
         e.currentTarget.style.boxShadow = 'none';
       }}
     >
-      <Plus size={11} /> Add Player Row
+      <Plus size={11} /> {isMinimal ? "Add" : "Add Player Row"}
     </button>
   );
 };
 
 interface PlayerRosterCardProps {
+  sidebarWidth: number;
   player: RosterPlayer;
   isActive: boolean;
   warning: string | null;
@@ -964,6 +988,7 @@ interface PlayerRosterCardProps {
 }
 
 const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
+  sidebarWidth,
   player,
   isActive,
   warning,
@@ -975,6 +1000,8 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
   onDelete,
 }) => {
   const isReady = player.status === 'Ready for Export';
+  const isMinimal = sidebarWidth < 240;
+  const isCompact = sidebarWidth >= 240 && sidebarWidth < 320;
 
   return (
     <div
@@ -983,7 +1010,7 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
         background: isActive ? 'rgba(0, 112, 243, 0.03)' : 'transparent',
         border: isActive ? '1px solid rgba(0, 112, 243, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
         borderRadius: '6px',
-        padding: '8px 10px',
+        padding: isMinimal ? '6px 8px' : '8px 10px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
@@ -998,9 +1025,9 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
         if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)';
       }}
     >
-      {/* ROW 1: TOP ROW (Always Visible Summary) */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+      {/* ROW 1: TOP ROW (Saves real estate by auto-collapsing decorative elements) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', minWidth: 0, gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMinimal ? '3px' : '6px', minWidth: 0, flex: 1 }}>
           {/* Active selection dot */}
           <div
             style={{
@@ -1013,45 +1040,66 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
               flexShrink: 0
             }}
           />
-          <MiniJerseyThumbnail
-            primaryColor={primaryColor}
-            secondaryColor={secondaryColor}
-            apparelType={apparelType}
-          />
           
-          <span style={{ fontSize: '11px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+          {!isMinimal && (
+            <MiniJerseyThumbnail
+              primaryColor={primaryColor}
+              secondaryColor={secondaryColor}
+              apparelType={apparelType}
+            />
+          )}
+          
+          {/* Responsive Typo & scanning priority */}
+          <span 
+            style={{ 
+              fontSize: isMinimal ? '9.5px' : '11px', 
+              fontWeight: '800', 
+              color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', 
+              overflow: 'hidden', 
+              textOverflow: 'ellipsis', 
+              whiteSpace: 'nowrap', 
+              textTransform: 'uppercase' 
+            }}
+          >
             {player.name || 'UNNAMED'}
           </span>
           
-          <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--accent-blue)', fontFamily: 'monospace', flexShrink: 0 }}>
+          <span style={{ fontSize: isMinimal ? '9px' : '10px', fontWeight: '700', color: 'var(--accent-blue)', fontFamily: 'monospace', flexShrink: 0 }}>
             #{player.number || '0'}
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: isMinimal ? '3px' : '6px', flexShrink: 0 }}>
           <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-disabled)', background: 'rgba(255,255,255,0.05)', padding: '1px 4px', borderRadius: '3px' }}>
             {player.size === 'XXL' ? '2XL' : player.size}
           </span>
           
-          <StatusBadge status={player.status} />
+          <StatusBadge status={player.status} isMinimal={isMinimal} />
         </div>
       </div>
 
-      {/* Expanded view controls */}
+      {/* Expanded view controls (Adapts vertical rhythm dynamically) */}
       {isActive && (
         <div 
           style={{ 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: '8px', 
+            gap: isMinimal ? '6px' : '8px', 
             borderTop: '1px solid rgba(255,255,255,0.06)', 
-            paddingTop: '8px', 
+            paddingTop: isMinimal ? '6px' : '8px', 
             marginTop: '2px' 
           }} 
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ROW 2: MIDDLE ROW (Editable inputs NEVER overlapping) */}
-          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+          {/* ROW 2: MIDDLE ROW (Adapts fields to stack vertically in compact modes) */}
+          <div 
+            style={{ 
+              display: 'flex', 
+              flexDirection: isMinimal || isCompact ? 'column' : 'row', 
+              gap: '6px', 
+              alignItems: isMinimal || isCompact ? 'stretch' : 'center' 
+            }}
+          >
             <input
               type="text"
               value={player.name}
@@ -1062,64 +1110,73 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
                 background: '#0d111d',
                 border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '4px',
-                padding: '5px 8px',
+                padding: isMinimal ? '4px 6px' : '5px 8px',
                 fontSize: '11px',
                 color: '#fff',
                 outline: 'none',
                 textTransform: 'uppercase',
-                minWidth: 0, // Prevents overflow cutoff in narrow flex containers
-              }}
-            />
-            <input
-              type="text"
-              value={player.number}
-              onChange={(e) => onFieldChange(player.id, 'number', e.target.value)}
-              placeholder="00"
-              style={{
-                width: '42px',
-                flexShrink: 0,
-                background: '#0d111d',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: '4px',
-                padding: '5px 2px',
-                fontSize: '11px',
-                color: 'var(--accent-blue)',
-                outline: 'none',
-                textAlign: 'center',
-                fontFamily: 'monospace'
+                minWidth: 0,
               }}
             />
             
-            <button
-              onClick={(e) => onDelete(player.id, e)}
-              style={{
-                width: '28px',
-                height: '24px',
-                flexShrink: 0,
-                background: 'transparent',
-                border: '1px solid rgba(235, 87, 87, 0.2)',
-                borderRadius: '4px',
-                color: '#eb5757',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                transition: 'all 0.15s'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-              title="Delete Player"
-            >
-              <Trash2 size={11} />
-            </button>
+            <div style={{ display: 'flex', gap: '6px', width: isMinimal || isCompact ? '100%' : 'auto' }}>
+              <input
+                type="text"
+                value={player.number}
+                onChange={(e) => onFieldChange(player.id, 'number', e.target.value)}
+                placeholder="00"
+                style={{
+                  width: isMinimal || isCompact ? '100%' : '42px',
+                  flex: isMinimal || isCompact ? 1 : 'none',
+                  background: '#0d111d',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: '4px',
+                  padding: isMinimal ? '4px 2px' : '5px 2px',
+                  fontSize: '11px',
+                  color: 'var(--accent-blue)',
+                  outline: 'none',
+                  textAlign: 'center',
+                  fontFamily: 'monospace'
+                }}
+              />
+              
+              <button
+                onClick={(e) => onDelete(player.id, e)}
+                style={{
+                  width: isMinimal || isCompact ? '28px' : '28px',
+                  height: isMinimal ? '22px' : '24px',
+                  flexShrink: 0,
+                  background: 'transparent',
+                  border: '1px solid rgba(235, 87, 87, 0.2)',
+                  borderRadius: '4px',
+                  color: '#eb5757',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.15s'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                title="Delete Player"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
           </div>
 
-          {/* ROW 3: BOTTOM ROW (Dropdown Selectors) */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.1fr', gap: '4px' }}>
+          {/* ROW 3: BOTTOM ROW (Drop-downs stack vertically on minimal, compact grids on compact, horizontal on desktop) */}
+          <div 
+            style={{ 
+              display: 'grid', 
+              gridTemplateColumns: isMinimal ? '1fr' : isCompact ? '1fr 1fr' : '1fr 1.3fr 1.1fr', 
+              gap: '4px' 
+            }}
+          >
             <select
               value={player.size}
               onChange={(e) => onFieldChange(player.id, 'size', e.target.value)}
-              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer', width: '100%' }}
             >
               <option value="XS">XS</option>
               <option value="S">S</option>
@@ -1133,7 +1190,7 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
             <select
               value={player.variant || 'Variant A'}
               onChange={(e) => onFieldChange(player.id, 'variant', e.target.value)}
-              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer', width: '100%' }}
             >
               <option value="Variant A">Variant A</option>
               <option value="Variant B">Variant B</option>
@@ -1143,7 +1200,19 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
             <select
               value={player.status || 'Mapped'}
               onChange={(e) => onFieldChange(player.id, 'status', e.target.value)}
-              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: isReady ? 'var(--color-success)' : 'var(--accent-blue)', outline: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+              style={{ 
+                gridColumn: isCompact ? 'span 2' : 'auto',
+                background: '#0d111d', 
+                border: '1px solid rgba(255,255,255,0.08)', 
+                borderRadius: '4px', 
+                padding: '4px 6px', 
+                fontSize: '10px', 
+                color: isReady ? 'var(--color-success)' : 'var(--accent-blue)', 
+                outline: 'none', 
+                cursor: 'pointer', 
+                fontWeight: 'bold',
+                width: '100%' 
+              }}
             >
               <option value="Pending">Pending</option>
               <option value="Mapped">Mapped</option>
@@ -1208,6 +1277,8 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
   onFieldChange,
   rosterInputRef,
 }) => {
+  const isMinimal = sidebarWidth < 240;
+
   return (
     <aside
       className="layers-sidebar"
@@ -1224,19 +1295,23 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
     >
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {/* Header & Stats horizontal status row */}
-        <div style={{ padding: '16px 16px 12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexShrink: 0 }}>
+        <div style={{ padding: isMinimal ? '10px 10px 8px 10px' : '16px 16px 12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
             <Cpu size={12} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
-            <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Roster Studio</span>
+            <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+              {isMinimal ? "Roster" : "Roster Studio"}
+            </span>
           </div>
           
-          <div style={{ fontSize: '9.5px', color: 'var(--text-disabled)', fontWeight: '500', letterSpacing: '0.02em', marginTop: '2px' }}>
-            <span>{project.roster.length} Players</span>
-            <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
-            <span style={{ color: 'var(--color-success)' }}>{project.roster.filter(p => p.status === 'Ready for Export').length} Ready</span>
-            <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
+          <div style={{ fontSize: '9.5px', color: 'var(--text-disabled)', fontWeight: '500', letterSpacing: '0.02em', marginTop: '2px', display: 'flex', flexWrap: 'wrap', gap: '2px 4px' }}>
+            <span>{project.roster.length} P</span>
+            <span style={{ opacity: 0.3 }}>•</span>
+            <span style={{ color: 'var(--color-success)' }}>
+              {project.roster.filter(p => p.status === 'Ready for Export').length} {isMinimal ? "R" : "Ready"}
+            </span>
+            <span style={{ opacity: 0.3 }}>•</span>
             <span style={{ color: project.roster.filter(p => warningChecker(p, project.roster) !== null).length > 0 ? '#eb5757' : 'var(--text-disabled)' }}>
-              {project.roster.filter(p => warningChecker(p, project.roster) !== null).length} Alerts
+              {project.roster.filter(p => warningChecker(p, project.roster) !== null).length} {isMinimal ? "A" : "Alerts"}
             </span>
           </div>
         </div>
@@ -1246,6 +1321,7 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
 
         {/* Action Button Toolbar */}
         <RosterToolbar
+          sidebarWidth={sidebarWidth}
           onGenerateAll={onBulkGenerate}
           onImportCsv={() => {
             if (rosterInputRef.current) {
@@ -1264,10 +1340,10 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
         />
 
         {/* Roster database list */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: isMinimal ? '6px' : '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           
           {/* Dash outlined add player card */}
-          <AddPlayerCard onAdd={onAddDefaultPlayer} />
+          <AddPlayerCard onAdd={onAddDefaultPlayer} isMinimal={isMinimal} />
 
           {project.roster.length === 0 ? (
             <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed rgba(255, 255, 255, 0.06)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
@@ -1283,6 +1359,7 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
               return (
                 <PlayerRosterCard
                   key={player.id}
+                  sidebarWidth={sidebarWidth}
                   player={player}
                   isActive={isActive}
                   warning={warning}
