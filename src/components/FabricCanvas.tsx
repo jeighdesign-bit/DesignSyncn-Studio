@@ -2,8 +2,10 @@ import { useEffect, useRef, useImperativeHandle, forwardRef, useCallback, useSta
 import {
   majorTickIntervalPx, minorDivisions, fromPx,
   getGarmentDimensions, type MeasurementUnit, type ObjectBounds,
-  type SafeZoneRects, type GarmentTemplate
+  type SafeZoneRects, type GarmentTemplate, getAnchorCoords,
+  calcSafeZones, unitLabel
 } from '../lib/measurements';
+import type { Project } from '../types';
 import * as fabric from 'fabric';
 
 // Register custom properties for serialization in Fabric.js v7
@@ -13,6 +15,16 @@ import * as fabric from 'fabric';
   '__isArtboard',
   '__locked',
   '__panel',
+  '__anchor',
+  '__offsetXInches',
+  '__offsetYInches',
+  '__isNameText',
+  '__isNumberText',
+  '__baseFontSize',
+  '__baseScaleX',
+  '__baseScaleY',
+  '__restrictToSafe',
+  '__productionLocked',
   'selectable',
   'evented'
 ];
@@ -73,6 +85,7 @@ interface FabricCanvasProps {
   activeTemplate?: GarmentTemplate;
   activeSize?: string;
   offsets?: any;
+  project?: Project;
 }
 
 // ─── Helper: unique layer names ───────────────────────────────────────────────
@@ -195,6 +208,244 @@ const applyBg = (canvas: fabric.Canvas, bg: string) => {
   canvas.requestRenderAll();
 };
 
+
+export const getSizeScaleFactor = (size: string): number => {
+  switch (size) {
+    case 'XS': return 0.8;
+    case 'S': return 0.87;
+    case 'M': return 0.93;
+    case 'L': return 1.0;
+    case 'XL': return 1.07;
+    case 'XXL': return 1.13;
+    case '3XL': return 1.2;
+    default: return 1.0;
+  }
+};
+
+export function alignObjectsToProductionAnchors(
+  canvas: fabric.Canvas,
+  panel: string,
+  width: number,
+  height: number,
+  project: Project,
+  offsets?: any
+) {
+  const rules = project.rules;
+  const roster = project.roster;
+  const activePlayer = roster.find(p => p.id === project.activePlayerId);
+  const activeSize = activePlayer?.size ?? 'M';
+
+  // Get scale compensation factor
+  const sizeScaleFactor = rules.dynamicScaling ? getSizeScaleFactor(activeSize) : 1.0;
+
+  const isFull = panel === 'full';
+  const offs = offsets || {
+    sleeves: { x: 60, y: 100 },
+    sleeves_right: { x: 1380, y: 100 },
+    front: { x: 60, y: 920 },
+    back: { x: 1220, y: 920 },
+    collar: { x: 920, y: 760 },
+    totalW: 2400,
+    totalH: 2400
+  };
+
+  canvas.getObjects().forEach((obj: any) => {
+    if (obj.__isArtboard) return;
+
+    // Determine the active object's panel
+    const objPanel = isFull ? (obj.__panel || 'front') : panel;
+    const normalizedObjPanel = objPanel === 'sleeves_right' ? 'sleeves' : objPanel;
+
+    // Get the size of that active panel in pixels
+    let panelW = width;
+    let panelH = height;
+    if (isFull) {
+      panelW = objPanel === 'front' || objPanel === 'back' ? 1120 : objPanel === 'sleeves' || objPanel === 'sleeves_right' ? 960 : 560;
+      panelH = objPanel === 'front' || objPanel === 'back' ? 1360 : objPanel === 'sleeves' || objPanel === 'sleeves_right' ? 640 : 320;
+    }
+
+    // Get the offset of that active panel on the master canvas
+    let panelOffsetX = 0;
+    let panelOffsetY = 0;
+    if (isFull) {
+      const offset = offs[objPanel] ?? offs.front;
+      panelOffsetX = offset.x;
+      panelOffsetY = offset.y;
+    }
+
+    let anchor = obj.__anchor;
+    let ox = obj.__offsetXInches;
+    let oy = obj.__offsetYInches;
+
+    // If it doesn't have an explicit anchor, assign default sublimation anchor rules
+    if (!anchor) {
+      const textVal = (obj.text || '').trim().toUpperCase();
+
+      const isName = obj.__isNameText ||
+        textVal === 'SURNAME' ||
+        textVal === 'PLAYER NAME' ||
+        textVal === 'NAME' ||
+        project.roster.some(p => p.name.toUpperCase() === textVal);
+
+      const isNumber = obj.__isNumberText ||
+        textVal === '00' ||
+        textVal === 'PLAYER NUMBER' ||
+        textVal === 'NUMBER' ||
+        project.roster.some(p => p.number === textVal);
+
+      const isPrimaryLogo = obj.__id === 'logo-primary' || (obj.type === 'image' && obj.__layerName?.includes('Primary Crest'));
+      const isSleeveLogo = obj.__id === 'logo-sleeve' || (obj.type === 'image' && obj.__layerName?.includes('Sleeve Sponsor'));
+
+      if (normalizedObjPanel === 'back' && isName) {
+        anchor = 'collar_base';
+        ox = 0;
+        oy = rules.surnameSpacingCollarInches;
+        obj.__isNameText = true;
+      } else if (normalizedObjPanel === 'back' && isNumber) {
+        anchor = 'collar_base';
+        ox = 0;
+        oy = rules.surnameSpacingCollarInches + rules.playerNameHeightInches + 1.0;
+        obj.__isNumberText = true;
+      } else if (normalizedObjPanel === 'front' && isPrimaryLogo) {
+        anchor = 'collar_base';
+        ox = rules.chestAlignment === 'left' ? -5.0 : rules.chestAlignment === 'right' ? 5.0 : 0;
+        oy = rules.frontLogoSpacingCollarInches;
+      } else if (normalizedObjPanel === 'sleeves' && isSleeveLogo) {
+        anchor = 'sleeve_center';
+        ox = 0;
+        oy = 0;
+      } else {
+        // Fallback to closest anchor point in physics space
+        const relativeCenter = obj.getCenterPoint();
+        const center = {
+          x: relativeCenter.x - panelOffsetX,
+          y: relativeCenter.y - panelOffsetY
+        };
+        const possibleAnchors = normalizedObjPanel === 'front' 
+          ? ['collar_base', 'chest_center', 'left_chest', 'right_chest', 'hem_base']
+          : normalizedObjPanel === 'back'
+            ? ['collar_base', 'mid_back', 'hem_base']
+            : normalizedObjPanel === 'sleeves'
+              ? ['sleeve_cap', 'sleeve_center', 'sleeve_cuff']
+              : ['collar_center'];
+
+        let bestAnchor = possibleAnchors[0];
+        let minDist = Infinity;
+        possibleAnchors.forEach(a => {
+          const ac = getAnchorCoords(objPanel, a, panelW, panelH);
+          const dist = Math.hypot(center.x - ac.x, center.y - ac.y);
+          if (dist < minDist) {
+            minDist = dist;
+            bestAnchor = a;
+          }
+        });
+
+        anchor = bestAnchor;
+        const ac = getAnchorCoords(objPanel, anchor, panelW, panelH);
+        ox = (center.x - ac.x) / 40;
+        oy = (center.y - ac.y) / 40;
+      }
+
+      obj.__anchor = anchor;
+      obj.__offsetXInches = Number(ox.toFixed(3));
+      obj.__offsetYInches = Number(oy.toFixed(3));
+    }
+
+    // Dynamic Sizing (Scale Compensation)
+    if (rules.dynamicScaling) {
+      if (obj.type === 'i-text' || obj.type === 'textbox' || obj.type === 'text') {
+        const baseFontSize = obj.__isNameText 
+          ? rules.playerNameHeightInches * 40 
+          : obj.__isNumberText 
+            ? rules.playerNumberHeightInches * 40
+            : (obj.__baseFontSize || obj.fontSize || 32);
+
+        if (!obj.__baseFontSize) obj.__baseFontSize = baseFontSize;
+        obj.set({ fontSize: obj.__baseFontSize * sizeScaleFactor });
+      } else if (obj.type === 'image') {
+        if (!obj.__baseScaleX) obj.__baseScaleX = obj.scaleX || 1.0;
+        if (!obj.__baseScaleY) obj.__baseScaleY = obj.scaleY || 1.0;
+        obj.set({
+          scaleX: obj.__baseScaleX * sizeScaleFactor,
+          scaleY: obj.__baseScaleY * sizeScaleFactor
+        });
+      }
+    }
+
+    // Apply exact positioning coords
+    const anchorCoords = getAnchorCoords(objPanel, anchor, panelW, panelH);
+    const targetCx = panelOffsetX + anchorCoords.x + ox * 40;
+    const targetCy = panelOffsetY + anchorCoords.y + oy * 40;
+
+    setCenterPosition(obj, targetCx, targetCy);
+  });
+}
+
+export function setCenterPosition(obj: fabric.FabricObject, cx: number, cy: number) {
+  const center = obj.getCenterPoint();
+  const dx = cx - center.x;
+  const dy = cy - center.y;
+  obj.set({
+    left: (obj.left ?? 0) + dx,
+    top: (obj.top ?? 0) + dy
+  });
+  obj.setCoords();
+}
+
+export function clampObjectToLimits(obj: fabric.FabricObject, width: number, height: number, safeZones: SafeZoneRects) {
+  const bleed = safeZones.bleed || { x: -10, y: -10, w: width + 20, h: height + 20 };
+  const minX = bleed.x;
+  const maxX = bleed.x + bleed.w;
+  const minY = bleed.y;
+  const maxY = bleed.y + bleed.h;
+
+  const rect = obj.getBoundingRect();
+  let nextLeft = obj.left ?? 0;
+  let nextTop = obj.top ?? 0;
+
+  if (rect.left < minX) {
+    nextLeft += (minX - rect.left);
+  } else if (rect.left + rect.width > maxX) {
+    nextLeft -= (rect.left + rect.width - maxX);
+  }
+
+  if (rect.top < minY) {
+    nextTop += (minY - rect.top);
+  } else if (rect.top + rect.height > maxY) {
+    nextTop -= (rect.top + rect.height - maxY);
+  }
+
+  obj.set({ left: nextLeft, top: nextTop });
+  obj.setCoords();
+}
+
+export function clampObjectToSafeZone(obj: fabric.FabricObject, width: number, height: number, safeZones: SafeZoneRects) {
+  const safe = safeZones.safe || { x: 20, y: 20, w: width - 40, h: height - 40 };
+  const minX = safe.x;
+  const maxX = safe.x + safe.w;
+  const minY = safe.y;
+  const maxY = safe.y + safe.h;
+
+  const rect = obj.getBoundingRect();
+  let nextLeft = obj.left ?? 0;
+  let nextTop = obj.top ?? 0;
+
+  if (rect.left < minX) {
+    nextLeft += (minX - rect.left);
+  } else if (rect.left + rect.width > maxX) {
+    nextLeft -= (rect.left + rect.width - maxX);
+  }
+
+  if (rect.top < minY) {
+    nextTop += (minY - rect.top);
+  } else if (rect.top + rect.height > maxY) {
+    nextTop -= (rect.top + rect.height - maxY);
+  }
+
+  obj.set({ left: nextLeft, top: nextTop });
+  obj.setCoords();
+}
+
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
@@ -221,6 +472,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   activeTemplate,
   activeSize,
   offsets,
+  project,
 }, ref) => {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
@@ -343,6 +595,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const undoStackRef = useRef<string[]>(initialUndoStack ?? []);
   const redoStackRef = useRef<string[]>(initialRedoStack ?? []);
   const isProcessingHistoryRef = useRef(false);
+  const activeGuideLinesRef = useRef<{ x?: number; y?: number; label?: string }[]>([]);
 
   // Sync callbacks and values to refs to prevent stale closures in Fabric events
   const onLayersChangeRef = useRef(onLayersChange);
@@ -362,6 +615,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const dimsRef = useRef(dims);
   const panelTemplatesRef = useRef(panelTemplates);
   const templateRef = useRef(actualTemplate);
+  const projectRef = useRef(project);
 
   useEffect(() => {
     onLayersChangeRef.current = onLayersChange;
@@ -381,6 +635,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     dimsRef.current = dims;
     panelTemplatesRef.current = panelTemplates;
     templateRef.current = actualTemplate;
+    projectRef.current = project;
   });
 
   // Sync internal stack refs when props change (e.g. on view switch)
@@ -981,6 +1236,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
           configureDesignObjectRef.current(obj);
         }
       });
+      if (projectRef.current) {
+        alignObjectsToProductionAnchors(canvas, currentViewRef.current, width, height, projectRef.current, offsetsRef.current);
+      }
       applyBg(canvas, canvasBg);
       canvas.setViewportTransform([zoomRef.current, 0, 0, zoomRef.current, panRef.current.x, panRef.current.y]);
       canvas.requestRenderAll();
@@ -1043,6 +1301,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
             configureDesignObjectRef.current(obj);
           }
         });
+        if (projectRef.current) {
+          alignObjectsToProductionAnchors(canvas, currentViewRef.current, width, height, projectRef.current, offsetsRef.current);
+        }
         applyBg(canvas, canvasBg);
         canvas.setViewportTransform([zoomRef.current, 0, 0, zoomRef.current, panRef.current.x, panRef.current.y]);
         canvas.requestRenderAll();
@@ -1231,6 +1492,14 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
           flipY: obj.flipY,
           skewX: obj.skewX,
           skewY: obj.skewY,
+          __anchor: (obj as any).__anchor,
+          __offsetXInches: (obj as any).__offsetXInches,
+          __offsetYInches: (obj as any).__offsetYInches,
+          __restrictToSafe: (obj as any).__restrictToSafe,
+          __productionLocked: (obj as any).__productionLocked,
+          __baseFontSize: (obj as any).__baseFontSize,
+          __baseScaleX: (obj as any).__baseScaleX,
+          __baseScaleY: (obj as any).__baseScaleY,
         });
 
         if (obj.type === 'textbox' && peer.type === 'textbox') {
@@ -1337,25 +1606,207 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       saveHistoryRef.current();
       notifyLayers();
     };
+    const getActivePanelCoords = (obj: any) => {
+      const isFull = currentViewRef.current === 'full';
+      const panel = isFull ? (obj.__panel || 'front') : currentViewRef.current;
+      const offs = offsetsRef.current;
+      
+      // 1. Get panel offset on the master canvas
+      let panelOffsetX = 0;
+      let panelOffsetY = 0;
+      if (isFull) {
+        const offset = offs[panel] ?? offs.front;
+        panelOffsetX = offset.x;
+        panelOffsetY = offset.y;
+      }
+      
+      // 2. Get panel size (pixels)
+      let panelW = width;
+      let panelH = height;
+      if (isFull) {
+        panelW = panel === 'front' || panel === 'back' ? 1120 : panel === 'sleeves' || panel === 'sleeves_right' ? 960 : 560;
+        panelH = panel === 'front' || panel === 'back' ? 1360 : panel === 'sleeves' || panel === 'sleeves_right' ? 640 : 320;
+      } else {
+        panelW = width;
+        panelH = height;
+      }
+      
+      return {
+        panel,
+        panelOffsetX,
+        panelOffsetY,
+        panelW,
+        panelH
+      };
+    };
+
     const onMoving = (opt: any) => {
       if (isProcessingHistoryRef.current) return;
       const obj = opt.target;
-      if (obj && !(obj as any).__isArtboard) {
-        const snap = 10;
-        obj.set({
-          left: Math.round((obj.left ?? 0) / snap) * snap,
-          top: Math.round((obj.top ?? 0) / snap) * snap,
-        });
-        if (currentViewRef.current === 'full') {
-          updateObjectPanelAndClip(obj);
-          syncSleeveObject(obj);
+      if (!obj || (obj as any).__isArtboard) return;
+
+      const proj = projectRef.current;
+      const rules = proj?.rules;
+      const { panel, panelOffsetX, panelOffsetY, panelW, panelH } = getActivePanelCoords(obj);
+
+      // 1. Check Production Drag Lock
+      if (obj.__productionLocked) {
+        if (obj.__anchor) {
+          const anchorCoords = getAnchorCoords(panel, obj.__anchor, panelW, panelH);
+          const targetCx = panelOffsetX + anchorCoords.x + (obj.__offsetXInches ?? 0) * 40;
+          const targetCy = panelOffsetY + anchorCoords.y + (obj.__offsetYInches ?? 0) * 40;
+          setCenterPosition(obj, targetCx, targetCy);
+          canvas.requestRenderAll();
         }
+        return;
+      }
+
+      // Clear previous snaps
+      activeGuideLinesRef.current = [];
+
+      let cx = obj.getCenterPoint().x;
+      let cy = obj.getCenterPoint().y;
+
+      let snappedX = cx;
+      let snappedY = cy;
+
+      // Smart Snapping
+      if (rules?.smartSnapping) {
+        const snapThreshold = 12; // pixels
+
+        // Vertical Center Snap (relative to panel)
+        const centerX = panelOffsetX + panelW / 2;
+        if (Math.abs(cx - centerX) < snapThreshold) {
+          snappedX = centerX;
+          activeGuideLinesRef.current.push({ x: centerX, label: `${panel.toUpperCase()} Center` });
+        }
+
+        // Horizontal Panel Snaps (relative to panel)
+        const normalizedPanel = panel === 'sleeves_right' ? 'sleeves' : panel;
+        if (normalizedPanel === 'front' || normalizedPanel === 'back') {
+          const cby = panelOffsetY + (normalizedPanel === 'front' ? Math.round(panelH * 0.176) : Math.round(panelH * 0.132));
+          if (Math.abs(cy - cby) < snapThreshold) {
+            snappedY = cby;
+            activeGuideLinesRef.current.push({ y: cby, label: 'Collar Reference' });
+          }
+
+          if (normalizedPanel === 'front') {
+            const chestY = panelOffsetY + Math.round(panelH * 0.35);
+            if (Math.abs(cy - chestY) < snapThreshold) {
+              snappedY = chestY;
+              activeGuideLinesRef.current.push({ y: chestY, label: 'Chest Alignment' });
+            }
+          } else if (normalizedPanel === 'back') {
+            const midY = panelOffsetY + Math.round(panelH * 0.45);
+            if (Math.abs(cy - midY) < snapThreshold) {
+              snappedY = midY;
+              activeGuideLinesRef.current.push({ y: midY, label: 'Player Number Zone' });
+            }
+          }
+        } else if (normalizedPanel === 'sleeves') {
+          const capY = panelOffsetY + 40;
+          const centY = panelOffsetY + panelH / 2;
+          const cuffY = panelOffsetY + panelH - 40;
+
+          if (Math.abs(cy - capY) < snapThreshold) {
+            snappedY = capY;
+            activeGuideLinesRef.current.push({ y: capY, label: 'Sleeve Cap Seam' });
+          } else if (Math.abs(cy - centY) < snapThreshold) {
+            snappedY = centY;
+            activeGuideLinesRef.current.push({ y: centY, label: 'Sleeve Center' });
+          } else if (Math.abs(cy - cuffY) < snapThreshold) {
+            snappedY = cuffY;
+            activeGuideLinesRef.current.push({ y: cuffY, label: 'Sleeve Cuff Seam' });
+          }
+        }
+      } else {
+        // Fallback to standard grid snapping (10px) if smart snap is off
+        const gridSnap = 10;
+        snappedX = Math.round(cx / gridSnap) * gridSnap;
+        snappedY = Math.round(cy / gridSnap) * gridSnap;
+      }
+
+      // Apply snap coordinate change to center
+      setCenterPosition(obj, snappedX, snappedY);
+
+      // 2. Safe and Bleed Boundaries Clamp
+      const bInches = rules?.bleedInches ?? 0.25;
+      const sInches = rules?.safeMarginInches ?? 0.5;
+      const seamInches = rules?.seamAllowanceInches ?? 0.5;
+
+      const sz = calcSafeZones(panelW, panelH, bInches, sInches, seamInches);
+
+      // Shift object temporarily to local panel space for clamping
+      const originalLeft = obj.left ?? 0;
+      const originalTop = obj.top ?? 0;
+      obj.set({
+        left: originalLeft - panelOffsetX,
+        top: originalTop - panelOffsetY
+      });
+      obj.setCoords();
+
+      if (obj.__restrictToSafe && sz.safe) {
+        clampObjectToSafeZone(obj, panelW, panelH, sz);
+      } else {
+        clampObjectToLimits(obj, panelW, panelH, sz);
+      }
+
+      // Shift back to master canvas coordinates
+      obj.set({
+        left: (obj.left ?? 0) + panelOffsetX,
+        top: (obj.top ?? 0) + panelOffsetY
+      });
+      obj.setCoords();
+
+      // 3. Dynamic Offset Recalculation
+      if (obj.__anchor) {
+        const finalCenter = obj.getCenterPoint();
+        const relativeCx = finalCenter.x - panelOffsetX;
+        const relativeCy = finalCenter.y - panelOffsetY;
+        const anchorCoords = getAnchorCoords(panel, obj.__anchor, panelW, panelH);
+        obj.__offsetXInches = Number(((relativeCx - anchorCoords.x) / 40).toFixed(3));
+        obj.__offsetYInches = Number(((relativeCy - anchorCoords.y) / 40).toFixed(3));
+      }
+
+      if (currentViewRef.current === 'full') {
+        updateObjectPanelAndClip(obj);
+        syncSleeveObject(obj);
       }
     };
+
     const onTransform = (opt: any) => {
       if (isProcessingHistoryRef.current) return;
       const obj = opt.target;
       if (obj && !(obj as any).__isArtboard) {
+        const proj = projectRef.current;
+        const rules = proj?.rules;
+        const bInches = rules?.bleedInches ?? 0.25;
+        const sInches = rules?.safeMarginInches ?? 0.5;
+        const seamInches = rules?.seamAllowanceInches ?? 0.5;
+
+        const { panelOffsetX, panelOffsetY, panelW, panelH } = getActivePanelCoords(obj);
+        const sz = calcSafeZones(panelW, panelH, bInches, sInches, seamInches);
+
+        const originalLeft = obj.left ?? 0;
+        const originalTop = obj.top ?? 0;
+        obj.set({
+          left: originalLeft - panelOffsetX,
+          top: originalTop - panelOffsetY
+        });
+        obj.setCoords();
+
+        if (obj.__restrictToSafe && sz.safe) {
+          clampObjectToSafeZone(obj, panelW, panelH, sz);
+        } else {
+          clampObjectToLimits(obj, panelW, panelH, sz);
+        }
+
+        obj.set({
+          left: (obj.left ?? 0) + panelOffsetX,
+          top: (obj.top ?? 0) + panelOffsetY
+        });
+        obj.setCoords();
+
         if (currentViewRef.current === 'full') {
           syncSleeveObject(obj);
         }
@@ -1379,9 +1830,164 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     });
 
     canvas.on('after:render', () => {
+      // 1. Draw standard rulers
       if (showRulersAndGridRef.current) {
         const ctx = canvas.getContext();
         drawRulersRef.current(ctx);
+      }
+
+      const ctx = canvas.getContext();
+      const vpt = canvas.viewportTransform;
+      if (!vpt) return;
+      const currentZoom = canvas.getZoom();
+      const panX = vpt[4];
+      const panY = vpt[5];
+      const w = canvas.width;
+      const h = canvas.height;
+
+      // 2. Draw Snapping Guidelines (screen coordinates)
+      if (showRulersAndGridRef.current && activeGuideLinesRef.current.length > 0) {
+        activeGuideLinesRef.current.forEach(guide => {
+          ctx.save();
+          ctx.strokeStyle = '#ff007f'; // neon pink guide line
+          ctx.lineWidth = 1;
+          ctx.setLineDash([4, 4]);
+
+          if (guide.x !== undefined) {
+            const gx = guide.x * currentZoom + panX;
+            if (gx >= 22) {
+              ctx.beginPath();
+              ctx.moveTo(gx, 22);
+              ctx.lineTo(gx, h);
+              ctx.stroke();
+
+              ctx.fillStyle = '#ff007f';
+              ctx.font = 'bold 9px sans-serif';
+              ctx.textAlign = 'left';
+              ctx.fillText(`  ${guide.label || 'Snap'}`, gx, 35);
+            }
+          }
+
+          if (guide.y !== undefined) {
+            const gy = guide.y * currentZoom + panY;
+            if (gy >= 22) {
+              ctx.beginPath();
+              ctx.moveTo(22, gy);
+              ctx.lineTo(w, gy);
+              ctx.stroke();
+
+              ctx.fillStyle = '#ff007f';
+              ctx.font = 'bold 9px sans-serif';
+              ctx.textAlign = 'left';
+              ctx.fillText(`  ${guide.label || 'Snap'}`, 30, gy - 6);
+            }
+          }
+          ctx.restore();
+        });
+      }
+
+      // 3. Draw Laser Anchor Guidelines for Selected Object
+      const activeObj = canvas.getActiveObject();
+      if (activeObj && !(activeObj as any).__isArtboard && (activeObj as any).__anchor) {
+        const anchorType = (activeObj as any).__anchor;
+        const { panel, panelOffsetX, panelOffsetY, panelW, panelH } = getActivePanelCoords(activeObj);
+        
+        const anchorCoords = getAnchorCoords(panel, anchorType, panelW, panelH);
+        const ax = panelOffsetX + anchorCoords.x;
+        const ay = panelOffsetY + anchorCoords.y;
+        
+        const center = activeObj.getCenterPoint();
+        const cx = center.x;
+        const cy = center.y;
+
+        // Convert to screen coordinates
+        const sax = ax * currentZoom + panX;
+        const say = ay * currentZoom + panY;
+        const scx = cx * currentZoom + panX;
+        const scy = cy * currentZoom + panY;
+
+        ctx.save();
+        
+        // Draw Anchor Point Indicator (Neon target circle)
+        ctx.beginPath();
+        ctx.arc(sax, say, 5, 0, Math.PI * 2);
+        ctx.fillStyle = '#0070f3';
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(sax, say, 9, 0, Math.PI * 2);
+        ctx.strokeStyle = 'rgba(0, 112, 243, 0.4)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Capsule text drawing helper
+        const drawCapsuleText = (x: number, y: number, text: string, strokeStyle: string) => {
+          ctx.font = 'bold 9px monospace';
+          const textWidth = ctx.measureText(text).width;
+          const padX = 5;
+          const padY = 3;
+          
+          ctx.fillStyle = '#070a13';
+          ctx.strokeStyle = strokeStyle;
+          ctx.lineWidth = 1.2;
+          
+          const rx = textWidth / 2 + padX;
+          const ry = 6 + padY;
+          
+          ctx.beginPath();
+          ctx.roundRect(x - rx, y - ry, rx * 2, ry * 2, 4);
+          ctx.fill();
+          ctx.stroke();
+          
+          ctx.fillStyle = '#3b9eff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(text, x, y);
+        };
+
+        // Standardized unit labels
+        const currentUnit = unitRef.current;
+        const uLabel = unitLabel(currentUnit);
+
+        // A. Draw Vertical Laser Line (collar base reference/Y offset)
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(0, 112, 243, 0.65)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([3, 3]);
+        ctx.moveTo(sax, say);
+        ctx.lineTo(sax, scy);
+        ctx.stroke();
+
+        // Vertical label
+        const offsetYPx = cy - ay;
+        const offsetYDisplay = fromPx(offsetYPx, currentUnit);
+        
+        // Label position: middle of vertical line
+        const midY = (say + scy) / 2;
+        if (Math.abs(offsetYPx) > 5) {
+          drawCapsuleText(sax, midY, `Y: ${offsetYDisplay.toFixed(2)} ${uLabel}`, '#0070f3');
+        }
+
+        // B. Draw Horizontal Laser Line (X offset)
+        ctx.beginPath();
+        ctx.moveTo(sax, scy);
+        ctx.lineTo(scx, scy);
+        ctx.stroke();
+
+        // Horizontal label
+        const offsetXPx = cx - ax;
+        const offsetXDisplay = fromPx(offsetXPx, currentUnit);
+        
+        // Label position: middle of horizontal line
+        const midX = (sax + scx) / 2;
+        if (Math.abs(offsetXPx) > 5) {
+          drawCapsuleText(midX, scy, `X: ${offsetXDisplay.toFixed(2)} ${uLabel}`, '#0070f3');
+        }
+
+        ctx.restore();
       }
     });
 

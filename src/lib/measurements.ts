@@ -81,6 +81,59 @@ export function getGarmentDimensions(
   };
 }
 
+export function getAnchorCoords(
+  panel: string,
+  anchorType: string,
+  width: number,
+  height: number
+): { x: number; y: number } {
+  const cx = width / 2;
+  const normalizedPanel = panel === 'sleeves_right' ? 'sleeves' : panel;
+
+  if (normalizedPanel === 'front') {
+    switch (anchorType) {
+      case 'collar_base':
+        return { x: cx, y: Math.round(height * 0.176) };
+      case 'chest_center':
+        return { x: cx, y: Math.round(height * 0.35) };
+      case 'left_chest':
+        return { x: Math.round(width * 0.32), y: Math.round(height * 0.32) };
+      case 'right_chest':
+        return { x: Math.round(width * 0.68), y: Math.round(height * 0.32) };
+      case 'hem_base':
+        return { x: cx, y: height - 80 };
+      default:
+        return { x: cx, y: Math.round(height * 0.35) };
+    }
+  } else if (normalizedPanel === 'back') {
+    switch (anchorType) {
+      case 'collar_base':
+        return { x: cx, y: Math.round(height * 0.132) };
+      case 'mid_back':
+        return { x: cx, y: Math.round(height * 0.45) };
+      case 'hem_base':
+        return { x: cx, y: height - 80 };
+      default:
+        return { x: cx, y: Math.round(height * 0.45) };
+    }
+  } else if (normalizedPanel === 'sleeves') {
+    switch (anchorType) {
+      case 'sleeve_cap':
+        return { x: cx, y: 40 };
+      case 'sleeve_center':
+        return { x: cx, y: Math.round(height / 2) };
+      case 'sleeve_cuff':
+        return { x: cx, y: height - 40 };
+      default:
+        return { x: cx, y: Math.round(height / 2) };
+    }
+  } else if (normalizedPanel === 'collar') {
+    return { x: cx, y: Math.round(height / 2) };
+  }
+  return { x: cx, y: Math.round(height / 2) };
+}
+
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export type MeasurementUnit = 'inches' | 'cm' | 'mm' | 'px';
@@ -426,7 +479,10 @@ export function generateProductionCanvasStates(project: Project): Record<string,
       selectable: true,
       evented: true,
       __id: 'logo-primary',
-      __layerName: `Primary Crest Logo (${primaryLogo.name})`
+      __layerName: `Primary Crest Logo (${primaryLogo.name})`,
+      __anchor: 'collar_base',
+      __offsetXInches: chestAlign === 'left' ? -5.0 : chestAlign === 'right' ? 5.0 : 0.0,
+      __offsetYInches: logoSpacingCollar
     });
   }
 
@@ -497,7 +553,10 @@ export function generateProductionCanvasStates(project: Project): Record<string,
     evented: true,
     __id: 'text-name',
     __layerName: 'Player Name',
-    __isNameText: true
+    __isNameText: true,
+    __anchor: 'collar_base',
+    __offsetXInches: 0.0,
+    __offsetYInches: nameCollarSpacing
   });
 
   // Player Number Text
@@ -519,7 +578,10 @@ export function generateProductionCanvasStates(project: Project): Record<string,
     evented: true,
     __id: 'text-number',
     __layerName: 'Player Number',
-    __isNumberText: true
+    __isNumberText: true,
+    __anchor: 'collar_base',
+    __offsetXInches: 0.0,
+    __offsetYInches: nameCollarSpacing + nameHeight + 1.0
   });
 
   // ─── 3. SLEEVES PANEL STATE ───
@@ -564,7 +626,10 @@ export function generateProductionCanvasStates(project: Project): Record<string,
       selectable: true,
       evented: true,
       __id: 'logo-sleeve',
-      __layerName: `Sleeve Sponsor Logo (${sleeveLogo.name})`
+      __layerName: `Sleeve Sponsor Logo (${sleeveLogo.name})`,
+      __anchor: 'sleeve_center',
+      __offsetXInches: 0.0,
+      __offsetYInches: 0.0
     });
   }
 
