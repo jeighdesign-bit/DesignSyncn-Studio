@@ -3,7 +3,7 @@ import type { Project, RosterPlayer } from '../types';
 import {
   CheckCircle, AlertTriangle, AlertCircle, FileText, Download, Check,
   ZoomIn, ZoomOut, Printer, Layers, Settings2, Package,
-  ChevronDown, Activity, Cpu, Target, BarChart3, Shield
+  ChevronDown, Cpu, Target, Shield
 } from 'lucide-react';
 import * as fabric from 'fabric';
 
@@ -65,6 +65,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   const [includeCollar, setIncludeCollar] = useState<boolean>(true);
   const [includeSleeves, setIncludeSleeves] = useState<boolean>(true);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(project.activePlayerId || (project.roster[0]?.id || ''));
+  const [diagnosticsExpanded, setDiagnosticsExpanded] = useState<boolean>(true);
 
   // ─── Fabric Canvas & Zoom ──────────────────────────────────────────────────
   const canvasElRef = useRef<HTMLCanvasElement | null>(null);
@@ -317,12 +318,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   const printWInches = canvasW / 40;
   const printHInches = canvasH / 40;
   
-  // Total piece area in sq inches
-  const totalPieceAreaSqInches = nestedPieces.reduce((sum, item) => {
-    const itemW = item.width - spacingPx;
-    const itemH = item.height - spacingPx;
-    return sum + (itemW * itemH) / 1600;
-  }, 0);
+
 
   // ─── Fabric Canvas Rendering ────────────────────────────────────────────────
   const rebuildPreview = async () => {
@@ -926,6 +922,42 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             </div>
           </div>
 
+          {/* ── Pre-Flight Checks Collapsible ── */}
+          <div className="export-section" style={{ marginTop: 'auto', borderTop: '1px solid #1a1a26', paddingTop: '10px' }}>
+            <div 
+              className="export-section-header" 
+              style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: 'none', paddingBottom: 0 }}
+              onClick={() => setDiagnosticsExpanded(!diagnosticsExpanded)}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <Shield size={11} />
+                <span>Pre-Flight Audits</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '10px', color: readinessScore >= 80 ? '#00e676' : readinessScore >= 50 ? '#ffb300' : '#ff4458', fontWeight: 800, fontFamily: 'monospace' }}>
+                  {readinessScore}%
+                </span>
+                <ChevronDown size={11} style={{ transform: diagnosticsExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+              </div>
+            </div>
+            
+            {diagnosticsExpanded && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', maxHeight: '140px', overflowY: 'auto', paddingRight: '4px', marginTop: '6px' }}>
+                {diagnostics.map((c, idx) => (
+                  <div key={idx} className={`export-diag-item export-diag-${c.status}`} style={{ display: 'flex', gap: '6px', alignItems: 'flex-start', padding: '6px', borderRadius: '4px', background: c.status === 'success' ? 'rgba(0, 230, 118, 0.04)' : c.status === 'warning' ? 'rgba(255, 179, 0, 0.04)' : 'rgba(255, 68, 88, 0.04)', border: `1px solid ${c.status === 'success' ? 'rgba(0, 230, 118, 0.1)' : c.status === 'warning' ? 'rgba(255, 179, 0, 0.1)' : 'rgba(255, 68, 88, 0.1)'}` }}>
+                    <div style={{ display: 'flex', color: c.status === 'success' ? '#00e676' : c.status === 'warning' ? '#ffb300' : '#ff4458', marginTop: '1px' }}>
+                      {c.status === 'success' ? <CheckCircle size={11} /> : c.status === 'warning' ? <AlertTriangle size={11} /> : <AlertCircle size={11} />}
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: '9px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{c.title}</div>
+                      <div style={{ fontSize: '8px', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{c.desc}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
         </div>
 
         {/* Compile Action (bottom of left panel) */}
@@ -993,7 +1025,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: exporting ? '#ffb300' : downloadReady ? '#00e676' : 'var(--accent-blue)', boxShadow: `0 0 6px ${exporting ? '#ffb300' : downloadReady ? '#00e676' : 'var(--accent-blue)'}`, animation: exporting ? 'exportPulse 1s infinite' : 'none' }} />
               <span className="export-viewport-title">
-                {exportMode === 'sheet' ? 'Production Sheet Preview' : `Nesting Roll Preview — ${printerWidthInches}" wide`}
+                {exportMode === 'sheet' ? 'Production Sheet' : 'Nesting Roll'}
               </span>
             </div>
             <div className="export-tab-group">
@@ -1005,6 +1037,27 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
               </button>
             </div>
           </div>
+
+          {/* Quick Telemetry Display */}
+          {!loadingTemplates && (
+            <div style={{ display: 'flex', gap: '12px', background: '#07070a', border: '1px solid #1e1e2a', padding: '4px 10px', borderRadius: '6px', fontSize: '9px', fontFamily: 'monospace' }}>
+              {exportMode === 'nesting' ? (
+                <>
+                  <div><span style={{ color: 'var(--text-disabled)' }}>EFFICIENCY:</span> <span style={{ color: nestEfficiency > 75 ? '#00e676' : '#ffb300', fontWeight: 'bold' }}>{nestEfficiency.toFixed(1)}%</span></div>
+                  <div style={{ width: '1px', background: '#1e1e2a' }} />
+                  <div><span style={{ color: 'var(--text-disabled)' }}>ROLL HEIGHT:</span> <span style={{ color: '#fff', fontWeight: 'bold' }}>{(totalNestLengthInches / 36).toFixed(2)} yd</span></div>
+                  <div style={{ width: '1px', background: '#1e1e2a' }} />
+                  <div><span style={{ color: 'var(--text-disabled)' }}>DPI:</span> <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{targetDpi}</span></div>
+                </>
+              ) : (
+                <>
+                  <div><span style={{ color: 'var(--text-disabled)' }}>SHEET:</span> <span style={{ color: '#fff', fontWeight: 'bold' }}>{sheetLayoutType.replace('_', ' ').toUpperCase()}</span></div>
+                  <div style={{ width: '1px', background: '#1e1e2a' }} />
+                  <div><span style={{ color: 'var(--text-disabled)' }}>DPI:</span> <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{targetDpi}</span></div>
+                </>
+              )}
+            </div>
+          )}
 
           <div className="export-zoom-controls">
             <button className="export-zoom-btn" onClick={() => handleZoom(0.8)}><ZoomOut size={12} /></button>
@@ -1072,163 +1125,6 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       </div>
 
       {/* ══════════════════════════════════════════════════════════════════════
-          RIGHT PANEL: PRODUCTION DIAGNOSTICS
-          ══════════════════════════════════════════════════════════════════════ */}
-      <div className="export-diagnostics-panel">
-
-        {/* Panel Header with Readiness Score */}
-        <div className="export-panel-header" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '10px', padding: '14px 16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', width: '100%' }}>
-            <Activity size={14} style={{ color: 'var(--accent-blue)' }} />
-            <span className="export-panel-title">Production Diagnostics</span>
-          </div>
-          {/* Readiness Score Bar */}
-          <div style={{ width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-              <span style={{ fontSize: '9px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-disabled)' }}>Export Readiness</span>
-              <span style={{ fontSize: '11px', fontWeight: 800, fontFamily: 'monospace', color: readinessScore >= 80 ? '#00e676' : readinessScore >= 50 ? '#ffb300' : '#ff4458' }}>
-                {readinessScore}%
-              </span>
-            </div>
-            <div style={{ height: '4px', background: 'rgba(255,255,255,0.07)', borderRadius: '2px', overflow: 'hidden' }}>
-              <div style={{ height: '100%', width: `${readinessScore}%`, background: readinessScore >= 80 ? '#00e676' : readinessScore >= 50 ? '#ffb300' : '#ff4458', borderRadius: '2px', transition: 'width 0.5s' }} />
-            </div>
-          </div>
-        </div>
-
-        <div className="export-panel-body">
-
-          {/* ── Garment Summary ── */}
-          <div className="export-stat-card">
-            <div className="export-stat-card-header">
-              <Layers size={11} />
-              Garment Summary
-            </div>
-            <div className="export-stat-rows">
-              <div className="export-stat-row">
-                <span>Apparel Type</span>
-                <span style={{ textTransform: 'capitalize' }}>{(project.apparelType || 'Jersey').replace('_', ' ')}</span>
-              </div>
-              <div className="export-stat-row">
-                <span>Team Roster</span>
-                <span>{project.roster.length} player{project.roster.length !== 1 ? 's' : ''}</span>
-              </div>
-              <div className="export-stat-row">
-                <span>Total Panels</span>
-                <span>{totalPanels}</span>
-              </div>
-              <div className="export-stat-row">
-                <span>Style Profile</span>
-                <span>{project.stylePreference || 'Generic'}</span>
-              </div>
-            </div>
-            {/* Size breakdown mini chips */}
-            {project.roster.length > 0 && (
-              <div style={{ marginTop: '8px', display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => {
-                  const count = project.roster.filter(p => p.size === sz || (sz === 'XXL' && (p.size === 'XXL' || p.size === '2XL' as any))).length;
-                  if (count === 0) return null;
-                  return (
-                    <span key={sz} style={{ fontSize: '8px', padding: '2px 6px', borderRadius: '10px', background: 'rgba(0,112,243,0.12)', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700, border: '1px solid rgba(0,112,243,0.2)' }}>
-                      {sz}×{count}
-                    </span>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* ── Print Area Stats ── */}
-          <div className="export-stat-card">
-            <div className="export-stat-card-header">
-              <BarChart3 size={11} />
-              Print Specifications
-            </div>
-            <div className="export-stat-rows">
-              <div className="export-stat-row">
-                <span>Printable Width</span>
-                <span>{exportMode === 'sheet' ? `${printWInches.toFixed(1)}"` : `${printerWidthInches.toFixed(1)}"`} ({Math.round((exportMode === 'sheet' ? printWInches : printerWidthInches) * 2.54)} cm)</span>
-              </div>
-              <div className="export-stat-row">
-                <span>Est. Length</span>
-                <span>
-                  {exportMode === 'sheet'
-                    ? `${(printHInches / 36).toFixed(2)} yd (${(printHInches * 0.0254).toFixed(2)} m)`
-                    : `${(totalNestLengthInches / 36).toFixed(2)} yd (${(totalNestLengthInches * 0.0254).toFixed(2)} m)`}
-                </span>
-              </div>
-              <div className="export-stat-row">
-                <span>Output Area</span>
-                <span>
-                  {exportMode === 'sheet'
-                    ? `${((canvasW * canvasH) / 1600 / 144).toFixed(1)} sq ft`
-                    : `${((printerWidthInches * totalNestLengthInches) / 144).toFixed(1)} sq ft`}
-                </span>
-              </div>
-              <div className="export-stat-row">
-                <span>Printable Area</span>
-                <span>
-                  {exportMode === 'sheet'
-                    ? `${((canvasW * canvasH) / 1600 / 144 * 0.85).toFixed(1)} sq ft`
-                    : `${(totalPieceAreaSqInches / 144).toFixed(1)} sq ft`}
-                </span>
-              </div>
-              <div className="export-stat-row">
-                <span>Nesting Efficiency</span>
-                <span style={{ color: exportMode === 'nesting' ? (nestEfficiency > 75 ? '#00e676' : '#ffb300') : 'var(--text-secondary)' }}>
-                  {exportMode === 'sheet' ? 'N/A' : `${nestEfficiency.toFixed(1)}%`}
-                </span>
-              </div>
-              <div className="export-stat-row">
-                <span>Estimated File Size</span>
-                <span>{((0.5 + project.roster.length * 0.35) * (exportMode === 'sheet' ? 1 : 0.8)).toFixed(1)} MB</span>
-              </div>
-            </div>
-          </div>
-
-          {/* ── DPI & Color Validation ── */}
-          <div className="export-stat-card">
-            <div className="export-stat-card-header">
-              <Target size={11} />
-              Output Calibration
-            </div>
-            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '4px' }}>
-              <span className={`export-calib-badge ${targetDpi >= 300 ? 'ok' : 'warn'}`}>
-                {targetDpi >= 300 ? '✓' : '⚠'} {targetDpi} DPI
-              </span>
-              <span className="export-calib-badge ok">✓ CMYK</span>
-              <span className="export-calib-badge ok">✓ {bleedInches.toFixed(2)}" Bleed</span>
-              <span className={`export-calib-badge ${project.logos.every(l => l.dpi >= 300) ? 'ok' : 'warn'}`}>
-                {project.logos.every(l => l.dpi >= 300) ? '✓' : '⚠'} Logo Res
-              </span>
-            </div>
-          </div>
-
-          {/* ── Pre-Flight Diagnostics ── */}
-          <div className="export-section">
-            <div className="export-section-header">
-              <Shield size={11} />
-              Pre-Flight Checks
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              {diagnostics.map((c, idx) => (
-                <div key={idx} className={`export-diag-item export-diag-${c.status}`}>
-                  <div className="export-diag-icon">
-                    {c.status === 'success' ? <CheckCircle size={13} /> : c.status === 'warning' ? <AlertTriangle size={13} /> : <AlertCircle size={13} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1px' }}>{c.title}</div>
-                    <div style={{ fontSize: '9px', color: 'var(--text-secondary)', lineHeight: 1.4 }}>{c.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-        </div>
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════════════════
           BOTTOM STATUS BAR
           ══════════════════════════════════════════════════════════════════════ */}
       <div className="export-status-bar">
@@ -1248,7 +1144,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           <span className="export-status-sep">·</span>
           <span className="export-status-chip">Scale: 1px = 0.025"</span>
           <span className="export-status-sep">·</span>
-          <span className="export-status-chip">Print: {printWInches.toFixed(1)}" × {printHInches.toFixed(1)}"</span>
+          <span className="export-status-chip">Print Size: {printWInches.toFixed(1)}" × {printHInches.toFixed(1)}"</span>
           <span className="export-status-sep">·</span>
           <span className="export-status-chip">Assets: {project.logos.length}</span>
           <span className="export-status-sep">·</span>
@@ -1257,6 +1153,20 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           <span className="export-status-chip">Bleed: {bleedInches.toFixed(2)}"</span>
           <span className="export-status-sep">·</span>
           <span className="export-status-chip">Spacing: {panelSpacingInches.toFixed(2)}"</span>
+          {exportMode === 'nesting' && (
+            <>
+              <span className="export-status-sep">·</span>
+              <span className="export-status-chip" style={{ color: '#00e676', fontWeight: 'bold' }}>Nesting Eff: {nestEfficiency.toFixed(1)}%</span>
+              <span className="export-status-sep">·</span>
+              <span className="export-status-chip">Usage: {(totalNestLengthInches / 36).toFixed(2)} yd</span>
+            </>
+          )}
+          <span className="export-status-sep">·</span>
+          <span className="export-status-chip">
+            Area: {exportMode === 'sheet'
+              ? `${((canvasW * canvasH) / 1600 / 144).toFixed(1)} sq ft`
+              : `${((printerWidthInches * totalNestLengthInches) / 144).toFixed(1)} sq ft`}
+          </span>
         </div>
       </div>
 

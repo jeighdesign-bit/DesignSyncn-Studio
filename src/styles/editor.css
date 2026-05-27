@@ -1485,11 +1485,11 @@
 /* ── Main layout ─────────────────────────────────────── */
 .export-studio {
   display: grid;
-  grid-template-columns: 280px 1fr 290px;
+  grid-template-columns: 310px 1fr;
   grid-template-rows: 1fr 28px;
   grid-template-areas:
-    "config viewport diagnostics"
-    "statusbar statusbar statusbar";
+    "config viewport"
+    "statusbar statusbar";
   width: 100%;
   height: 100%;
   overflow: hidden;
