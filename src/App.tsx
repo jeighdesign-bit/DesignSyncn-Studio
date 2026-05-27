@@ -9,8 +9,8 @@ import { PreFlightPanel } from './components/PreFlightPanel';
 import { AIDesignStudio } from './components/AIDesignStudio';
 import { 
   Layers, FileText, Download,
-  ChevronLeft, ArrowRight, Sparkles, Menu, Upload, ChevronDown,
-  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy, Sliders
+  ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload, ChevronDown,
+  Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy
 } from 'lucide-react';
 
 // Default Project Settings
@@ -131,7 +131,11 @@ const createNewProject = (details: {
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'dashboard' | 'editor'>('landing');
-  const [isEditingSetup, setIsEditingSetup] = useState<boolean>(false);
+  const [wizardStep, setWizardStep] = useState<number>(1);
+  const [isAnalyzingReferences, setIsAnalyzingReferences] = useState<boolean>(false);
+  const [vectorScanLogs, setVectorScanLogs] = useState<string[]>([]);
+  const [rollWidth, setRollWidth] = useState<string>('63"');
+  const [exportFormat, setExportFormat] = useState<string>('Vector PDF');
   
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -234,6 +238,15 @@ export default function App() {
       setShowAdvancedSettings(false);
     }
   }, [isModalOpen]);
+
+  // Reset wizard steps and diagnostics logs when active project changes
+  useEffect(() => {
+    if (project?.id) {
+      setWizardStep(1);
+      setIsAnalyzingReferences(false);
+      setVectorScanLogs([]);
+    }
+  }, [project?.id]);
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(true);
   const [aiGenerating, setAiGenerating] = useState<boolean>(false);
@@ -555,6 +568,57 @@ export default function App() {
       logos: prev.logos.filter(l => l.id !== id)
     }));
     addLog('Sponsor logo removed.');
+  };
+
+  const runPreFlightVectorScan = () => {
+    setIsAnalyzingReferences(true);
+    setVectorScanLogs([]);
+    addLog("Pre-flight vector inspection started.");
+    
+    const logs = [
+      `[INIT] Invoking high-fidelity vector diagnostics engine v4.2...`,
+      `[SCAN] Inspecting active apparel template: '${project.apparelType ? project.apparelType.replace('_', ' ').toUpperCase() : 'UNKNOWN'}'`,
+      `[SCAN] Seam margin overlap boundaries: ${project.rules.safeMarginInches}" Safe Margin / ${project.rules.bleedInches}" Seam Bleed`,
+      `[SCAN] Active ink RIP preset: ${project.stylePreference || 'Standard CMYK Sublimation'}`,
+      `[ASSETS] Found ${project.logos.length} graphic references loaded in project library.`
+    ];
+
+    if (project.logos.length === 0) {
+      logs.push(`[WARN] No primary branding or sponsor vector files found. Recommended to load logos before design generation.`);
+      logs.push(`[READY] Diagnostics scan finished with minor warnings. 0 critical print blocks detected.`);
+    } else {
+      project.logos.forEach(logo => {
+        if (logo.resolutionStatus === 'high') {
+          logs.push(`[OK] '${logo.name}' verified as high-res Vector. Vector layers extracted successfully. (DPI: ${logo.dpi})`);
+          logs.push(`[OK] '${logo.name}' anchor inspection: 184 path nodes verified. Seam collision boundaries established.`);
+        } else {
+          logs.push(`[WARN] '${logo.name}' is low resolution (${logo.dpi} DPI). Dye-sublimation RIP requires at least 300 DPI to avoid textile pixelation.`);
+        }
+      });
+      logs.push(`[OK] PANTONE PMS 293C color profile formulas mapped successfully.`);
+      logs.push(`[READY] Pre-flight diagnostics finished. Graphics fully mapped for textile printing!`);
+    }
+
+    let currentLogIndex = 0;
+    const interval = setInterval(() => {
+      if (currentLogIndex < logs.length) {
+        const nextLine = logs[currentLogIndex];
+        const timestampedLine = `[${new Date().toLocaleTimeString()}] ${nextLine}`;
+        setVectorScanLogs(prev => [...prev, timestampedLine]);
+        currentLogIndex++;
+        
+        setTimeout(() => {
+          const consoleEl = document.getElementById('terminal-body-console');
+          if (consoleEl) {
+            consoleEl.scrollTop = consoleEl.scrollHeight;
+          }
+        }, 50);
+      } else {
+        clearInterval(interval);
+        setIsAnalyzingReferences(false);
+        addLog("Pre-flight vector inspection completed.");
+      }
+    }, 450);
   };
 
   const handlePresetSelect = (presetId: string) => {
@@ -1570,441 +1634,665 @@ export default function App() {
                   <div className="atmosphere-glow secondary-glow"></div>
                   <div className="atmosphere-glow primary-glow"></div>
 
+                  <div className="brief-wizard-header">
+                    <div className="wizard-title-area">
+                      <span className="wizard-subtitle">PRODUCTION SETUP WIZARD</span>
+                      <h2 className="wizard-title">Configure Dye-Sublimation Print Project</h2>
+                    </div>
+                    <div className="wizard-steps-timeline">
+                      <div className={`wizard-step-node ${wizardStep === 1 ? 'active' : ''} ${wizardStep > 1 ? 'completed' : ''}`} onClick={() => setWizardStep(1)}>
+                        <span className="step-num">[01]</span>
+                        <span className="step-label">SPECIFICATIONS & IDENTITY</span>
+                        <div className="step-bar" />
+                      </div>
+                      <div className={`wizard-step-node ${wizardStep === 2 ? 'active' : ''} ${wizardStep > 2 ? 'completed' : ''}`} onClick={() => setWizardStep(2)}>
+                        <span className="step-num">[02]</span>
+                        <span className="step-label">ASSET VECTOR DIAGNOSTICS</span>
+                        <div className="step-bar" />
+                      </div>
+                      <div className={`wizard-step-node ${wizardStep === 3 ? 'active' : ''} ${wizardStep > 3 ? 'completed' : ''}`} onClick={() => setWizardStep(3)}>
+                        <span className="step-num">[03]</span>
+                        <span className="step-label">INDUSTRIAL DEFAULTS</span>
+                        <div className="step-bar" />
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="brief-grid-layout">
                     {/* LEFT COLUMN: Inputs & Options */}
                     <div className="brief-column left-column">
                       
-                      {!isEditingSetup ? (
-                        /* SUMMARY ONLY VIEW CARD */
-                        <div className="brief-section-premium animate-fade-in">
-                          <div className="section-header-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                              <span className="section-step-badge">Step 1</span>
-                              <h3 className="section-title-premium" style={{ margin: 0 }}>Apparel & Style Specifications</h3>
-                            </div>
-                            <button 
-                              className="premium-ghost-btn" 
-                              onClick={() => setIsEditingSetup(true)}
-                              style={{ padding: '4px 10px', fontSize: '11px', gap: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', borderRadius: '4px', color: 'var(--text-primary)' }}
-                            >
-                              <Sliders size={12} /> Edit Setup
-                            </button>
-                          </div>
-                          <p className="section-desc-premium">Your primary garment outlines, visual preferences, and print specifications established during project creation.</p>
-                          
-                          <div className="inspector-card" style={{ display: 'flex', gap: '16px', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-muted)', background: 'var(--bg-secondary)', width: '100%', alignItems: 'center' }}>
-                            <div style={{
-                              width: '72px',
-                              height: '72px',
-                              background: 'var(--bg-tertiary)',
-                              borderRadius: '8px',
-                              border: '1px solid var(--border-muted)',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              color: 'var(--accent-blue)',
-                              flexShrink: 0
-                            }}>
-                              {project.apparelType === 'esports_jersey' && (
-                                <svg viewBox="0 0 100 120" width="40" height="48" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: '1.8' }}>
-                                  <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
-                                </svg>
-                              )}
-                              {project.apparelType === 'crewneck_sweatshirt' && (
-                                <svg viewBox="0 0 100 120" width="40" height="48" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: '1.8' }}>
-                                  <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" />
-                                </svg>
-                              )}
-                              {project.apparelType !== 'esports_jersey' && project.apparelType !== 'crewneck_sweatshirt' && (
-                                <svg viewBox="0 0 100 120" width="40" height="48" style={{ fill: 'none', stroke: 'currentColor', strokeWidth: '1.8' }}>
-                                  <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" />
-                                </svg>
-                              )}
-                            </div>
+                      {wizardStep === 1 && (
+                        <div className="wizard-step-content animate-fade-in">
+                          <div className="wizard-section-tech">
+                            <h3 className="wizard-section-title">
+                              <span className="section-title-dot" /> [1.1] Project Identity & Metadata
+                            </h3>
+                            <p className="wizard-section-desc">Define naming and client identifiers for production job tracking.</p>
                             
-                            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px' }}>
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Garment silhouette</span>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)', textTransform: 'capitalize' }}>
-                                  {project.apparelType ? project.apparelType.replace('_', ' ') : 'Esports Jersey'}
-                                </span>
+                            <div className="tech-input-group">
+                              <div className="tech-input-field">
+                                <label htmlFor="project-name">
+                                  <span className="label-code">PRJ_NAME</span> Project Identification Name
+                                </label>
+                                <input
+                                  id="project-name"
+                                  type="text"
+                                  className="tech-text-input"
+                                  value={project.name}
+                                  onChange={(e) => handleUpdateProject({ name: e.target.value })}
+                                  placeholder="e.g. Esports Championship Jersey 2026"
+                                />
                               </div>
                               
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Aesthetic Vibe</span>
-                                <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--accent-blue)' }}>
-                                  {project.stylePreference || 'Generic'}
-                                </span>
+                              <div className="tech-input-field">
+                                <label htmlFor="team-name">
+                                  <span className="label-code">CLI_TEAM</span> Client / Team Name
+                                </label>
+                                <input
+                                  id="team-name"
+                                  type="text"
+                                  className="tech-text-input"
+                                  value={project.teamName || ''}
+                                  onChange={(e) => handleUpdateProject({ teamName: e.target.value })}
+                                  placeholder="e.g. Apex Predators Gaming"
+                                />
                               </div>
-                              
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Fit Profile</span>
-                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                  {project.templateChoice || 'Pro Athletic Fit'}
-                                </span>
-                              </div>
+                            </div>
+                          </div>
 
-                              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                                <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', fontWeight: 'bold' }}>Sublimation Matrix</span>
-                                <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                  {project.dpi || 300} DPI • {project.colorMode || 'CMYK'}
-                                </span>
+                          <div className="wizard-section-tech">
+                            <h3 className="wizard-section-title">
+                              <span className="section-title-dot" /> [1.2] Garment Silhouette Specification
+                            </h3>
+                            <p className="wizard-section-desc">Select the primary patterns for printing boundaries and seam assembly.</p>
+                            
+                            <div className="garment-tech-grid">
+                              {[
+                                { id: 'esports_jersey', name: 'Esports Jersey', panels: '8 Panels', seam: 'Raglan Sleeve', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )},
+                                { id: 'tshirt', name: 'T-Shirt', panels: '4 Panels', seam: 'Set-in Sleeve', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )},
+                                { id: 'hoodie', name: 'Hoodie', panels: '6 Panels', seam: 'Pocket & Hood Seams', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                  </svg>
+                                )},
+                                { id: 'longsleeve', name: 'Long Sleeve', panels: '6 Panels', seam: 'Full Arm Cuff', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )},
+                                { id: 'cycling_jersey', name: 'Cycling Jersey', panels: '7 Panels', seam: 'Triple Rear Pockets', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
+                                  </svg>
+                                )},
+                                { id: 'polo_shirt', name: 'Polo Shirt', panels: '5 Panels', seam: 'Collared Placket', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                  </svg>
+                                )},
+                                { id: 'compression_wear', name: 'Compression Wear', panels: '10 Panels', seam: 'Flatlock High Elastic', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )},
+                                { id: 'basketball_jersey', name: 'Basketball Jersey', panels: '4 Panels', seam: 'Sleeveless Trim', svg: (
+                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
+                                    <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                              ].map(g => (
+                                <div 
+                                  key={g.id}
+                                  className={`garment-tech-card ${project.apparelType === g.id ? 'active' : ''}`}
+                                  onClick={() => handleUpdateProject({ apparelType: g.id })}
+                                >
+                                  <div className="garment-tech-svg-box">{g.svg}</div>
+                                  <div className="garment-tech-info">
+                                    <span className="garment-tech-name">{g.name}</span>
+                                    <span className="garment-tech-meta">{g.panels} · {g.seam}</span>
+                                  </div>
+                                  <div className="garment-tech-indicator" />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="wizard-input-split">
+                            <div className="wizard-section-tech" style={{ flex: 1 }}>
+                              <h3 className="wizard-section-title">
+                                <span className="section-title-dot" /> [1.3] Fit Profile Selection
+                              </h3>
+                              <p className="wizard-section-desc">Applies preset structural grade lines to target body fit curves.</p>
+                              
+                              <div className="tech-select-grid">
+                                {[
+                                  { id: 'Pro Athletic Fit', label: 'Pro Athletic Fit', desc: 'Slim, athletic contour with low drag' },
+                                  { id: 'Loose Street Fit', label: 'Loose Street Fit', desc: 'Standard straight cut streetwear design' },
+                                  { id: 'Oversized Boxy', label: 'Oversized Boxy', desc: 'Relaxed drop-shoulder comfort layout' },
+                                  { id: 'Youth Active Fit', label: 'Youth Active Fit', desc: 'Scaled grades optimized for school/junior sports' }
+                                ].map(f => (
+                                  <div
+                                    key={f.id}
+                                    className={`tech-select-card ${project.templateChoice === f.id ? 'active' : ''}`}
+                                    onClick={() => handleUpdateProject({ templateChoice: f.id })}
+                                  >
+                                    <div className="select-card-bullet" />
+                                    <div className="select-card-texts">
+                                      <span className="select-card-label">{f.label}</span>
+                                      <span className="select-card-desc">{f.desc}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="wizard-section-tech" style={{ flex: 1 }}>
+                              <h3 className="wizard-section-title">
+                                <span className="section-title-dot" /> [1.4] Sublimation RIP Preset
+                              </h3>
+                              <p className="wizard-section-desc">Select ink profiling curves configured for print density optimization.</p>
+                              
+                              <div className="tech-select-grid">
+                                {[
+                                  { id: 'Standard CMYK Sublimation', label: 'Standard Sublimation', desc: '4-color ink limits optimized for standard polyester' },
+                                  { id: 'High-Density Neon / Fluorescent', label: 'High-Density Neon', desc: 'Fluorescent ink mapping for glowing electric vector lines' },
+                                  { id: 'Multi-Layer Custom Ink Process', label: 'Multi-Layer CMYK', desc: 'High-density pigment layer for deep photographic transitions' },
+                                  { id: 'Esports Pro Print', label: 'Esports Pro Print', desc: 'Rich matte finish optimized for heavy active-wear polyester' }
+                                ].map(p => (
+                                  <div
+                                    key={p.id}
+                                    className={`tech-select-card ${project.stylePreference === p.id ? 'active' : ''}`}
+                                    onClick={() => handleUpdateProject({ stylePreference: p.id })}
+                                  >
+                                    <div className="select-card-bullet" />
+                                    <div className="select-card-texts">
+                                      <span className="select-card-label">{p.label}</span>
+                                      <span className="select-card-desc">{p.desc}</span>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
                           </div>
                         </div>
-                      ) : (
-                        /* EDITABLE SELECTION VIEW */
-                        <>
-                          {/* Section: Apparel Type Selection */}
-                          <div className="brief-section-premium">
-                            <div className="section-header-premium" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span className="section-step-badge">Step 1</span>
-                                <h3 className="section-title-premium" style={{ margin: 0 }}>Select Apparel Type</h3>
-                              </div>
-                              <button 
-                                className="primary" 
-                                onClick={() => setIsEditingSetup(false)}
-                                style={{ padding: '4px 12px', fontSize: '11px', cursor: 'pointer', borderRadius: '4px', border: 'none', background: 'var(--accent-blue)', color: '#fff', fontWeight: 'bold' }}
-                              >
-                                Lock Specifications ✓
-                              </button>
-                            </div>
-                            <p className="section-desc-premium">Choose your garment silhouette. This establishes sublimation zones and future production templates.</p>
-                            
-                            <div className="apparel-cards-grid">
-                              {[
-                                { id: 'esports_jersey', label: 'Esports Jersey', desc: 'Competitive sublimation layout with sponsor zones.' },
-                                { id: 'tshirt', label: 'T-Shirt', desc: 'Standard street fit with flat-lay preview borders.' },
-                                { id: 'hoodie', label: 'Hoodie', desc: 'Premium fleece fit with full pouch print bleed.' },
-                                { id: 'longsleeve', label: 'Long Sleeve', desc: 'Sleeve cuff wrapping & arm print boundaries.' },
-                                { id: 'basketball_jersey', label: 'Basketball Jersey', desc: 'Sleeveless cut layout with shoulder strap margins.' },
-                                { id: 'polo_shirt', label: 'Polo Shirt', desc: 'Collared pattern with front placket exclusions.' },
-                                { id: 'compression_wear', label: 'Compression Wear', desc: 'High-stretch active panels and seam safety limits.' },
-                                { id: 'cycling_jersey', label: 'Cycling Jersey', desc: 'Aerodynamic rear pocket division templates.' },
-                                { id: 'custom_apparel', label: 'Custom Apparel', desc: 'Create dynamic guidelines for atypical silhouettes.' }
-                              ].map(app => (
-                                <div 
-                                  key={app.id} 
-                                  className={`apparel-card-premium ${project.apparelType === app.id ? 'active' : ''}`}
-                                  onClick={() => handleUpdateProject({ apparelType: app.id })}
-                                >
-                                  <div className="apparel-card-icon-wrapper">
-                                    {app.id === 'esports_jersey' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'tshirt' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'hoodie' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'longsleeve' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'basketball_jersey' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'polo_shirt' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="2" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'compression_wear' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'cycling_jersey' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                        <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
-                                      </svg>
-                                    )}
-                                    {app.id === 'custom_apparel' && (
-                                      <svg viewBox="0 0 100 100" className="apparel-icon-svg">
-                                        <path d="M 50,10 L 90,30 L 90,70 L 50,90 L 10,70 L 10,30 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-                                      </svg>
-                                    )}
-                                  </div>
-                                  <div className="apparel-card-details">
-                                    <span className="apparel-card-title">{app.label}</span>
-                                    <span className="apparel-card-desc">{app.desc}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          {/* Section: Creative Style Selection */}
-                          <div className="brief-section-premium">
-                            <div className="section-header-premium">
-                              <span className="section-step-badge">Step 2</span>
-                              <h3 className="section-title-premium">Creative Style Selection</h3>
-                            </div>
-                            <p className="section-desc-premium">Specify the aesthetic mood profile. This directs the complexity limits of synthesized patterns.</p>
-                            
-                            <div className="style-cards-grid">
-                              {[
-                                { id: 'Cyberpunk', title: 'Cyberpunk', desc: 'Electric high-voltage lines, neon highlights, and terminal interface themes.' },
-                                { id: 'Minimalist', title: 'Minimalist', desc: 'Flat shapes, spacious layouts, lightweight patterns, and clean negative space.' },
-                                { id: 'Tournament', title: 'Tournament', desc: 'Sharp geometric dividers, bold sports stripes, and speed trails.' },
-                                { id: 'Streetwear', title: 'Streetwear', desc: 'Heavy canvas grunge, graffiti splashbacks, and offset abstract forms.' },
-                                { id: 'Techwear', title: 'Techwear', desc: 'Tactical cargo grids, modular blueprint structures, and monochrome plates.' },
-                                { id: 'Retro / Vintage', title: 'Retro / Vintage', desc: '80s arcade vaporwave, pixel patterns, and saturated sunset stripes.' },
-                                { id: 'Clean Tech', title: 'Clean Tech', desc: 'Sophisticated matte layering, metallic gloss overlays, and professional club status.' }
-                              ].map(style => (
-                                <div 
-                                  key={style.id}
-                                  className={`style-card-premium ${project.stylePreference === style.id ? 'active' : ''}`}
-                                  onClick={() => handleUpdateProject({ stylePreference: style.id })}
-                                >
-                                  <div className="style-card-accent" />
-                                  <div className="style-card-body">
-                                    <span className="style-card-title">{style.title}</span>
-                                    <span className="style-card-desc">{style.desc}</span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        </>
                       )}
 
-                      {/* Section: Reference Assets */}
-                      <div className="brief-section-premium">
-                        <div className="section-header-premium">
-                          <span className="section-step-badge">{!isEditingSetup ? 'Step 2' : 'Step 3'}</span>
-                          <h3 className="section-title-premium">Reference Assets</h3>
-                        </div>
-                        <p className="section-desc-premium">Provide reference logs, sponsor branding vector silhouettes, or custom texture files.</p>
-                        
-                        <div className="premium-dropzone" onClick={loadHighResLogo}>
-                          <Upload size={28} className="premium-dropzone-icon" />
-                          <div className="premium-dropzone-content">
-                            <span>Drag & drop sponsor logos or moodboards here</span>
-                            <span className="highlight-upload">or click to mock high-res upload</span>
-                          </div>
-                          <span className="dropzone-sub">Accepts vector SVG, PNG (target 300 DPI for production)</span>
-                        </div>
+                      {wizardStep === 2 && (
+                        <div className="wizard-step-content animate-fade-in">
+                          <div className="wizard-section-tech">
+                            <h3 className="wizard-section-title">
+                              <span className="section-title-dot" /> [2.1] Production Graphic Asset Uploads
+                            </h3>
+                            <p className="wizard-section-desc">Upload sponsor logos, inspiration reference patterns, and existing layout examples.</p>
+                            
+                            <div className="tech-upload-slots">
+                              {/* SLOT 1: SPONSOR LOGOS */}
+                              <div className="tech-upload-box" onClick={loadHighResLogo}>
+                                <div className="upload-box-header">
+                                  <Upload size={18} className="upload-icon-blue" />
+                                  <span className="upload-box-title">SPONSOR BRANDING VECTOR</span>
+                                </div>
+                                <p className="upload-box-desc">Vector graphics for primary branding chest/shoulder spots.</p>
+                                <span className="upload-box-spec">Accepts: .SVG, .EPS (True vector paths)</span>
+                                <div className="upload-box-action-hint">Click to mock high-res vector upload</div>
+                              </div>
 
-                        <div className="mock-actions-row">
-                          <button className="premium-ghost-btn" onClick={loadLowResLogo}>
-                            <AlertTriangle size={14} className="warning-color" /> Add Low-Res Mock Asset
-                          </button>
-                        </div>
+                              {/* SLOT 2: INSPIRATION MOODBOARDS */}
+                              <div className="tech-upload-box" onClick={loadLowResLogo}>
+                                <div className="upload-box-header">
+                                  <Upload size={18} className="upload-icon-purple" />
+                                  <span className="upload-box-title">CREATIVE STYLE REFERENCE</span>
+                                </div>
+                                <p className="upload-box-desc">Moodboard textures, patterns, and background inspirations.</p>
+                                <span className="upload-box-spec">Accepts: .PNG, .JPG (Target: &gt;300 DPI)</span>
+                                <div className="upload-box-action-hint">Click to mock low-res raster upload</div>
+                              </div>
 
-                        <div className="uploaded-assets-panel">
-                          <span className="uploaded-assets-title">Uploaded Assets ({project.logos.length})</span>
-                          {project.logos.length === 0 ? (
-                            <div className="uploaded-assets-empty">
-                              No graphic assets loaded. Upload logos above to verify print readiness.
+                              {/* SLOT 3: EXISTING JERSEY REFERENCES */}
+                              <div className="tech-upload-box" onClick={() => {
+                                addLog("Mock Jersey reference photo uploaded.");
+                              }}>
+                                <div className="upload-box-header">
+                                  <Upload size={18} className="upload-icon-gray" />
+                                  <span className="upload-box-title">EXISTING JERSEY REFERENCE</span>
+                                </div>
+                                <p className="upload-box-desc">Photographs or scans of previous garments for layout matching.</p>
+                                <span className="upload-box-spec">Accepts: .PNG, .JPG, .PDF</span>
+                                <div className="upload-box-action-hint">Click to mock physical reference photo upload</div>
+                              </div>
                             </div>
-                          ) : (
-                            <div className="uploaded-assets-grid">
-                              {project.logos.map((logo) => (
-                                <div className="uploaded-asset-card" key={logo.id}>
-                                  <div className="uploaded-asset-thumb">
-                                    {logo.url ? <img src={logo.url} alt={logo.name} /> : <div className="asset-thumb-placeholder">PNG</div>}
+                          </div>
+
+                          {/* UPLOADED ASSETS LIST */}
+                          <div className="wizard-section-tech">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                              <h4 className="wizard-section-sub-title" style={{ margin: 0 }}>Registered Graphics Library</h4>
+                              <span className="asset-counter-hud">{project.logos.length} Active Graphics</span>
+                            </div>
+                            
+                            {project.logos.length === 0 ? (
+                              <div className="tech-empty-state">
+                                No graphical assets verified. Click above to load sponsor and reference mockups.
+                              </div>
+                            ) : (
+                              <div className="tech-asset-grid">
+                                {project.logos.map(logo => (
+                                  <div className="tech-asset-card-item" key={logo.id}>
+                                    <div className="tech-asset-thumb">
+                                      {logo.url ? (
+                                        <img src={logo.url} alt={logo.name} />
+                                      ) : (
+                                        <div className="tech-asset-placeholder">{logo.name.split('.').pop()?.toUpperCase()}</div>
+                                      )}
+                                    </div>
+                                    <div className="tech-asset-info">
+                                      <span className="tech-asset-name">{logo.name}</span>
+                                      <span className={`tech-asset-badge ${logo.resolutionStatus === 'high' ? 'badge-success' : 'badge-warning'}`}>
+                                        {logo.resolutionStatus === 'high' ? `✓ Vector Verified (${logo.dpi} DPI)` : `⚠ Low Res Vector (${logo.dpi} DPI)`}
+                                      </span>
+                                    </div>
+                                    <button className="tech-asset-delete" onClick={() => deleteLogo(logo.id)}>
+                                      <Trash2 size={12} />
+                                    </button>
                                   </div>
-                                  <div className="uploaded-asset-details">
-                                    <span className="uploaded-asset-name">{logo.name}</span>
-                                    <span className={`uploaded-asset-specs ${logo.resolutionStatus === 'high' ? 'specs-success' : 'specs-warning'}`}>
-                                      {logo.resolutionStatus === 'high' ? `✓ High Res (${logo.dpi} DPI)` : `⚠ Low Res (${logo.dpi} DPI)`}
-                                    </span>
-                                  </div>
-                                  <button className="delete-asset-btn" onClick={() => deleteLogo(logo.id)} title="Remove asset">
-                                    <Trash2 size={12} />
+                                ))}
+                              </div>
+                            )}
+                          </div>
+
+                          {/* AI PRINT PRE-FLIGHT DIAGNOSTICS SCANNER */}
+                          <div className="wizard-section-tech">
+                            <div className="diagnostics-panel-header">
+                              <div>
+                                <h3 className="wizard-section-title" style={{ margin: 0 }}>
+                                  <span className="section-title-dot" /> [2.2] Pre-Flight Vector Diagnostics Scanner
+                                </h3>
+                                <p className="wizard-section-desc" style={{ marginTop: '4px' }}>Analyze paths, font curves, color spaces, and resolution compatibility before printing.</p>
+                              </div>
+                              <button 
+                                className={`tech-scan-button ${isAnalyzingReferences ? 'running' : ''}`}
+                                onClick={runPreFlightVectorScan}
+                                disabled={isAnalyzingReferences}
+                              >
+                                {isAnalyzingReferences ? (
+                                  <>
+                                    <Sparkles size={14} className="sparkle-spin" /> Scanning Paths...
+                                  </>
+                                ) : (
+                                  <>
+                                    <Sparkles size={14} /> Run Vector Diagnostics
+                                  </>
+                                )}
+                              </button>
+                            </div>
+
+                            <div className="terminal-logs-console">
+                              <div className="terminal-header">
+                                <span className="terminal-dot red" />
+                                <span className="terminal-dot yellow" />
+                                <span className="terminal-dot green" />
+                                <span className="terminal-title">RIP_VECTOR_SCANNER_v4.2.EXE</span>
+                                <span className="terminal-status-hud">{isAnalyzingReferences ? 'STATUS: ACTIVE SCAN' : vectorScanLogs.length > 0 ? 'STATUS: SCAN COMPLETE' : 'STATUS: IDLE'}</span>
+                              </div>
+                              <div className="terminal-body" id="terminal-body-console">
+                                {vectorScanLogs.length === 0 ? (
+                                  <div className="terminal-empty-text">Awaiting input graphics setup. Click "Run Vector Diagnostics" to analyze vector paths.</div>
+                                ) : (
+                                  vectorScanLogs.map((log, index) => (
+                                    <div key={index} className={`terminal-log-line ${log.includes('[WARN]') ? 'warn' : log.includes('[OK]') ? 'success' : 'info'}`}>
+                                      {log}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {wizardStep === 3 && (
+                        <div className="wizard-step-content animate-fade-in">
+                          <div className="wizard-input-split">
+                            <div className="wizard-section-tech" style={{ flex: 1 }}>
+                              <h3 className="wizard-section-title">
+                                <span className="section-title-dot" /> [3.1] Target Print Density (DPI)
+                              </h3>
+                              <p className="wizard-section-desc">Select raster density for large-format textile output.</p>
+                              
+                              <div className="tech-segmented-control">
+                                {[
+                                  { dpi: 150, label: '150 DPI', desc: 'Fast proofing & soft layout drafts' },
+                                  { dpi: 300, label: '300 DPI', desc: 'Standard production high-res commercial print' },
+                                  { dpi: 600, label: '600 DPI', desc: 'Ultra-fine textile detail & razor text outlines' }
+                                ].map(opt => (
+                                  <button
+                                    key={opt.dpi}
+                                    type="button"
+                                    className={`tech-segment-btn ${project.dpi === opt.dpi ? 'active' : ''}`}
+                                    onClick={() => handleUpdateProject({ dpi: opt.dpi })}
+                                  >
+                                    <span className="segment-btn-title">{opt.label}</span>
+                                    <span className="segment-btn-desc">{opt.desc}</span>
                                   </button>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="wizard-section-tech" style={{ flex: 1 }}>
+                              <h3 className="wizard-section-title">
+                                <span className="section-title-dot" /> [3.2] Seam Bleed Margins
+                              </h3>
+                              <p className="wizard-section-desc">Width of safety pattern overlap boundaries extended past seam lines.</p>
+                              
+                              <div className="tech-segmented-control">
+                                {[
+                                  { value: 0.25, label: '0.25" Margin', desc: 'Slim fit sports seams & collar cuts' },
+                                  { value: 0.50, label: '0.50" Margin', desc: 'Standard commercial sublimation bleed safety' },
+                                  { value: 0.75, label: '0.75" Margin', desc: 'Heavy overlap safety for loose garments' }
+                                ].map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    type="button"
+                                    className={`tech-segment-btn ${project.rules.bleedInches === opt.value ? 'active' : ''}`}
+                                    onClick={() => handleUpdateProject({
+                                      rules: {
+                                        ...project.rules,
+                                        bleedInches: opt.value
+                                      }
+                                    })}
+                                  >
+                                    <span className="segment-btn-title">{opt.label}</span>
+                                    <span className="segment-btn-desc">{opt.desc}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="wizard-input-split">
+                            <div className="wizard-section-tech" style={{ flex: 1 }}>
+                              <h3 className="wizard-section-title">
+                                <span className="section-title-dot" /> [3.3] Ink Color Space Profile
+                              </h3>
+                              <p className="wizard-section-desc">Toggle rendering system color modes for pre-flight design layouts.</p>
+                              
+                              <div className="tech-toggle-group">
+                                <button
+                                  type="button"
+                                  className={`tech-toggle-btn ${project.colorMode === 'RGB' ? 'active' : ''}`}
+                                  onClick={() => handleUpdateProject({ colorMode: 'RGB' })}
+                                >
+                                  <span className="toggle-btn-badge">RGB</span>
+                                  <span className="toggle-btn-text">Standard Screen sRGB</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  className={`tech-toggle-btn ${project.colorMode === 'CMYK' ? 'active' : ''}`}
+                                  onClick={() => handleUpdateProject({ colorMode: 'CMYK' })}
+                                >
+                                  <span className="toggle-btn-badge">CMYK</span>
+                                  <span className="toggle-btn-text">Coated FOGRA39 RIP (Textiles)</span>
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="wizard-section-tech" style={{ flex: 1 }}>
+                              <h3 className="wizard-section-title">
+                                <span className="section-title-dot" /> [3.4] Printer Roll Width
+                              </h3>
+                              <p className="wizard-section-desc">Physical boundary width of roll paper running through the dye-sub printer.</p>
+                              
+                              <select
+                                className="tech-select-dropdown"
+                                value={rollWidth}
+                                onChange={(e) => setRollWidth(e.target.value)}
+                              >
+                                <option value='44"'>44 Inches (1120 mm) — Small plot rolls</option>
+                                <option value='63"'>63 Inches (1600 mm) — Standard commercial dye-sub rollers</option>
+                                <option value='72"'>72 Inches (1830 mm) — Large industrial plot rollers</option>
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="wizard-section-tech">
+                            <h3 className="wizard-section-title">
+                              <span className="section-title-dot" /> [3.5] Production Export File Format
+                            </h3>
+                            <p className="wizard-section-desc">Select the final output vector asset packaging structure.</p>
+                            
+                            <div className="export-format-grid">
+                              {[
+                                { id: 'Vector PDF', label: 'Vector PDF', desc: 'Vector layout layers with embedded high-precision PMS ink vectors' },
+                                { id: 'CMYK SVG', label: 'CMYK SVG', desc: 'Direct vector lines optimized for standard cutting software plotters' },
+                                { id: 'High-Res TIFF', label: 'High-Res TIFF', desc: 'Flat pixel layout at 300 DPI ready for direct printing RIP engines' },
+                                { id: 'EPS Format', label: 'EPS Format', desc: 'PostScript encapsulated curves for legacy commercial plotters' }
+                              ].map(fmt => (
+                                <div
+                                  key={fmt.id}
+                                  className={`export-format-card ${exportFormat === fmt.id ? 'active' : ''}`}
+                                  onClick={() => setExportFormat(fmt.id)}
+                                >
+                                  <div className="format-card-accent" />
+                                  <span className="format-card-title">{fmt.label}</span>
+                                  <span className="format-card-desc">{fmt.desc}</span>
                                 </div>
                               ))}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
+                      )}
 
                     </div>
 
-                    {/* RIGHT COLUMN: Live AI Dashboard Feedback & Floating Preview */}
+                    {/* RIGHT COLUMN: Live Technical Blueprint Preview */}
                     <div className="brief-column right-column">
-                      
-                      {/* Active AI Project Analysis */}
-                      <div className="ai-analysis-panel-premium">
-                        <div className="panel-glow-accent" />
-                        <div className="analysis-header">
-                          <Sparkles size={16} className="sparkle-glow" />
-                          <h4>AI Project Analysis</h4>
+                      <div className="live-preview-panel-premium-tech">
+                        <div className="tech-preview-header">
+                          <span className="tech-preview-title">DYE-SUB BLUEPRINT RIP VIEWER</span>
+                          <span className="tech-preview-badge">LIVE VECTOR RENDERING</span>
                         </div>
-                        <p className="analysis-intro">Evaluating project readiness and parameters based on real-time setup configuration.</p>
                         
-                        <div className="analysis-metrics-grid">
-                          <div className="metric-box">
-                            <span className="metric-label">Detected Vibe</span>
-                            <span className="metric-val text-neon-blue">
-                              {project.stylePreference || 'Unspecified'}
-                            </span>
-                          </div>
-                          <div className="metric-box">
-                            <span className="metric-label">Production Speed</span>
-                            <span className="metric-val text-neon-purple">
-                              {project.apparelType ? 'Sublimation Ready' : 'Awaiting Outline'}
-                            </span>
-                          </div>
-                          <div className="metric-box">
-                            <span className="metric-label">Sponsor Integrity</span>
-                            <span className="metric-val">
-                              {project.logos.length > 0 ? (
-                                project.logos.some(l => l.resolutionStatus === 'low') ? '⚠ Resolution Issues' : '✓ Print Ready'
-                              ) : 'Awaiting Graphics'}
-                            </span>
-                          </div>
-                          <div className="metric-box">
-                            <span className="metric-label">Print Complexity</span>
-                            <span className="metric-val">
-                              {(project.designVision || '').length > 40 ? 'High Detail' : (project.designVision || '').length > 0 ? 'Medium' : 'Flat Base'}
-                            </span>
-                          </div>
-                          <div className="metric-box">
-                            <span className="metric-label">AI Prompt Setup</span>
-                            <span className="metric-val">
-                              {project.designVision ? `${Math.min(100, Math.round(project.designVision.length * 1.5))}% Confident` : 'Needs Prompt'}
-                            </span>
-                          </div>
-                          <div className="metric-box">
-                            <span className="metric-label">Print Canvas Space</span>
-                            <span className="metric-val">
-                              {project.canvasSize || '2400 x 2400 px'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Interactive Floating Garment Preview */}
-                      <div className="live-preview-panel-premium">
-                        <span className="preview-label-premium">Live Blueprint Preview</span>
-                        
-                        <div className="floating-silhouette-container">
-                          {/* Silhouette SVG drawing loaded dynamically */}
-                          <div className="floating-silhouette-silhouette">
+                        <div className="tech-blueprint-container">
+                          {/* Blueprint background grid lines */}
+                          <div className="blueprint-overlay-grid-lines" />
+                          
+                          {/* Schematic drawing */}
+                          <div className="blueprint-silhouette-box">
                             {project.apparelType === 'esports_jersey' && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-jersey">
-                                <path d="M 20,20 C 35,10 65,10 80,20 L 92,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <path d="M 30,20 L 30,113" fill="none" stroke="rgba(0,112,243,0.15)" strokeWidth="1" strokeDasharray="2,2" />
-                                <path d="M 70,20 L 70,113" fill="none" stroke="rgba(0,112,243,0.15)" strokeWidth="1" strokeDasharray="2,2" />
-                                <circle cx="50" cy="50" r="1.5" fill="var(--accent-blue)" />
-                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="6" fontFamily="monospace">ESPORTS JERSEY PANEL</text>
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
+                                {/* Bleed outline - scales dynamically based on bleedInches */}
+                                <path
+                                  d="M 20,20 C 35,10 65,10 80,20 L 92,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z"
+                                  fill="none"
+                                  stroke="var(--accent-purple)"
+                                  strokeWidth="1.2"
+                                  strokeDasharray="4,3"
+                                  style={{
+                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
+                                    transformOrigin: 'center 60px',
+                                    transition: 'transform 0.3s ease'
+                                  }}
+                                />
+                                {/* Safe zone outline */}
+                                <path d="M 22,22 C 35,13 65,13 78,22 L 89,48 L 76,51 L 77,108 C 60,113 40,113 23,108 L 24,51 L 11,48 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                
+                                {/* Layout labels */}
+                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">8-PANEL RAGLAN LAYOUT</text>
+                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
+                                
+                                {/* Center seam alignment indicators */}
+                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
                               </svg>
                             )}
                             {project.apparelType === 'tshirt' && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-tshirt">
-                                <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="6" fontFamily="monospace">STREETWEAR T-SHIRT</text>
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
+                                {/* Bleed outline */}
+                                <path
+                                  d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z"
+                                  fill="none"
+                                  stroke="var(--accent-purple)"
+                                  strokeWidth="1.2"
+                                  strokeDasharray="4,3"
+                                  style={{
+                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
+                                    transformOrigin: 'center 60px',
+                                    transition: 'transform 0.3s ease'
+                                  }}
+                                />
+                                <path d="M 20,24 C 32,17 68,17 80,24 L 92,46 L 80,48 L 78,107 L 22,107 L 20,48 L 8,46 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">STREET T-SHIRT TEMPLATE</text>
+                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
+                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
                               </svg>
                             )}
                             {project.apparelType === 'hoodie' && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-hoodie">
-                                <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <path d="M 32,29 C 30,10 70,10 68,29 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <path d="M 35,90 L 35,102 L 65,102 L 65,90 Z" fill="none" stroke="rgba(0,112,243,0.25)" strokeWidth="1" />
-                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="6" fontFamily="monospace">ROOFTOP HOODIE</text>
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
+                                {/* Bleed outline */}
+                                <path
+                                  d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z"
+                                  fill="none"
+                                  stroke="var(--accent-purple)"
+                                  strokeWidth="1.2"
+                                  strokeDasharray="4,3"
+                                  style={{
+                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
+                                    transformOrigin: 'center 60px',
+                                    transition: 'transform 0.3s ease'
+                                  }}
+                                />
+                                {/* Hood bleed outline */}
+                                <path
+                                  d="M 32,29 C 30,10 70,10 68,29 Z"
+                                  fill="none"
+                                  stroke="var(--accent-purple)"
+                                  strokeWidth="1"
+                                  strokeDasharray="4,3"
+                                  style={{
+                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.15})`,
+                                    transformOrigin: '50px 20px',
+                                    transition: 'transform 0.3s ease'
+                                  }}
+                                />
+                                <path d="M 20,34 C 32,27 68,27 80,34 L 91,56 L 82,58 L 78,109 L 22,109 L 18,58 L 9,56 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <path d="M 32,29 C 30,10 70,10 68,29 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.2" />
+                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">6-PANEL HOODIE BLOCK</text>
+                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
+                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
                               </svg>
                             )}
                             {(!project.apparelType || (project.apparelType !== 'esports_jersey' && project.apparelType !== 'tshirt' && project.apparelType !== 'hoodie')) && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-generic">
-                                <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="5" fontFamily="monospace">{project.apparelType ? project.apparelType.toUpperCase().replace('_', ' ') : 'APPAREL SYMMETRY'}</text>
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
+                                <path
+                                  d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z"
+                                  fill="none"
+                                  stroke="var(--accent-purple)"
+                                  strokeWidth="1.2"
+                                  strokeDasharray="4,3"
+                                  style={{
+                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
+                                    transformOrigin: 'center 60px',
+                                    transition: 'transform 0.3s ease'
+                                  }}
+                                />
+                                <path d="M 22,27 C 35,17 65,17 78,27 L 89,48 L 78,50 L 76,107 L 24,107 L 22,50 L 11,48 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">{project.apparelType ? project.apparelType.toUpperCase().replace('_', ' ') : 'APPAREL PATTERN'}</text>
+                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
+                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
                               </svg>
                             )}
                           </div>
-                          
-                          <div className="silhouette-spec-box">
-                            <span className="spec-item-badge">SVG Matrix</span>
-                            <span className="spec-item-badge">Active Anchor Grids</span>
-                            <span className="spec-item-badge">Flat Bleeds</span>
+
+                          {/* Grid overlay annotations */}
+                          <div className="blueprint-legend">
+                            <div className="legend-item"><span className="legend-color blue" /> <span>Safe Print Boundaries</span></div>
+                            <div className="legend-item"><span className="legend-color purple dashed" /> <span>Dye-Sub Seam Bleed (+{project.rules.bleedInches.toFixed(2)}")</span></div>
+                          </div>
+                        </div>
+
+                        {/* HUD Parameter telemetry specs */}
+                        <div className="blueprint-telemetry-panel">
+                          <div className="telemetry-item">
+                            <span className="telemetry-label">COLOR MODE</span>
+                            <span className="telemetry-value text-neon-blue">{project.colorMode || 'CMYK'} (FOGRA39)</span>
+                          </div>
+                          <div className="telemetry-item">
+                            <span className="telemetry-label">TARGET INK RES</span>
+                            <span className="telemetry-value text-neon-purple">{project.dpi || 300} DPI</span>
+                          </div>
+                          <div className="telemetry-item">
+                            <span className="telemetry-label">SEAM BLEED SCALE</span>
+                            <span className="telemetry-value">+{project.rules.bleedInches.toFixed(2)} INCH</span>
+                          </div>
+                          <div className="telemetry-item">
+                            <span className="telemetry-label">PRINTER WIDTH</span>
+                            <span className="telemetry-value">{rollWidth} DYE-SUB</span>
+                          </div>
+                          <div className="telemetry-item">
+                            <span className="telemetry-label">EXPORT FORMAT</span>
+                            <span className="telemetry-value">{exportFormat}</span>
                           </div>
                         </div>
                       </div>
-
-                      {/* Project Readiness System */}
-                      <div className="readiness-panel-premium">
-                        <h4 className="readiness-panel-title">Project Setup Readiness</h4>
-                        
-                        <div className="checklist-items">
-                          <div className="checklist-item-row ready">
-                            <span className="checklist-icon">✓</span>
-                            <div className="checklist-info">
-                              <span className="checklist-title">Apparel Category Selected</span>
-                              <span className="checklist-desc">Establishing rules for: {project.apparelType ? project.apparelType.replace('_', ' ') : 'Default'}</span>
-                            </div>
-                          </div>
-
-                          <div className={`checklist-item-row ${project.designVision ? 'ready' : 'pending'}`}>
-                            <span className="checklist-icon">{project.designVision ? '✓' : '⚠'}</span>
-                            <div className="checklist-info">
-                              <span className="checklist-title">Creative Direction Input</span>
-                              <span className="checklist-desc">{project.designVision ? 'AI vision instructions saved' : 'Missing creative instruction brief'}</span>
-                            </div>
-                          </div>
-
-                          <div className={`checklist-item-row ${project.stylePreference ? 'ready' : 'pending'}`}>
-                            <span className="checklist-icon">{project.stylePreference ? '✓' : '⚠'}</span>
-                            <div className="checklist-info">
-                              <span className="checklist-title">Creative Style Direction</span>
-                              <span className="checklist-desc">{project.stylePreference ? `Aesthetic vibe set to ${project.stylePreference}` : 'No style cards selected'}</span>
-                            </div>
-                          </div>
-
-                          <div className={`checklist-item-row ${project.logos.length > 0 ? 'ready' : 'warning'}`}>
-                            <span className="checklist-icon">{project.logos.length > 0 ? '✓' : '⚠'}</span>
-                            <div className="checklist-info">
-                              <span className="checklist-title">Sponsor branding & Assets</span>
-                              <span className="checklist-desc">
-                                {project.logos.length > 0 
-                                  ? `${project.logos.length} graphic references verified` 
-                                  : 'No sponsor or vector assets uploaded'}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
                     </div>
                   </div>
 
                   {/* Sticky Cinematic Action Bar */}
                   <div className="sticky-action-bar-premium">
                     <div className="action-bar-left">
-                      <div className="readiness-status-badge">
-                        <div className="status-dot green-pulsing" />
-                        <span>AI Engine Initialized</span>
-                      </div>
+                      {wizardStep > 1 ? (
+                        <button 
+                          className="premium-ghost-btn" 
+                          onClick={() => setWizardStep(wizardStep - 1)}
+                          style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: 'var(--text-primary)', fontWeight: 'bold' }}
+                        >
+                          <ArrowLeft size={14} /> Back to Step {wizardStep - 1}
+                        </button>
+                      ) : (
+                        <div className="readiness-status-badge">
+                          <div className="status-dot green-pulsing" />
+                          <span>RIP ENGINE ACTIVE</span>
+                        </div>
+                      )}
                       <div className="action-bar-summary">
-                        <span>{project.logos.length} uploaded asset{project.logos.length !== 1 ? 's' : ''}</span>
+                        <span>{project.logos.length} asset{project.logos.length !== 1 ? 's' : ''} loaded</span>
                         <span className="divider-dot" />
-                        <span className="text-glow-accent">{project.stylePreference || 'Generic'} Aesthetic</span>
+                        <span className="text-glow-accent">{project.dpi || 300} DPI · {project.colorMode || 'CMYK'}</span>
                       </div>
                     </div>
 
                     <div className="action-bar-right">
-                      <button 
-                        className="continue-btn-premium"
-                        onClick={() => handleUpdateProject({ stage: 'design' })}
-                      >
-                        Continue to AI Design <ArrowRight size={16} />
-                      </button>
+                      {wizardStep < 3 ? (
+                        <button 
+                          className="continue-btn-premium"
+                          onClick={() => setWizardStep(wizardStep + 1)}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          Next: {wizardStep === 1 ? 'Upload Assets & Reference' : 'Configure Print Defaults'} <ArrowRight size={14} />
+                        </button>
+                      ) : (
+                        <button 
+                          className="continue-btn-premium"
+                          onClick={() => {
+                            addLog("Project setup complete. Production presets locked.");
+                            handleUpdateProject({ stage: 'design' });
+                          }}
+                          style={{ background: 'var(--accent-blue)', boxShadow: '0 0 15px rgba(0, 112, 243, 0.4)', cursor: 'pointer' }}
+                        >
+                          Lock & Launch Production Project <ArrowRight size={14} />
+                        </button>
+                      )}
                     </div>
                   </div>
 
