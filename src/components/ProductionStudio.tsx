@@ -3,8 +3,8 @@ import type { Project, RosterPlayer } from '../types';
 import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
-  Shield, Ruler, 
-  Users
+  Shield, Ruler, Users,
+  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
@@ -14,6 +14,152 @@ import {
   type GarmentTemplate
 } from '../lib/measurements';
 import * as fabric from 'fabric';
+
+// ─── Dynamic SVG Jersey Thumbnail Component ──────────────────────────────────
+interface MiniJerseyThumbnailProps {
+  primaryColor?: string;
+  secondaryColor?: string;
+  apparelType?: string;
+}
+
+const MiniJerseyThumbnail: React.FC<MiniJerseyThumbnailProps> = ({ primaryColor = '#1a1a24', secondaryColor = '#0070f3', apparelType = 'tshirt' }) => {
+  const mainColor = primaryColor || '#1a1a24';
+  const accentColor = secondaryColor || '#0070f3';
+
+  if (apparelType === 'hoodie') {
+    return (
+      <svg width="24" height="24" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
+        {/* Sleeves */}
+        <path d="M 15 28 L 30 15 L 40 25 L 30 40 L 22 55 L 12 40 Z" fill={accentColor} />
+        <path d="M 85 28 L 70 15 L 60 25 L 70 40 L 78 55 L 88 40 Z" fill={accentColor} />
+        {/* Main Body */}
+        <path d="M 30 20 L 70 20 L 70 85 L 30 85 Z" fill={mainColor} stroke={accentColor} strokeWidth="3" />
+        {/* Hood */}
+        <path d="M 35 20 Q 50 -2 65 20" fill="none" stroke={accentColor} strokeWidth="5" strokeLinecap="round" />
+        <path d="M 42 20 L 50 32 L 58 20" fill="none" stroke={accentColor} strokeWidth="3" />
+        {/* Pocket */}
+        <path d="M 40 60 L 60 60 L 65 75 L 35 75 Z" fill={accentColor} opacity="0.8" />
+      </svg>
+    );
+  }
+
+  if (apparelType === 'jersey') {
+    return (
+      <svg width="24" height="24" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
+        {/* Sleeves */}
+        <path d="M 15 28 L 32 15 L 42 28 L 22 42 Z" fill={accentColor} />
+        <path d="M 85 28 L 68 15 L 58 28 L 78 42 Z" fill={accentColor} />
+        {/* Main Body */}
+        <path d="M 32 15 L 68 15 L 68 85 C 68 85, 50 88, 32 85 Z" fill={mainColor} stroke={accentColor} strokeWidth="3" />
+        {/* Sport stripes */}
+        <line x1="40" y1="15" x2="40" y2="85" stroke={accentColor} strokeWidth="3" opacity="0.6" />
+        <line x1="60" y1="15" x2="60" y2="85" stroke={accentColor} strokeWidth="3" opacity="0.6" />
+        <path d="M 40 15 Q 50 25 60 15" fill="none" stroke={accentColor} strokeWidth="4" />
+      </svg>
+    );
+  }
+
+  // T-shirt (default)
+  return (
+    <svg width="24" height="24" viewBox="0 0 100 100" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.25))' }}>
+      {/* Sleeves */}
+      <path d="M 18 26 L 33 15 L 43 28 L 26 40 Z" fill={accentColor} />
+      <path d="M 82 26 L 67 15 L 57 28 L 74 40 Z" fill={accentColor} />
+      {/* Main Body */}
+      <path d="M 33 15 L 67 15 L 67 85 L 33 85 Z" fill={mainColor} stroke={accentColor} strokeWidth="3" />
+      {/* Crew collar */}
+      <path d="M 42 15 A 8 8 0 0 0 58 15" fill="none" stroke={accentColor} strokeWidth="4" />
+    </svg>
+  );
+};
+
+// ─── Excel and CSV Parsers ──────────────────────────────────────────────────
+const loadSheetJS = (): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).XLSX) {
+      resolve((window as any).XLSX);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+    script.onload = () => resolve((window as any).XLSX);
+    script.onerror = (err) => reject(err);
+    document.head.appendChild(script);
+  });
+};
+
+const parseCSV = (text: string): any[] => {
+  const lines = text.split('\n');
+  if (lines.length === 0) return [];
+  const results: any[] = [];
+  
+  const splitCSVLine = (line: string): string[] => {
+    const arr: string[] = [];
+    let insideQuote = false;
+    let entry = '';
+    for (let i = 0; i < line.length; i++) {
+      const char = line[i];
+      if (char === '"') {
+        insideQuote = !insideQuote;
+      } else if (char === ',' && !insideQuote) {
+        arr.push(entry.trim().replace(/^["']|["']$/g, ''));
+        entry = '';
+      } else {
+        entry += char;
+      }
+    }
+    arr.push(entry.trim().replace(/^["']|["']$/g, ''));
+    return arr;
+  };
+
+  const headers = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+  
+  for (let i = 1; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const row = splitCSVLine(line);
+    const obj: any = {};
+    headers.forEach((header, index) => {
+      obj[header] = row[index] || '';
+    });
+    results.push(obj);
+  }
+  return results;
+};
+
+// ─── Inline Pre-flight Validation ──────────────────────────────────────────
+const getPlayerValidationWarning = (player: RosterPlayer, roster: RosterPlayer[]): string | null => {
+  if (!player.name || !player.name.trim()) {
+    return 'Missing Player Name';
+  }
+  if (!player.number || !player.number.trim()) {
+    return 'Missing Jersey Number';
+  }
+  if (isNaN(Number(player.number))) {
+    return 'Invalid (Numeric Only)';
+  }
+  if (!player.size) {
+    return 'Missing Size Selection';
+  }
+  if (!player.variant) {
+    return 'Missing Variant Design';
+  }
+  
+  // Check for duplicates
+  const hasDuplicateNum = roster.some(p => p.id !== player.id && p.number.trim() === player.number.trim());
+  if (hasDuplicateNum) {
+    return `Duplicate Number (#${player.number})`;
+  }
+
+  // Check for safe zone overflow
+  if (player.name.length > 12 && (player.size === 'XS' || player.size === 'S')) {
+    return 'Exceeds XS/S Safe Width';
+  }
+  if (player.nameScale < 0.6) {
+    return 'Name Squeezed (Zone Overflow)';
+  }
+  return null;
+};
 
 // ─── Garment Template Setup ──────────────────────────────────────────────────
 
@@ -624,6 +770,316 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   // Current unit from project settings
   const unit: MeasurementUnit = (project.measurementUnit as MeasurementUnit) ?? 'inches';
 
+  // ── Roster Studio States & File Refs ─────────────────────────────────────────
+  const csvFileInputRef = useRef<HTMLInputElement>(null);
+  const excelFileInputRef = useRef<HTMLInputElement>(null);
+  const [newName, setNewName] = useState('');
+  const [newNumber, setNewNumber] = useState('');
+  const [newSize, setNewSize] = useState<'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL'>('M');
+  const [newVariant, setNewVariant] = useState<'Variant A' | 'Variant B' | 'Variant C'>('Variant A');
+
+  // Helper scale function
+  const calculateScale = (name: string): number => {
+    if (!name) return 1.0;
+    const len = name.trim().length;
+    if (len <= 8) return 1.0;
+    return Math.max(0.4, Math.min(1.0, 8 / len));
+  };
+
+  // Field change handler for inline editing
+  const handleFieldChange = (id: string, field: keyof RosterPlayer, value: any) => {
+    const updated = project.roster.map(p => {
+      if (p.id === id) {
+        const updatedPlayer = { ...p, [field]: value };
+        if (field === 'name') {
+          updatedPlayer.name = value.toUpperCase();
+          updatedPlayer.nameScale = calculateScale(value);
+        }
+        return updatedPlayer;
+      }
+      return p;
+    });
+    onUpdateProject({ roster: updated });
+  };
+
+  // Delete player handler
+  const handleDeletePlayer = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = project.roster.filter(p => p.id !== id);
+    const updates: Partial<Project> = { roster: updated };
+
+    if (project.activePlayerId === id && updated.length > 0) {
+      updates.activePlayerId = updated[0].id;
+    }
+    onUpdateProject(updates);
+  };
+
+  // Quick Add player handler
+  const handleQuickAdd = () => {
+    if (!newName.trim() || !newNumber.trim()) return;
+
+    const newPlayer: RosterPlayer = {
+      id: `player-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name: newName.trim().toUpperCase(),
+      number: newNumber.trim(),
+      size: newSize,
+      nameScale: calculateScale(newName),
+      variant: newVariant,
+      status: 'Mapped'
+    };
+
+    const updated = [...project.roster, newPlayer];
+    onUpdateProject({
+      roster: updated,
+      activePlayerId: newPlayer.id
+    });
+
+    setNewName('');
+    setNewNumber('');
+  };
+
+  // CSV file reading
+  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      if (!text) return;
+      try {
+        const rows = parseCSV(text);
+        importRosterRows(rows);
+      } catch (err) {
+        console.error('Failed to parse CSV:', err);
+        alert('Failed to import CSV. Please check file format.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  };
+
+  // Excel file reading
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const XLSX = await loadSheetJS();
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const data = new Uint8Array(event.target?.result as ArrayBuffer);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        const rows = XLSX.utils.sheet_to_json(worksheet);
+        importRosterRows(rows);
+      };
+      reader.readAsArrayBuffer(file);
+    } catch (err) {
+      console.error('Failed to parse Excel:', err);
+      alert('Failed to import Excel. Make sure it is a valid .xlsx file.');
+    }
+    e.target.value = '';
+  };
+
+  // Common importer mapper
+  const importRosterRows = (rows: any[]) => {
+    if (rows.length === 0) return;
+    
+    const newPlayers: RosterPlayer[] = [];
+    rows.forEach((row, index) => {
+      const nameKey = Object.keys(row).find(k => /name|surname|player\s*name/i.test(k));
+      const numKey = Object.keys(row).find(k => /number|num|jersey\s*number/i.test(k));
+      const sizeKey = Object.keys(row).find(k => /size|sz/i.test(k));
+      const variantKey = Object.keys(row).find(k => /variant/i.test(k));
+      
+      let name = nameKey ? String(row[nameKey]).trim().toUpperCase() : '';
+      let number = numKey ? String(row[numKey]).trim() : '';
+      let sizeRaw = sizeKey ? String(row[sizeKey]).trim().toUpperCase() : 'M';
+      let variant = variantKey ? String(row[variantKey]).trim() : 'Variant A';
+      
+      if (!name) name = `PLAYER ${project.roster.length + newPlayers.length + 1}`;
+      if (!number) number = String(project.roster.length + newPlayers.length + 1);
+      
+      let size: any = 'M';
+      const sizeMatch = sizeRaw.replace(/[^A-Z0-9]/g, '');
+      if (['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', '2XL'].includes(sizeMatch)) {
+        size = sizeMatch === '2XL' ? 'XXL' : sizeMatch;
+      }
+      
+      let varValue: any = 'Variant A';
+      if (/B/i.test(variant)) varValue = 'Variant B';
+      else if (/C/i.test(variant)) varValue = 'Variant C';
+      
+      const newPlayer: RosterPlayer = {
+        id: `import-${Date.now()}-${index}-${Math.random().toString(36).substr(2, 4)}`,
+        name,
+        number,
+        size,
+        nameScale: calculateScale(name),
+        variant: varValue,
+        status: 'Mapped'
+      };
+      newPlayers.push(newPlayer);
+    });
+    
+    if (newPlayers.length > 0) {
+      const updatedRoster = [...project.roster, ...newPlayers];
+      onUpdateProject({ 
+        roster: updatedRoster,
+        activePlayerId: newPlayers[0].id
+      });
+    }
+  };
+
+  // Bulk actions triggers
+  const handleBulkGenerate = () => {
+    const updated = project.roster.map(p => ({
+      ...p,
+      status: 'Ready for Export' as const
+    }));
+    onUpdateProject({ roster: updated });
+    alert(`Successfully generated variations for all ${project.roster.length} players! All systems validated.`);
+  };
+
+  const handleBulkExport = () => {
+    onUpdateProject({ stage: 'export' });
+  };
+
+  const handleBulkSync = () => {
+    const updated = project.roster.map(p => ({
+      ...p,
+      nameScale: calculateScale(p.name)
+    }));
+    onUpdateProject({ roster: updated });
+    
+    const canvas = fabricRef.current?.getCanvas();
+    if (canvas && activePlayer) {
+      syncPlayerOnCanvas(canvas, activePlayer, undefined);
+    }
+    alert('All player typographic scaling factors synchronized and active design updated!');
+  };
+
+  const handleAutoMap = () => {
+    const canvas = fabricRef.current?.getCanvas();
+    if (!canvas) return;
+    
+    let mappedName = false;
+    let mappedNum = false;
+    
+    canvas.getObjects().forEach((obj: any) => {
+      if (obj.__isArtboard) return;
+      if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+        const textVal = (obj.text || '').trim().toUpperCase();
+        
+        if (textVal === 'SURNAME' || textVal === 'PLAYER NAME' || textVal === 'NAME' || project.roster.some(p => p.name.toUpperCase() === textVal)) {
+          obj.__isNameText = true;
+          mappedName = true;
+        } else if (textVal === '00' || textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || project.roster.some(p => p.number === textVal)) {
+          obj.__isNumberText = true;
+          mappedNum = true;
+        }
+      }
+    });
+    
+    if (mappedName || mappedNum) {
+      if (activePlayer) {
+        syncPlayerOnCanvas(canvas, activePlayer, undefined);
+      }
+      alert(`Auto-mapping complete! Bound ${mappedName ? 'Player Name layer' : ''} ${mappedName && mappedNum ? 'and' : ''} ${mappedNum ? 'Player Number layer' : ''} successfully.`);
+    } else {
+      alert('Could not find matches on the canvas. Please select a text object and use the typography presets to label Surname / Number.');
+    }
+  };
+
+  // Canvas Synchronizer & Auto Scaling
+  const syncPlayerOnCanvas = useCallback((canvas: fabric.Canvas, player: RosterPlayer, previousPlayer?: RosterPlayer) => {
+    if (!canvas || !player) return;
+    const nameToSet = player.name.toUpperCase();
+    const numberToSet = player.number;
+
+    let canvasChanged = false;
+
+    canvas.getObjects().forEach((obj: any) => {
+      if (obj.__isArtboard) return;
+      if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+        const textVal = (obj.text || '').trim().toUpperCase();
+
+        const isName = obj.__isNameText ||
+          textVal === 'SURNAME' ||
+          textVal === 'PLAYER NAME' ||
+          textVal === 'NAME' ||
+          (previousPlayer && textVal === previousPlayer.name.toUpperCase()) ||
+          project.roster.some(p => p.name.toUpperCase() === textVal);
+
+        const isNumber = obj.__isNumberText ||
+          textVal === '00' ||
+          textVal === 'PLAYER NUMBER' ||
+          textVal === 'NUMBER' ||
+          (previousPlayer && textVal === previousPlayer.number) ||
+          project.roster.some(p => p.number === textVal);
+
+        if (isName) {
+          obj.__isNameText = true;
+          obj.set({ text: nameToSet });
+          canvasChanged = true;
+
+          // Typography auto-scaling & Safe zones
+          const maxTextWidthInches = project.rules.maxTextWidthInches || 18;
+          const maxTextWidthPx = maxTextWidthInches * 40;
+          const currentWidth = obj.width;
+          if (currentWidth > 0) {
+            const fittedScale = Math.min(1.0, maxTextWidthPx / currentWidth);
+            const finalScale = fittedScale * player.nameScale;
+            obj.set({ scaleX: finalScale });
+          }
+
+          if (project.rules.autoCenter) {
+            if (obj.originX === 'center') {
+              obj.set({ left: canvas.width / 2 });
+            } else {
+              obj.set({ left: (canvas.width - obj.width * obj.scaleX) / 2 });
+            }
+          }
+          obj.setCoords();
+        } else if (isNumber) {
+          obj.__isNumberText = true;
+          obj.set({ text: numberToSet });
+          canvasChanged = true;
+
+          if (project.rules.autoCenter) {
+            if (obj.originX === 'center') {
+              obj.set({ left: canvas.width / 2 });
+            } else {
+              obj.set({ left: (canvas.width - obj.width * obj.scaleX) / 2 });
+            }
+          }
+          obj.setCoords();
+        }
+      }
+    });
+
+    if (canvasChanged) {
+      canvas.requestRenderAll();
+      fabricRef.current?.saveHistory();
+    }
+  }, [project.roster, project.rules.maxTextWidthInches, project.rules.autoCenter]);
+
+  const prevPlayerRef = useRef<RosterPlayer | undefined>(undefined);
+
+  // Hook to keep canvas in sync
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const canvas = fabricRef.current?.getCanvas();
+      if (canvas && activePlayer) {
+        syncPlayerOnCanvas(canvas, activePlayer, prevPlayerRef.current);
+        prevPlayerRef.current = activePlayer;
+      }
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [project.activePlayerId, project.activeCanvasView, project.roster, syncPlayerOnCanvas, activePlayer]);
+
   // Independent history stacks per view, initialized from project.canvasStates if present
   const undoHistory = useRef<Record<string, string[]>>({
     front: project.canvasStates?.front ? [project.canvasStates.front] : [],
@@ -977,7 +1433,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── LEFT SIDEBAR: Streamlined Production Tabs ─────────────────────── */}
+      {/* ── LEFT SIDEBAR: Redesigned Production Variation Roster Manager ── */}
       <aside
         className="layers-sidebar"
         style={{
@@ -987,47 +1443,373 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           transition: isDraggingLeft ? 'none' : undefined,
           display: 'flex',
           flexDirection: 'column',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          background: '#0a0a0f',
+          borderRight: '1px solid var(--border-muted)',
         }}
       >
-        <div style={{ flex: 1, overflow: 'hidden' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-            <div className="assets-section-header-compact">
-              <Users size={13} style={{ color: 'var(--accent-blue)' }} />
-              <span>Active Variations</span>
-              <span className="assets-count-badge">{project.roster.length}</span>
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          
+          {/* Header & Title */}
+          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-muted)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Cpu size={14} style={{ color: 'var(--accent-blue)' }} />
+                <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em' }}>ROSTER STUDIO</span>
+              </div>
+              <span style={{ fontSize: '8.5px', fontWeight: 'bold', background: 'rgba(0,112,243,0.12)', color: 'var(--accent-blue)', padding: '2px 6px', borderRadius: '10px' }}>
+                VARIATIONS
+              </span>
             </div>
-            <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {project.roster.length === 0 ? (
-                <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '24px 0', fontSize: '11px', border: '1px dashed var(--border-muted)', borderRadius: '8px' }}>
-                  No player variations.
-                </div>
-              ) : (
-                project.roster.map((player) => {
-                  const isActive = project.activePlayerId === player.id;
-                  const isReady = player.status === 'Ready for Export';
-                  return (
-                    <div
-                      key={player.id}
-                      className={`roster-mini-card ${isActive ? 'active' : ''}`}
-                      onClick={() => onUpdateProject({ activePlayerId: player.id })}
-                    >
-                      <div className="roster-mini-card-select">
-                        <div className={`roster-mini-dot ${isActive ? 'active' : ''}`} />
-                        <span className="roster-mini-name">{player.name}</span>
-                        <span className="roster-mini-num">#{player.number}</span>
+            
+            {/* AI HUD Stats Bar */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px', background: '#0f0f14', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)', marginTop: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '7.5px', color: 'var(--text-disabled)', textTransform: 'uppercase' }}>Total</span>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff' }}>{project.roster.length}</span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: '7.5px', color: 'var(--text-disabled)', textTransform: 'uppercase' }}>Ready</span>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-success)' }}>
+                  {project.roster.filter(p => p.status === 'Ready for Export').length}
+                </span>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                <span style={{ fontSize: '7.5px', color: 'var(--text-disabled)', textTransform: 'uppercase' }}>Alerts</span>
+                <span style={{ fontSize: '11px', fontWeight: 'bold', color: project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length > 0 ? '#eb5757' : 'var(--text-disabled)' }}>
+                  {project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Hidden Import Upload Inputs */}
+          <input ref={csvFileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVImport} />
+          <input ref={excelFileInputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleExcelImport} />
+
+          {/* Action Panel: Imports & Bulk */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-muted)', background: '#0c0c12', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+            {/* Import Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
+              <button
+                onClick={() => csvFileInputRef.current?.click()}
+                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', transition: 'all 0.15s' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-blue)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-muted)'}
+              >
+                <Upload size={10} /> Import CSV
+              </button>
+              <button
+                onClick={() => excelFileInputRef.current?.click()}
+                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', transition: 'all 0.15s' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-blue)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-muted)'}
+              >
+                <FileDown size={10} /> Import Excel
+              </button>
+            </div>
+
+            {/* Bulk Actions Panel */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
+              <button onClick={handleBulkGenerate} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', background: 'rgba(0,112,243,0.08)', border: '1px solid rgba(0,112,243,0.2)', color: 'var(--accent-blue)' }}>
+                <Sparkles size={9} /> Generate All
+              </button>
+              <button onClick={handleBulkExport} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)', color: '#c084fc' }}>
+                <FileDown size={9} /> Export All
+              </button>
+              <button onClick={handleBulkSync} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', color: 'var(--text-secondary)' }}>
+                <RefreshCw size={9} /> Sync All
+              </button>
+              <button onClick={handleAutoMap} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', color: 'var(--text-secondary)' }}>
+                <MapPin size={9} /> Auto Map
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Add Player Card */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-muted)', background: '#08080c', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+            <span style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-disabled)', letterSpacing: '0.04em' }}>Quick Add Player</span>
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <input
+                type="text"
+                placeholder="SURNAME"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                style={{ flex: 1.8, background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '5px 8px', fontSize: '11px', color: '#fff', outline: 'none' }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd(); }}
+              />
+              <input
+                type="text"
+                placeholder="NO."
+                value={newNumber}
+                onChange={(e) => setNewNumber(e.target.value)}
+                style={{ width: '40px', background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '5px 4px', fontSize: '11px', color: 'var(--accent-blue)', outline: 'none', textAlign: 'center', fontFamily: 'monospace' }}
+                onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd(); }}
+              />
+              <button
+                onClick={handleQuickAdd}
+                style={{ width: '28px', height: '26px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
+              >
+                <Plus size={14} />
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '6px' }}>
+              <select
+                value={newSize}
+                onChange={(e) => setNewSize(e.target.value as any)}
+                style={{ background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="XS">XS</option>
+                <option value="S">S</option>
+                <option value="M">M</option>
+                <option value="L">L</option>
+                <option value="XL">XL</option>
+                <option value="XXL">2XL</option>
+                <option value="3XL">3XL</option>
+              </select>
+              <select
+                value={newVariant}
+                onChange={(e) => setNewVariant(e.target.value as any)}
+                style={{ background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+              >
+                <option value="Variant A">Variant A</option>
+                <option value="Variant B">Variant B</option>
+                <option value="Variant C">Variant C</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Roster Database Scrollable List */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {project.roster.length === 0 ? (
+              <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed var(--border-muted)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <Users size={18} style={{ opacity: 0.4 }} />
+                <span>No variations loaded.</span>
+                <span style={{ fontSize: '9px', opacity: 0.6 }}>Import CSV or use Quick Add above.</span>
+              </div>
+            ) : (
+              project.roster.map((player) => {
+                const isActive = project.activePlayerId === player.id;
+                const warning = getPlayerValidationWarning(player, project.roster);
+                const isReady = player.status === 'Ready for Export';
+
+                return (
+                  <div
+                    key={player.id}
+                    onClick={() => onUpdateProject({ activePlayerId: player.id })}
+                    style={{
+                      background: isActive ? 'rgba(0,112,243,0.04)' : '#0d0f14',
+                      border: isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-muted)',
+                      borderRadius: '8px',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '8px',
+                      transition: 'all 0.15s',
+                      boxShadow: isActive ? '0 0 10px rgba(0,112,243,0.1)' : 'none',
+                    }}
+                  >
+                    {/* Top Row: Mini Jersey, Name, Number, Delete */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                        <div
+                          style={{
+                            width: '6px',
+                            height: '6px',
+                            borderRadius: '50%',
+                            background: isActive ? 'var(--accent-blue)' : 'transparent',
+                            border: isActive ? 'none' : '1px solid var(--text-disabled)',
+                            boxShadow: isActive ? '0 0 6px var(--accent-blue)' : 'none'
+                          }}
+                        />
+                        <MiniJerseyThumbnail
+                          primaryColor={project.baseColors.primary}
+                          secondaryColor={project.baseColors.secondary}
+                          apparelType={project.apparelType}
+                        />
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span className="roster-mini-size">{player.size}</span>
-                        <span className={`roster-mini-status-badge ${isReady ? 'ready' : 'mapped'}`}>
-                          {isReady ? 'Ready' : 'Mapped'}
-                        </span>
+
+                      {/* Name input */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <input
+                          type="text"
+                          value={player.name}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleFieldChange(player.id, 'name', e.target.value)}
+                          style={{
+                            width: '100%',
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: '1px solid transparent',
+                            color: '#fff',
+                            fontSize: '11px',
+                            fontWeight: '800',
+                            padding: '2px 0',
+                            outline: 'none',
+                            textTransform: 'uppercase'
+                          }}
+                          onFocus={(e) => e.target.style.borderBottom = '1px solid var(--accent-blue)'}
+                          onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
+                        />
                       </div>
+
+                      {/* Number input */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '1px', flexShrink: 0 }}>
+                        <span style={{ fontSize: '9px', color: 'var(--text-disabled)', fontWeight: 'bold' }}>#</span>
+                        <input
+                          type="text"
+                          value={player.number}
+                          onClick={(e) => e.stopPropagation()}
+                          onChange={(e) => handleFieldChange(player.id, 'number', e.target.value)}
+                          style={{
+                            width: '24px',
+                            background: 'transparent',
+                            border: 'none',
+                            borderBottom: '1px solid transparent',
+                            color: 'var(--accent-blue)',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            padding: '2px 0',
+                            textAlign: 'center',
+                            outline: 'none',
+                            fontFamily: 'monospace'
+                          }}
+                          onFocus={(e) => e.target.style.borderBottom = '1px solid var(--accent-blue)'}
+                          onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
+                        />
+                      </div>
+
+                      {/* Trash action */}
+                      <button
+                        onClick={(e) => handleDeletePlayer(player.id, e)}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--text-disabled)',
+                          cursor: 'pointer',
+                          padding: '2px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}
+                      >
+                        <Trash2 size={11} />
+                      </button>
                     </div>
-                  );
-                })
-              )}
-            </div>
+
+                    {/* Bottom Row: Selector Toggles (Size, Variant, Status) */}
+                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+                      <select
+                        value={player.size}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleFieldChange(player.id, 'size', e.target.value)}
+                        style={{
+                          flex: 1,
+                          background: '#07080c',
+                          border: '1px solid var(--border-muted)',
+                          borderRadius: '4px',
+                          color: 'var(--text-secondary)',
+                          fontSize: '9.5px',
+                          padding: '2px 4px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="XS">XS</option>
+                        <option value="S">S</option>
+                        <option value="M">M</option>
+                        <option value="L">L</option>
+                        <option value="XL">XL</option>
+                        <option value="XXL">2XL</option>
+                        <option value="3XL">3XL</option>
+                      </select>
+
+                      <select
+                        value={player.variant || 'Variant A'}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleFieldChange(player.id, 'variant', e.target.value)}
+                        style={{
+                          flex: 1.4,
+                          background: '#07080c',
+                          border: '1px solid var(--border-muted)',
+                          borderRadius: '4px',
+                          color: 'var(--text-secondary)',
+                          fontSize: '9.5px',
+                          padding: '2px 4px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="Variant A">Variant A</option>
+                        <option value="Variant B">Variant B</option>
+                        <option value="Variant C">Variant C</option>
+                      </select>
+
+                      <select
+                        value={player.status || 'Mapped'}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => handleFieldChange(player.id, 'status', e.target.value)}
+                        style={{
+                          flex: 1.2,
+                          background: '#07080c',
+                          border: '1px solid var(--border-muted)',
+                          borderRadius: '4px',
+                          color: isReady ? 'var(--color-success)' : 'var(--accent-blue)',
+                          fontWeight: 'bold',
+                          fontSize: '9.5px',
+                          padding: '2px 4px',
+                          outline: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        <option value="Pending">Pending</option>
+                        <option value="Mapped">Mapped</option>
+                        <option value="Ready for Export">Ready</option>
+                      </select>
+                    </div>
+
+                    {/* Scale bar or Warnings Banner */}
+                    <div style={{ marginTop: '2px' }} onClick={(e) => e.stopPropagation()}>
+                      {warning ? (
+                        <div style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          background: 'rgba(235,87,87,0.06)',
+                          border: '1px solid rgba(235,87,87,0.18)',
+                          color: '#eb5757',
+                          fontSize: '8.5px',
+                          padding: '3px 6px',
+                          borderRadius: '4px',
+                          fontWeight: 'bold'
+                        }}>
+                          <AlertTriangle size={9} />
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{warning}</span>
+                        </div>
+                      ) : (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '8px', color: 'var(--text-disabled)', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                            SCALE {Math.round(player.nameScale * 100)}%
+                          </span>
+                          <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                            <div
+                              style={{
+                                height: '100%',
+                                width: `${player.nameScale * 100}%`,
+                                background: player.nameScale < 0.7 ? '#f2c94c' : 'var(--color-success)',
+                                borderRadius: '2px'
+                              }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </aside>
