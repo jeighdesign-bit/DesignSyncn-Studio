@@ -1,5 +1,6 @@
 @import './variables.css';
 @import './projects.css';
+@import './light-mode.css';
 
 /* Normalization & Base Reset */
 * {

@@ -1,0 +1,979 @@
+/*
+ * ============================================================
+ * DESIGNSYNC STUDIO — LIGHT PRODUCTION THEME
+ * ============================================================
+ * Professional soft-industrial palette. No pure whites.
+ * No auto-inversions. Every rule is intentionally designed.
+ * Inspired by: Figma, Linear, Framer, Adobe, Canva light modes.
+ * ============================================================
+ *
+ * Palette reference:
+ *   Surface 0 (canvas bg):  #edf0f5
+ *   Surface 1 (panel bg):   #f5f7fa
+ *   Surface 2 (card/input): #ffffff
+ *   Surface 3 (raised):     #e8ecf2
+ *   Border subtle:          #d1d8e6
+ *   Border strong:          #b0bdd4
+ *   Text primary:           #1a2033
+ *   Text secondary:         #4a5568
+ *   Text muted:             #8a97ad
+ *   Accent blue:            #0066cc
+ *   Accent blue light:      #dbeafe
+ * ============================================================
+ */
+
+/* ============================================================
+   1. GLOBAL BASE
+   ============================================================ */
+[data-theme="light"] {
+  color-scheme: light;
+}
+
+[data-theme="light"] *::-webkit-scrollbar-track {
+  background: #edf0f5;
+}
+
+[data-theme="light"] *::-webkit-scrollbar-thumb {
+  background: #b0bdd4;
+}
+
+[data-theme="light"] *::-webkit-scrollbar-thumb:hover {
+  background: #8a97ad;
+}
+
+/* Global glassmorphism override */
+[data-theme="light"] .glassmorphism {
+  background: rgba(245, 247, 250, 0.9);
+  backdrop-filter: blur(12px);
+  border-color: #d1d8e6;
+}
+
+/* Grid overlay — very subtle in light mode */
+[data-theme="light"] .blueprint-grid {
+  background-image:
+    linear-gradient(to right, rgba(176, 189, 212, 0.2) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(176, 189, 212, 0.2) 1px, transparent 1px),
+    linear-gradient(to right, rgba(176, 189, 212, 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(176, 189, 212, 0.4) 1px, transparent 1px);
+}
+
+[data-theme="light"] .radial-glow {
+  background: radial-gradient(circle, rgba(0, 102, 204, 0.04) 0%, transparent 70%);
+}
+
+/* ============================================================
+   2. BASE HTML ELEMENTS (inputs, buttons, selects)
+   ============================================================ */
+[data-theme="light"] input,
+[data-theme="light"] select,
+[data-theme="light"] textarea {
+  background-color: #ffffff;
+  border-color: #d1d8e6;
+  color: #1a2033;
+}
+
+[data-theme="light"] input::placeholder,
+[data-theme="light"] textarea::placeholder {
+  color: #8a97ad;
+}
+
+[data-theme="light"] input:focus,
+[data-theme="light"] select:focus,
+[data-theme="light"] textarea:focus {
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+[data-theme="light"] button {
+  background-color: #f5f7fa;
+  border-color: #d1d8e6;
+  color: #1a2033;
+}
+
+[data-theme="light"] button:hover {
+  background-color: #e8ecf2;
+  border-color: #b0bdd4;
+}
+
+[data-theme="light"] button.primary {
+  background-color: #0066cc;
+  border-color: #0066cc;
+  color: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 102, 204, 0.2), 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] button.primary:hover {
+  background-color: #0052a3;
+  border-color: #0052a3;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.25);
+}
+
+[data-theme="light"] button.ghost {
+  background: transparent;
+  border-color: transparent;
+  color: #4a5568;
+}
+
+[data-theme="light"] button.ghost:hover {
+  background: #edf0f5;
+  color: #1a2033;
+  border-color: transparent;
+}
+
+/* ============================================================
+   3. EDITOR CHROME — TOPBAR & NAVIGATION
+   ============================================================ */
+[data-theme="light"] .editor-container {
+  background-color: #edf0f5;
+}
+
+[data-theme="light"] .editor-topbar {
+  background-color: #ffffff;
+  border-bottom-color: #d1d8e6;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .topbar-brand {
+  color: #1a2033;
+}
+
+[data-theme="light"] .topbar-breadcrumbs {
+  color: #4a5568;
+}
+
+[data-theme="light"] .topbar-breadcrumb-separator {
+  color: #b0bdd4;
+}
+
+[data-theme="light"] .topbar-autosave {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+  color: #8a97ad;
+}
+
+[data-theme="light"] .topbar-center {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .stage-tab {
+  color: #4a5568;
+}
+
+[data-theme="light"] .stage-tab:hover:not(:disabled):not(.locked) {
+  color: #1a2033;
+  background: #edf0f5;
+}
+
+[data-theme="light"] .stage-tab.active {
+  color: #ffffff;
+  background: #0066cc;
+}
+
+[data-theme="light"] .stage-tab:disabled,
+[data-theme="light"] .stage-tab.locked {
+  color: #b0bdd4 !important;
+}
+
+[data-theme="light"] .avatar {
+  background: #0066cc;
+  border-color: #d1d8e6;
+  color: #ffffff;
+}
+
+/* ============================================================
+   4. EDITOR SIDEBAR (LEFT NAV)
+   ============================================================ */
+[data-theme="light"] .editor-sidebar {
+  background-color: #ffffff;
+  border-right-color: #d1d8e6;
+}
+
+[data-theme="light"] .sidebar-nav-item {
+  color: #4a5568;
+}
+
+[data-theme="light"] .sidebar-nav-item:hover:not(:disabled):not(.locked) {
+  color: #1a2033;
+  background: #f5f7fa;
+}
+
+[data-theme="light"] .sidebar-nav-item.active {
+  color: #0066cc;
+  background: #dbeafe;
+  border-color: rgba(0, 102, 204, 0.25);
+}
+
+[data-theme="light"] .sidebar-nav-item:disabled,
+[data-theme="light"] .sidebar-nav-item.locked {
+  color: #b0bdd4 !important;
+}
+
+/* ============================================================
+   5. CANVAS VIEWPORT
+   ============================================================ */
+[data-theme="light"] .canvas-viewport {
+  background: #edf0f5;
+}
+
+[data-theme="light"] .canvas-ruler {
+  background: #f5f7fa;
+  color: #8a97ad;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .canvas-ruler-corner {
+  background: #edf0f5;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .canvas-controls {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .canvas-controls button {
+  color: #4a5568;
+}
+
+[data-theme="light"] .canvas-controls button:hover {
+  background: #f5f7fa;
+  color: #1a2033;
+}
+
+[data-theme="light"] .canvas-controls span {
+  color: #1a2033;
+}
+
+/* ============================================================
+   6. INSPECTOR PANEL (RIGHT SIDEBAR)
+   ============================================================ */
+[data-theme="light"] .editor-inspector {
+  background: #ffffff;
+  border-left-color: #d1d8e6;
+}
+
+[data-theme="light"] .inspector-section {
+  border-bottom-color: #edf0f5;
+}
+
+[data-theme="light"] .inspector-section-header {
+  color: #4a5568;
+}
+
+[data-theme="light"] .inspector-header {
+  background: #f5f7fa;
+  border-bottom-color: #e8ecf2;
+  padding: 10px 16px;
+}
+
+[data-theme="light"] .inspector-header-title {
+  color: #4a5568;
+}
+
+[data-theme="light"] .inspector-header-badge {
+  background: #0066cc;
+}
+
+[data-theme="light"] .inspector-label {
+  color: #8a97ad;
+}
+
+[data-theme="light"] .inspector-card {
+  background: #f5f7fa;
+  border-color: #e8ecf2;
+}
+
+[data-theme="light"] .inspector-input-dark {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  color: #1a2033;
+}
+
+[data-theme="light"] .inspector-input-dark:focus {
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+[data-theme="light"] .inspector-btn-toggle {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+  color: #4a5568;
+}
+
+[data-theme="light"] .inspector-btn-toggle:hover {
+  color: #1a2033;
+  border-color: #b0bdd4;
+}
+
+[data-theme="light"] .inspector-btn-toggle.active {
+  background: #0066cc;
+  color: #ffffff;
+  border-color: #0066cc;
+}
+
+/* ============================================================
+   7. LAYERS SIDEBAR (LEFT PANEL)
+   ============================================================ */
+[data-theme="light"] .layers-sidebar {
+  background: #ffffff;
+  border-right-color: #d1d8e6;
+}
+
+[data-theme="light"] .layers-sidebar-title {
+  color: #4a5568;
+  border-bottom-color: #e8ecf2;
+}
+
+[data-theme="light"] .layers-count-bar {
+  color: #8a97ad;
+  border-bottom-color: #e8ecf2;
+  background: #f5f7fa;
+}
+
+[data-theme="light"] .layers-empty-title {
+  color: #4a5568;
+}
+
+[data-theme="light"] .layers-empty-sub {
+  color: #8a97ad;
+}
+
+[data-theme="light"] .layer-item {
+  border-bottom-color: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .layer-item:hover {
+  background: #f5f7fa;
+}
+
+[data-theme="light"] .layer-item.active {
+  background: #dbeafe;
+  border-left-color: #0066cc;
+}
+
+[data-theme="light"] .layer-item.hidden-layer {
+  opacity: 0.5;
+}
+
+[data-theme="light"] .layer-item-name {
+  color: #1a2033;
+}
+
+[data-theme="light"] .layer-locked-badge {
+  color: #8a97ad;
+  background: #edf0f5;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .layer-action-btn {
+  color: #8a97ad;
+}
+
+[data-theme="light"] .layer-action-btn:hover {
+  background: #edf0f5;
+  color: #1a2033;
+}
+
+/* ============================================================
+   8. STUDIO TOPBAR / TOOLBAR
+   ============================================================ */
+[data-theme="light"] .studio-topbar {
+  background: #ffffff;
+  border-bottom-color: #d1d8e6;
+}
+
+[data-theme="light"] .studio-view-tab {
+  color: #4a5568;
+}
+
+[data-theme="light"] .studio-view-tab:hover {
+  background: #f5f7fa;
+  color: #1a2033;
+}
+
+[data-theme="light"] .studio-view-tab.active {
+  background: #0066cc;
+  color: #ffffff;
+}
+
+[data-theme="light"] .studio-ctrl-group {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .studio-ctrl-label {
+  color: #8a97ad;
+}
+
+[data-theme="light"] .studio-ctrl-btn {
+  color: #4a5568;
+}
+
+[data-theme="light"] .studio-ctrl-btn:hover {
+  color: #1a2033;
+  background: #edf0f5;
+}
+
+[data-theme="light"] .studio-ctrl-btn.active {
+  background: #0066cc;
+  color: #ffffff;
+}
+
+[data-theme="light"] .studio-ctrl-icon-btn {
+  color: #4a5568;
+}
+
+[data-theme="light"] .studio-ctrl-icon-btn:hover {
+  background: #edf0f5;
+  color: #1a2033;
+}
+
+[data-theme="light"] .studio-zoom-label {
+  color: #1a2033;
+}
+
+[data-theme="light"] .studio-toolbar {
+  background: #ffffff;
+  border-right-color: #d1d8e6;
+}
+
+[data-theme="light"] .studio-toolbar-btn {
+  color: #4a5568;
+}
+
+[data-theme="light"] .studio-toolbar-btn:hover {
+  background: #f5f7fa;
+  color: #1a2033;
+}
+
+[data-theme="light"] .studio-toolbar-btn.active {
+  background: #0066cc;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0, 102, 204, 0.25);
+}
+
+[data-theme="light"] .studio-toolbar-divider {
+  background: #d1d8e6;
+}
+
+/* ============================================================
+   9. BOTTOM DOCK
+   ============================================================ */
+[data-theme="light"] .editor-dock {
+  background: #ffffff;
+  border-top-color: #d1d8e6;
+}
+
+[data-theme="light"] .dock-header {
+  background: #f5f7fa;
+  border-bottom-color: #d1d8e6;
+}
+
+[data-theme="light"] .dock-title {
+  color: #4a5568;
+}
+
+[data-theme="light"] .dock-body {
+  background: #ffffff;
+}
+
+/* ============================================================
+   10. ALIGNMENT CONTROLS
+   ============================================================ */
+[data-theme="light"] .alignment-icon-bar {
+  background-color: #f5f7fa;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .alignment-icon-btn {
+  color: #4a5568;
+}
+
+[data-theme="light"] .alignment-icon-btn:hover {
+  background-color: #edf0f5;
+  color: #1a2033;
+}
+
+[data-theme="light"] .alignment-icon-btn.active {
+  background-color: #dbeafe;
+  color: #0066cc;
+  border-color: rgba(0, 102, 204, 0.2);
+}
+
+/* ============================================================
+   11. RESIZE HANDLES
+   ============================================================ */
+[data-theme="light"] .resize-handle-vertical::after {
+  background-color: #d1d8e6;
+}
+
+[data-theme="light"] .resize-handle-vertical:hover::after,
+[data-theme="light"] .resize-handle-vertical.dragging::after {
+  background-color: #0066cc;
+  box-shadow: 0 0 6px rgba(0, 102, 204, 0.3);
+}
+
+[data-theme="light"] .resize-handle-horizontal::after {
+  background-color: #d1d8e6;
+}
+
+[data-theme="light"] .resize-handle-horizontal:hover::after,
+[data-theme="light"] .resize-handle-horizontal.dragging::after {
+  background-color: #0066cc;
+  box-shadow: 0 0 6px rgba(0, 102, 204, 0.3);
+}
+
+/* ============================================================
+   12. MEASURE PANEL & CALIBRATION STRIP
+   ============================================================ */
+[data-theme="light"] .measure-panel {
+  background: #f5f7fa;
+  border-top-color: #e8ecf2;
+  border-bottom-color: #e8ecf2;
+}
+
+[data-theme="light"] .measure-panel-title {
+  color: #0066cc;
+}
+
+[data-theme="light"] .measure-label {
+  color: #8a97ad;
+}
+
+[data-theme="light"] .measure-value {
+  color: #1a2033;
+  background: #ffffff;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .calibration-strip {
+  background: #edf0f5;
+  border-top-color: #d1d8e6;
+  color: #8a97ad;
+}
+
+/* ============================================================
+   13. ASSETS / LOGO PANEL
+   ============================================================ */
+[data-theme="light"] .assets-section {
+  background: #ffffff;
+  border-bottom-color: #e8ecf2;
+}
+
+[data-theme="light"] .assets-section-header {
+  background: #f5f7fa;
+  border-bottom-color: #e8ecf2;
+  color: #4a5568;
+}
+
+[data-theme="light"] .assets-section-header:hover {
+  background: #edf0f5;
+  color: #1a2033;
+}
+
+[data-theme="light"] .assets-count-badge {
+  background: rgba(0, 102, 204, 0.1);
+  color: #0066cc;
+}
+
+[data-theme="light"] .logo-assets-grid {
+  background: #ffffff;
+}
+
+[data-theme="light"] .logo-asset-card {
+  background: #f5f7fa;
+  border-color: #e8ecf2;
+}
+
+[data-theme="light"] .logo-asset-card:hover {
+  border-color: #0066cc;
+  box-shadow: 0 4px 12px rgba(0, 102, 204, 0.1);
+}
+
+[data-theme="light"] .logo-asset-thumb {
+  background: #edf0f5;
+}
+
+[data-theme="light"] .logo-asset-name {
+  color: #1a2033;
+}
+
+[data-theme="light"] .logo-assets-empty {
+  background: #ffffff;
+  color: #8a97ad;
+}
+
+[data-theme="light"] .logo-assets-link-btn {
+  color: #0066cc;
+}
+
+[data-theme="light"] .logo-assets-link-btn:hover {
+  color: #0052a3;
+}
+
+/* ============================================================
+   14. DASHBOARD & PROJECTS HUB
+   ============================================================ */
+[data-theme="light"] .dashboard-container {
+  background-color: #edf0f5;
+}
+
+[data-theme="light"] .dashboard-header {
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom-color: #d1d8e6;
+  backdrop-filter: blur(12px);
+}
+
+[data-theme="light"] .dashboard-brand {
+  color: #1a2033;
+}
+
+[data-theme="light"] .dashboard-brand-dot {
+  box-shadow: 0 0 8px rgba(0, 102, 204, 0.3);
+}
+
+[data-theme="light"] .stat-card {
+  background: linear-gradient(145deg, #ffffff 0%, #f5f7fa 100%);
+  border-color: #d1d8e6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .stat-card:hover {
+  border-color: #b0bdd4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+[data-theme="light"] .stat-card::before {
+  opacity: 0.7;
+}
+
+[data-theme="light"] .stat-label {
+  color: #4a5568;
+}
+
+[data-theme="light"] .stat-value {
+  color: #1a2033;
+}
+
+/* ============================================================
+   15. MODAL SYSTEM
+   ============================================================ */
+[data-theme="light"] .modal-overlay {
+  background: rgba(26, 32, 51, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+[data-theme="light"] .modal-card {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.12), 0 8px 16px rgba(0, 0, 0, 0.06);
+}
+
+[data-theme="light"] .modal-header {
+  background: #f5f7fa;
+  border-bottom-color: #e8ecf2;
+}
+
+[data-theme="light"] .modal-title {
+  color: #1a2033;
+  text-shadow: none;
+}
+
+[data-theme="light"] .modal-split-container {
+  background: #ffffff;
+}
+
+[data-theme="light"] .modal-controls-pane {
+  border-right-color: #e8ecf2;
+}
+
+[data-theme="light"] .modal-preview-pane {
+  background: radial-gradient(circle at center, #edf0f5 0%, #e2e8f0 100%);
+}
+
+[data-theme="light"] .modal-stepper-line {
+  background: #d1d8e6;
+}
+
+[data-theme="light"] .modal-step-node {
+  background: #edf0f5;
+  border-color: #d1d8e6;
+  color: #4a5568;
+}
+
+[data-theme="light"] .modal-step-node.active {
+  background: #ffffff;
+  border-color: #0066cc;
+  color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.15);
+}
+
+[data-theme="light"] .modal-step-node.completed {
+  background: #0066cc;
+  border-color: #0066cc;
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+[data-theme="light"] .modal-step-label {
+  color: #8a97ad;
+}
+
+[data-theme="light"] .modal-step-node.active .modal-step-label {
+  color: #0066cc;
+}
+
+[data-theme="light"] .modal-footer {
+  background: #f5f7fa;
+  border-top-color: #e8ecf2;
+}
+
+[data-theme="light"] .modal-body {
+  background: #ffffff;
+}
+
+/* ============================================================
+   16. VISUAL APPAREL CARDS (modal step 2)
+   ============================================================ */
+[data-theme="light"] .visual-apparel-card {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .visual-apparel-card:hover {
+  background: #edf0f5;
+  border-color: #0066cc;
+  box-shadow: 0 4px 16px rgba(0, 102, 204, 0.1);
+  transform: translateY(-2px);
+}
+
+[data-theme="light"] .visual-apparel-card.active {
+  background: #dbeafe;
+  border-color: #0066cc;
+  box-shadow: 0 4px 16px rgba(0, 102, 204, 0.15);
+}
+
+/* ============================================================
+   17. STYLE PRESET CHIPS
+   ============================================================ */
+[data-theme="light"] .style-preset-chip {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .style-preset-chip:hover {
+  background: #edf0f5;
+  border-color: #b0bdd4;
+}
+
+[data-theme="light"] .style-preset-chip.active {
+  background: #dbeafe;
+  border-color: #0066cc;
+  box-shadow: 0 0 0 2px rgba(0, 102, 204, 0.1);
+}
+
+[data-theme="light"] .style-preset-name {
+  color: #4a5568;
+}
+
+[data-theme="light"] .style-preset-chip.active .style-preset-name {
+  color: #0066cc;
+}
+
+/* ============================================================
+   18. SELECTOR CARDS & SEGMENTED SELECTORS (form controls)
+   ============================================================ */
+[data-theme="light"] .selector-card {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .selector-card:hover {
+  background: #edf0f5;
+  border-color: #b0bdd4;
+}
+
+[data-theme="light"] .selector-card.active {
+  background: #dbeafe;
+  border-color: #0066cc;
+}
+
+[data-theme="light"] .selector-card-title {
+  color: #1a2033;
+}
+
+[data-theme="light"] .selector-card-desc {
+  color: #4a5568;
+}
+
+[data-theme="light"] .segmented-selector {
+  background: #edf0f5;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .segmented-option {
+  color: #4a5568;
+}
+
+[data-theme="light"] .segmented-option:hover {
+  color: #1a2033;
+}
+
+[data-theme="light"] .segmented-option.active {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  color: #1a2033;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+/* ============================================================
+   19. FORM INPUTS IN MODAL
+   ============================================================ */
+[data-theme="light"] .form-label {
+  color: #4a5568;
+}
+
+[data-theme="light"] .form-input-text {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  color: #1a2033;
+}
+
+[data-theme="light"] .form-input-text:focus {
+  border-color: #0066cc;
+  box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+}
+
+/* ============================================================
+   20. ADVANCED SETTINGS ACCORDION
+   ============================================================ */
+[data-theme="light"] .advanced-accordion-trigger {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+  color: #4a5568;
+}
+
+[data-theme="light"] .advanced-accordion-trigger:hover {
+  background: #edf0f5;
+  border-color: #b0bdd4;
+  color: #1a2033;
+}
+
+[data-theme="light"] .advanced-accordion-content {
+  background: #ffffff;
+  border-color: #d1d8e6;
+}
+
+/* ============================================================
+   21. RECOMMENDED BADGE
+   ============================================================ */
+[data-theme="light"] .recommended-badge {
+  background: rgba(0, 102, 204, 0.08);
+  border-color: rgba(0, 102, 204, 0.2);
+  color: #0066cc;
+}
+
+/* ============================================================
+   22. BRIEF WORKSPACE (Stage 1 — Create)
+   ============================================================ */
+[data-theme="light"] .brief-workspace-premium {
+  background-color: #edf0f5;
+  background-image:
+    linear-gradient(rgba(176, 189, 212, 0.15) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(176, 189, 212, 0.15) 1px, transparent 1px);
+  color: #1a2033;
+}
+
+[data-theme="light"] .atmosphere-glow {
+  opacity: 0.04;
+}
+
+/* ============================================================
+   23. PROJECT CARDS (DASHBOARD)
+   ============================================================ */
+[data-theme="light"] .project-card {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+}
+
+[data-theme="light"] .project-card:hover {
+  border-color: #b0bdd4;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.07);
+}
+
+/* ============================================================
+   24. AI DESIGN STUDIO (Stage 2 — Generate)
+   ============================================================ */
+[data-theme="light"] .ai-concept-card {
+  background: #ffffff;
+  border-color: #d1d8e6;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .ai-concept-card:hover {
+  border-color: #0066cc;
+  box-shadow: 0 6px 20px rgba(0, 102, 204, 0.1);
+}
+
+[data-theme="light"] .ai-center-infobar {
+  background: rgba(245, 247, 250, 0.95);
+  border-color: #d1d8e6;
+  backdrop-filter: blur(8px);
+}
+
+[data-theme="light"] .ai-center-info-item {
+  color: #4a5568;
+}
+
+[data-theme="light"] .ai-quick-btn {
+  background: #f5f7fa;
+  border-color: #d1d8e6;
+  color: #1a2033;
+}
+
+[data-theme="light"] .ai-quick-btn:hover {
+  background: #dbeafe;
+  border-color: #0066cc;
+  color: #0066cc;
+}
+
+/* ============================================================
+   25. PRODUCTION STUDIO PANELS (Stage 3 — Refine)
+   ============================================================ */
+[data-theme="light"] .inspector-card {
+  background: #f5f7fa;
+  border-color: #e8ecf2;
+}
+
+/* Mockup ambient overlay — much lighter in light mode */
+[data-theme="light"] .mockup-canvas-viewport::before {
+  background: radial-gradient(
+    ellipse 80% 70% at 50% 50%,
+    transparent 40%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+}
+
+[data-theme="light"] .mockup-canvas-viewport::after {
+  background: radial-gradient(
+    ellipse at 50% 100%,
+    rgba(0, 102, 204, 0.03) 0%,
+    transparent 70%
+  );
+}
+
+/* ============================================================
+   26. EXPORT / PRE-FLIGHT PANEL (Stage 4 — Produce)
+   ============================================================ */
+[data-theme="light"] .preflight-panel {
+  background: #ffffff;
+  border-color: #d1d8e6;
+}
+
+[data-theme="light"] .preflight-section {
+  background: #f5f7fa;
+  border-color: #e8ecf2;
+}
