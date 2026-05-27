@@ -3,8 +3,11 @@
 
   /* Surface layers (darkest → lightest) */
   --bg-primary:    #09090b;     /* Canvas / App background */
+  --bg-primary-rgb:9, 9, 11;
   --bg-secondary:  #111115;     /* Panel / sidebar background */
+  --bg-secondary-rgb:17, 17, 21;
   --bg-tertiary:   #181820;     /* Card / raised element */
+  --bg-tertiary-rgb:24, 24, 32;
   --bg-hover:      #22222e;     /* Hover state */
 
   /* Accent Colors */
@@ -60,8 +63,11 @@
 [data-theme="light"] {
   /* Surface layers */
   --bg-primary:    #edf0f5;     /* App canvas / workspace background */
+  --bg-primary-rgb:237, 240, 245;
   --bg-secondary:  #f5f7fa;     /* Panel / sidebar background */
+  --bg-secondary-rgb:245, 247, 250;
   --bg-tertiary:   #e8ecf2;     /* Card / raised element */
+  --bg-tertiary-rgb:232, 236, 242;
   --bg-hover:      #dbe3ef;     /* Hover state */
 
   /* Accent Colors */

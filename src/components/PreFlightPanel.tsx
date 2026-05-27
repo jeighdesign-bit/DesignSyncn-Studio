@@ -797,35 +797,35 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   };
 
   return (
-    <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', background: '#09090e' }}>
+    <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden', background: 'var(--bg-primary)' }}>
       
       {/* ─── LEFT SIDE: SETTINGS PANEL ───────────────────────────────────────── */}
       <div style={{
         width: '320px',
         minWidth: '320px',
-        borderRight: '1px solid #1f1f2e',
-        background: '#111116',
+        borderRight: '1px solid var(--border-muted)',
+        background: 'var(--bg-secondary)',
         display: 'flex',
         flexDirection: 'column',
         height: '100%'
       }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid #1f1f2e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '16px', borderBottom: '1px solid var(--border-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <Settings size={18} style={{ color: 'var(--accent-blue)' }} />
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', margin: 0 }}>Export Specifications</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>Export Specifications</h3>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Export Mode */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '11px', color: '#7a7a90', fontWeight: 'bold' }}>Export Mode</label>
-            <div style={{ display: 'flex', background: '#09090c', padding: '3px', borderRadius: '6px', border: '1px solid #1f1f2e' }}>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Export Mode</label>
+            <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '3px', borderRadius: '6px', border: '1px solid var(--border-muted)' }}>
               <button 
                 onClick={() => setExportMode('sheet')}
                 style={{
                   flex: 1, padding: '6px 0', fontSize: '11px', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                  background: exportMode === 'sheet' ? '#1f1f2e' : 'transparent',
-                  color: exportMode === 'sheet' ? '#fff' : '#7a7a90', fontWeight: 'bold'
+                  background: exportMode === 'sheet' ? 'var(--bg-hover)' : 'transparent',
+                  color: exportMode === 'sheet' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 'bold'
                 }}
               >
                 Production Sheet
@@ -834,8 +834,8 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                 onClick={() => setExportMode('nesting')}
                 style={{
                   flex: 1, padding: '6px 0', fontSize: '11px', border: 'none', borderRadius: '4px', cursor: 'pointer',
-                  background: exportMode === 'nesting' ? '#1f1f2e' : 'transparent',
-                  color: exportMode === 'nesting' ? '#fff' : '#7a7a90', fontWeight: 'bold'
+                  background: exportMode === 'nesting' ? 'var(--bg-hover)' : 'transparent',
+                  color: exportMode === 'nesting' ? 'var(--text-primary)' : 'var(--text-secondary)', fontWeight: 'bold'
                 }}
               >
                 Nesting Roll
@@ -846,11 +846,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           {/* Roster Variant Selection (Sheet Mode only) */}
           {exportMode === 'sheet' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: '#7a7a90', fontWeight: 'bold' }}>Preview Player Variant</label>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Preview Player Variant</label>
               <select
                 value={selectedPlayerId}
                 onChange={e => setSelectedPlayerId(e.target.value)}
-                style={{ width: '100%', background: '#09090c', border: '1px solid #1f1f2e', color: '#fff', fontSize: '11px', padding: '8px', borderRadius: '6px' }}
+                style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', fontSize: '11px', padding: '8px', borderRadius: '6px' }}
               >
                 {project.roster.map(p => (
                   <option key={p.id} value={p.id}>{p.name} (#{p.number}) [{p.size}]</option>
@@ -861,11 +861,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
 
           {/* DPI Resolution */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <label style={{ fontSize: '11px', color: '#7a7a90', fontWeight: 'bold' }}>Output Resolution (DPI)</label>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Output Resolution (DPI)</label>
             <select
               value={targetDpi}
               onChange={e => setTargetDpi(Number(e.target.value))}
-              style={{ width: '100%', background: '#09090c', border: '1px solid #1f1f2e', color: '#fff', fontSize: '11px', padding: '8px', borderRadius: '6px' }}
+              style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', fontSize: '11px', padding: '8px', borderRadius: '6px' }}
             >
               <option value="72">72 DPI (Draft / Digital)</option>
               <option value="150">150 DPI (Medium Quality)</option>
@@ -876,11 +876,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           {/* Printer Width (Nesting Mode only) */}
           {exportMode === 'nesting' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-              <label style={{ fontSize: '11px', color: '#7a7a90', fontWeight: 'bold' }}>Sublimation Printer Width</label>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Sublimation Printer Width</label>
               <select
                 value={printerWidthInches}
                 onChange={e => setPrinterWidthInches(Number(e.target.value))}
-                style={{ width: '100%', background: '#09090c', border: '1px solid #1f1f2e', color: '#fff', fontSize: '11px', padding: '8px', borderRadius: '6px' }}
+                style={{ width: '100%', background: 'var(--bg-primary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', fontSize: '11px', padding: '8px', borderRadius: '6px' }}
               >
                 <option value="24">24 inch (Small / Plotter)</option>
                 <option value="36">36 inch (Standard Sublimation Roll)</option>
@@ -893,7 +893,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           {/* Seam Bleed Margins */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <label style={{ fontSize: '11px', color: '#7a7a90', fontWeight: 'bold' }}>Sewing Bleed Margins</label>
+              <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Sewing Bleed Margins</label>
               <span style={{ fontSize: '10px', color: 'var(--accent-blue)' }}>{bleedInches} in</span>
             </div>
             <input 
@@ -909,20 +909,20 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
 
           {/* Include Toggles */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
-            <label style={{ fontSize: '11px', color: '#7a7a90', fontWeight: 'bold' }}>Includes & Layers</label>
+            <label style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 'bold' }}>Includes & Layers</label>
             
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', color: '#fff' }}>Include Sleeves</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-primary)' }}>Include Sleeves</span>
               <input type="checkbox" checked={includeSleeves} onChange={e => setIncludeSleeves(e.target.checked)} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', color: '#fff' }}>Include Collar</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-primary)' }}>Include Collar</span>
               <input type="checkbox" checked={includeCollar} onChange={e => setIncludeCollar(e.target.checked)} />
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: '11px', color: '#fff' }}>Safe Zones Overlay</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-primary)' }}>Safe Zones Overlay</span>
               <input type="checkbox" checked={showSafeZones} onChange={e => setShowSafeZones(e.target.checked)} />
             </div>
           </div>
@@ -935,35 +935,35 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
         
         {/* Top Control bar */}
         <div style={{
-          height: '42px', borderBottom: '1px solid #1f1f2e', background: '#0e0e12',
+          height: '42px', borderBottom: '1px solid var(--border-muted)', background: 'var(--bg-secondary)',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 16px', zIndex: 10
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Printer size={14} style={{ color: 'var(--accent-blue)' }} />
-            <span style={{ fontSize: '12px', fontWeight: 'bold', color: '#fff' }}>
+            <span style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
               {exportMode === 'sheet' ? 'Production Sheet Spec Sheet Preview' : `Print Ready Nesting Roll Preview (${printerWidthInches}")`}
             </span>
           </div>
 
           {/* Zoom Actions */}
           <div style={{ display: 'flex', gap: '4px' }}>
-            <button onClick={() => handleZoom(0.8)} style={{ background: '#1c1c28', border: '1px solid #2d2d3f', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ZoomOut size={12} /></button>
-            <span style={{ color: '#fff', fontSize: '11px', alignSelf: 'center', margin: '0 8px', fontFamily: 'monospace' }}>{Math.round(zoom * 100)}%</span>
-            <button onClick={() => handleZoom(1.2)} style={{ background: '#1c1c28', border: '1px solid #2d2d3f', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ZoomIn size={12} /></button>
-            <button onClick={() => setZoom(exportMode === 'sheet' ? 0.25 : 0.4)} style={{ background: '#1c1c28', border: '1px solid #2d2d3f', color: '#fff', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px' }}>Fit</button>
+            <button onClick={() => handleZoom(0.8)} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ZoomOut size={12} /></button>
+            <span style={{ color: 'var(--text-primary)', fontSize: '11px', alignSelf: 'center', margin: '0 8px', fontFamily: 'monospace' }}>{Math.round(zoom * 100)}%</span>
+            <button onClick={() => handleZoom(1.2)} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}><ZoomIn size={12} /></button>
+            <button onClick={() => setZoom(exportMode === 'sheet' ? 0.25 : 0.4)} style={{ background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', padding: '4px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '10px' }}>Fit</button>
           </div>
         </div>
 
         {/* Viewport content */}
         <div 
           ref={viewportRef}
-          style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: '#060608' }}
+          style={{ flex: 1, overflow: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', background: 'var(--bg-primary)' }}
         >
           <div style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'center center',
             transition: 'transform 0.15s ease-out',
-            boxShadow: '0 12px 48px rgba(0,0,0,0.6)'
+            boxShadow: 'var(--shadow-lg)'
           }}>
             <canvas ref={canvasElRef} />
           </div>
@@ -975,48 +975,48 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       <div style={{
         width: '320px',
         minWidth: '320px',
-        borderLeft: '1px solid #1f1f2e',
-        background: '#111116',
+        borderLeft: '1px solid var(--border-muted)',
+        background: 'var(--bg-secondary)',
         display: 'flex',
         flexDirection: 'column',
         height: '100%'
       }}>
-        <div style={{ padding: '16px', borderBottom: '1px solid #1f1f2e', display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <div style={{ padding: '16px', borderBottom: '1px solid var(--border-muted)', display: 'flex', alignItems: 'center', gap: '8px' }}>
           <FileText size={18} style={{ color: 'var(--accent-blue)' }} />
-          <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', margin: 0 }}>Export Summary</h3>
+          <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: 'var(--text-primary)', margin: 0 }}>Export Summary</h3>
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
           
           {/* Stats Box */}
-          <div style={{ background: '#09090c', border: '1px solid #1f1f2e', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#7a7a90' }}>
+          <div style={{ background: 'var(--bg-primary)', border: '1px solid var(--border-muted)', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <span>Total Printable Width:</span>
-              <span style={{ color: '#fff', fontWeight: 'bold' }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
                 {exportMode === 'sheet' ? '60" (152.4 cm)' : `${printerWidthInches}" (${Math.round(printerWidthInches * 2.54)} cm)`}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#7a7a90' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <span>Estimated Length:</span>
-              <span style={{ color: '#fff', fontWeight: 'bold' }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
                 {exportMode === 'sheet' ? '60" (1.52 m)' : `${totalNestLengthInches.toFixed(1)}" (${(totalNestLengthInches * 0.0254).toFixed(2)} m)`}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#7a7a90' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <span>Output Area:</span>
-              <span style={{ color: '#fff', fontWeight: 'bold' }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
                 {exportMode === 'sheet' ? '25.0 sq ft' : `${((printerWidthInches * totalNestLengthInches) / 144).toFixed(1)} sq ft`}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#7a7a90' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <span>Nesting Efficiency:</span>
-              <span style={{ color: exportMode === 'sheet' ? '#fff' : nestEfficiency > 75 ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: 'bold' }}>
+              <span style={{ color: exportMode === 'sheet' ? 'var(--text-primary)' : nestEfficiency > 75 ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: 'bold' }}>
                 {exportMode === 'sheet' ? 'N/A' : `${nestEfficiency.toFixed(1)}%`}
               </span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#7a7a90' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)' }}>
               <span>Output File Size (Est):</span>
-              <span style={{ color: '#fff', fontWeight: 'bold' }}>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 'bold' }}>
                 {((0.5 + project.roster.length * 0.35) * (exportMode === 'sheet' ? 1 : 0.8)).toFixed(1)} MB
               </span>
             </div>
@@ -1024,10 +1024,10 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
 
           {/* Validation Diagnostics */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            <h4 style={{ fontSize: '11px', color: '#7a7a90', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Pre-Flight Diagnostics</h4>
+            <h4 style={{ fontSize: '11px', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: '0 0 4px 0' }}>Pre-Flight Diagnostics</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
               {diagnostics.map((c, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '8px', background: '#09090c', border: '1px solid #1f1f2e', padding: '8px 10px', borderRadius: '6px' }}>
+                <div key={idx} style={{ display: 'flex', gap: '8px', background: 'var(--bg-primary)', border: '1px solid var(--border-muted)', padding: '8px 10px', borderRadius: '6px' }}>
                   <div style={{ display: 'flex', alignItems: 'center' }}>
                     {c.status === 'success' ? (
                       <CheckCircle size={14} style={{ color: 'var(--color-success)' }} />
@@ -1038,8 +1038,8 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                     )}
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff' }}>{c.title}</span>
-                    <span style={{ fontSize: '9px', color: '#7a7a90' }}>{c.desc}</span>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)' }}>{c.title}</span>
+                    <span style={{ fontSize: '9px', color: 'var(--text-secondary)' }}>{c.desc}</span>
                   </div>
                 </div>
               ))}
@@ -1075,11 +1075,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
 
             {exporting && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#7a7a90' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: 'var(--text-secondary)' }}>
                   <span>{exportStep}</span>
                   <span style={{ fontFamily: 'monospace' }}>{exportProgress}%</span>
                 </div>
-                <div style={{ width: '100%', height: '6px', background: '#09090c', borderRadius: '3px', overflow: 'hidden', border: '1px solid #1f1f2e' }}>
+                <div style={{ width: '100%', height: '6px', background: 'var(--bg-primary)', borderRadius: '3px', overflow: 'hidden', border: '1px solid var(--border-muted)' }}>
                   <div style={{ width: `${exportProgress}%`, height: '100%', background: 'var(--accent-blue)', transition: 'width 0.4s' }}></div>
                 </div>
               </div>
@@ -1103,7 +1103,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                 <button
                   onClick={() => setDownloadReady(false)}
                   style={{
-                    width: '100%', height: '32px', background: 'transparent', border: '1px solid #1f1f2e', color: '#7a7a90',
+                    width: '100%', height: '32px', background: 'transparent', border: '1px solid var(--border-muted)', color: 'var(--text-secondary)',
                     borderRadius: '6px', fontSize: '11px', cursor: 'pointer'
                   }}
                 >

@@ -235,10 +235,10 @@ export const Canvas: React.FC<CanvasProps> = ({
         onWheel={handleWheel}
         style={{
           backgroundImage: `
-            linear-gradient(to right, rgba(20, 20, 28, 0.9) 1px, transparent 1px),
-            linear-gradient(to bottom, rgba(20, 20, 28, 0.9) 1px, transparent 1px)
+            linear-gradient(to right, var(--grid-line-color) 1px, transparent 1px),
+            linear-gradient(to bottom, var(--grid-line-color) 1px, transparent 1px)
           `,
-          backgroundColor: '#07070a',
+          backgroundColor: 'var(--bg-primary)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -276,7 +276,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 width: `${inchToPx(28)}px`,
                 height: `${inchToPx(34)}px`,
                 border: project.selectedLayerId === 'template-front' ? '2px solid var(--accent-blue)' : '1px dashed var(--border-active)',
-                background: 'rgba(10, 10, 14, 0.94)',
+                background: 'rgba(var(--bg-secondary-rgb), 0.94)',
                 borderRadius: '8px',
                 padding: '20px',
                 transition: 'border-color var(--transition-fast)',
@@ -458,7 +458,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                 width: `${inchToPx(28)}px`,
                 height: `${inchToPx(34)}px`,
                 border: project.selectedLayerId === 'template-back' ? '2px solid var(--accent-blue)' : '1px dashed var(--border-active)',
-                background: 'rgba(10, 10, 14, 0.94)',
+                background: 'rgba(var(--bg-secondary-rgb), 0.94)',
                 borderRadius: '8px',
                 padding: '20px',
                 transition: 'border-color var(--transition-fast)',
@@ -640,7 +640,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     width: `${inchToPx(14)}px`,
                     height: `${inchToPx(18)}px`,
                     border: project.selectedLayerId === 'template-sleeve-l' ? '2px solid var(--accent-blue)' : '1px dashed var(--border-active)',
-                    background: 'rgba(10, 10, 14, 0.94)',
+                    background: 'rgba(var(--bg-secondary-rgb), 0.94)',
                     borderRadius: '8px',
                     padding: '12px',
                     cursor: isLayerLocked('template-sleeve-l') ? 'not-allowed' : 'pointer',
@@ -667,7 +667,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     width: `${inchToPx(14)}px`,
                     height: `${inchToPx(18)}px`,
                     border: project.selectedLayerId === 'template-sleeve-r' ? '2px solid var(--accent-blue)' : '1px dashed var(--border-active)',
-                    background: 'rgba(10, 10, 14, 0.94)',
+                    background: 'rgba(var(--bg-secondary-rgb), 0.94)',
                     borderRadius: '8px',
                     padding: '12px',
                     cursor: isLayerLocked('template-sleeve-r') ? 'not-allowed' : 'pointer',
@@ -694,7 +694,7 @@ export const Canvas: React.FC<CanvasProps> = ({
                     width: `${inchToPx(20)}px`,
                     height: `${inchToPx(4)}px`,
                     border: project.selectedLayerId === 'template-collar' ? '2px solid var(--accent-blue)' : '1px dashed var(--border-active)',
-                    background: 'rgba(10, 10, 14, 0.94)',
+                    background: 'rgba(var(--bg-secondary-rgb), 0.94)',
                     borderRadius: '8px',
                     padding: '8px',
                     cursor: isLayerLocked('template-collar') ? 'not-allowed' : 'pointer',

@@ -363,7 +363,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
       {activeObj && (
         <>
           {/* Asset Quality check */}
-          <div className="inspector-card" style={{ background: '#0e0e12', border: '1px solid #202028', padding: '12px', borderRadius: '8px' }}>
+          <div className="inspector-card" style={{ padding: '12px', borderRadius: '8px' }}>
             <div className="inspector-label" style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Asset Quality Check</div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
               <div style={{
@@ -371,7 +371,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
                 background: isHighRes ? 'var(--color-success)' : 'var(--color-warning)',
                 boxShadow: `0 0 6px ${isHighRes ? 'var(--color-success)' : 'var(--color-warning)'}`
               }} />
-              <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff' }}>
+              <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)' }}>
                 {isHighRes ? '✓ 300 DPI Production Ready' : '⚠ Low Resolution (72 DPI Warning)'}
               </span>
             </div>
@@ -384,7 +384,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
           </div>
 
           {/* Position & Scale */}
-          <div className="inspector-card" style={{ background: '#0e0e12', border: '1px solid #202028', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div className="inspector-card" style={{ padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div className="inspector-label" style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Position & Scaling</div>
             
             <div className="inspector-control-group">
@@ -407,7 +407,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
               <div className="inspector-control-group">
                 <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>X Coord (px)</label>
                 <input
-                  type="number" value={left} className="inspector-input-dark" style={{ width: '100%', background: '#07070a', border: '1px solid #202028', color: '#fff', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
+                  type="number" value={left} className="inspector-input-dark" style={{ width: '100%', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
                   onChange={e => {
                     const v = Number(e.target.value);
                     setLeft(v);
@@ -418,7 +418,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
               <div className="inspector-control-group">
                 <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Y Coord (px)</label>
                 <input
-                  type="number" value={top} className="inspector-input-dark" style={{ width: '100%', background: '#07070a', border: '1px solid #202028', color: '#fff', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
+                  type="number" value={top} className="inspector-input-dark" style={{ width: '100%', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
                   onChange={e => {
                     const v = Number(e.target.value);
                     setTop(v);
@@ -430,7 +430,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
           </div>
 
           {/* Alignment */}
-          <div className="inspector-card" style={{ background: '#0e0e12', border: '1px solid #202028', padding: '12px', borderRadius: '8px' }}>
+          <div className="inspector-card" style={{ padding: '12px', borderRadius: '8px' }}>
             <div className="inspector-label" style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>Alignment Tools</div>
             <button
               onClick={centerLogo}
@@ -471,18 +471,18 @@ const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', height: '100%', overflowY: 'auto' }}>
       {/* 1. Project Specs Brief Summary */}
-      <div style={{ background: '#0e0e12', border: '1px solid #202028', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <div className="inspector-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Sparkles size={14} style={{ color: 'var(--accent-blue)' }} />
-          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', fontFamily: 'monospace' }}>
+          <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', textTransform: 'uppercase', fontFamily: 'monospace' }}>
             Active Brief Specifications
           </span>
         </div>
-        <div style={{ height: '1px', background: 'rgba(255,255,255,0.04)', margin: '4px 0' }} />
+        <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Apparel Style:</span>
-            <span style={{ color: '#fff', fontWeight: '600', textTransform: 'capitalize' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: '600', textTransform: 'capitalize' }}>
               {project.apparelType ? project.apparelType.replace('_', ' ') : 'Esports Jersey'}
             </span>
           </div>
@@ -494,7 +494,7 @@ const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
           </div>
           <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
             <span style={{ color: 'var(--text-secondary)' }}>Team Name:</span>
-            <span style={{ color: '#fff', fontWeight: '600' }}>
+            <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
               {project.teamName || 'Personal'}
             </span>
           </div>
@@ -502,8 +502,8 @@ const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
       </div>
 
       {/* 2. Sublimation Layout Guidelines */}
-      <div style={{ background: '#0e0e12', border: '1px solid #202028', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <h4 style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#fff', letterSpacing: '0.05em', margin: 0 }}>
+      <div className="inspector-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <h4 style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em', margin: 0 }}>
           Sublimation Printing Guidelines
         </h4>
         <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.4' }}>
@@ -521,8 +521,8 @@ const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
 
       {/* 3. Creative suggestion Pro-Tips */}
       <div style={{ 
-        background: 'linear-gradient(135deg, #111524 0%, #0c0e18 100%)', 
-        border: '1px solid rgba(0, 112, 243, 0.25)', 
+        background: 'linear-gradient(135deg, rgba(0, 112, 243, 0.06) 0%, transparent 100%)', 
+        border: '1px solid rgba(0, 112, 243, 0.2)', 
         borderRadius: '8px', 
         padding: '14px', 
         display: 'flex', 
@@ -531,7 +531,7 @@ const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
           <Info size={12} style={{ color: 'var(--accent-blue)' }} />
-          <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Creative Pro-Tip
           </span>
         </div>

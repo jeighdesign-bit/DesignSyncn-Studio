@@ -467,7 +467,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       </div>
 
       {/* ═══ CENTER PANEL ═══════════════════════════════════════════════════════ */}
-      <div className="ai-center-panel" style={{ background: '#0a0a0e' }}>
+      <div className="ai-center-panel" style={{ background: 'var(--bg-primary)' }}>
 
         {/* Center Top Bar */}
         <div className="ai-center-topbar">
@@ -484,14 +484,14 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 <button
                   className={`studio-ctrl-btn ${viewMode === 'grid' ? 'active' : ''}`}
                   onClick={() => setViewMode('grid')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'grid' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'grid' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'grid' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
                 >
                   <Layers size={10} /> Grid View
                 </button>
                 <button
                   className={`studio-ctrl-btn ${viewMode === 'detail' ? 'active' : ''}`}
                   onClick={() => setViewMode('detail')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'detail' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'detail' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'detail' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'detail' ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
                 >
                   <Eye size={10} /> Detail View
                 </button>
@@ -539,9 +539,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                     className={`ai-concept-card ${isActive ? 'active' : ''}`}
                     style={{
                       position: 'relative',
-                      background: 'rgba(17, 17, 21, 0.75)',
+                      background: 'rgba(var(--bg-secondary-rgb), 0.75)',
                       backdropFilter: 'blur(16px)',
-                      border: isActive ? '2px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.04)',
+                      border: isActive ? '2px solid var(--accent-blue)' : '1px solid var(--border-muted)',
                       borderRadius: '12px',
                       overflow: 'hidden',
                       display: 'flex',
@@ -551,7 +551,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       cursor: 'pointer',
                       padding: '12px',
                       transition: 'all 0.2s',
-                      boxShadow: isActive ? '0 0 20px rgba(0, 112, 243, 0.25)' : 'none',
+                      boxShadow: isActive ? '0 0 20px rgba(var(--accent-blue-rgb), 0.25)' : 'none',
                     }}
                     onClick={() => {
                       setActiveVersionId(version.id);
@@ -629,7 +629,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
                     {/* Card Title Label */}
                     <div style={{ width: '100%', textAlign: 'center', marginTop: '4px', zIndex: 2 }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#fff', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
                         {version.label}
                       </span>
                       <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginTop: '2px' }}>
@@ -641,7 +641,8 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                     <div className="concept-overlay" style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'rgba(9, 9, 12, 0.94)',
+                      background: 'rgba(var(--bg-primary-rgb), 0.96)',
+                      backdropFilter: 'blur(8px)',
                       display: 'flex',
                       flexDirection: 'column',
                       justifyContent: 'center',
@@ -660,7 +661,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       
                       <button
                         className="ai-quick-btn"
-                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           setActiveVersionId(version.id);
@@ -673,7 +674,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
                       <button
                         className="ai-quick-btn"
-                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
                         onClick={(e) => {
                           e.stopPropagation();
                           runToolAction('qk-remix', `Remix ${version.label.split(' ').pop()}`, 4);
@@ -685,7 +686,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
                         <button
                           className="ai-quick-btn"
-                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             runToolAction('qk-upscale', 'Upscale HD', 5);
@@ -695,7 +696,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                         </button>
                         <button
                           className="ai-quick-btn"
-                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
                           onClick={(e) => {
                             e.stopPropagation();
                             // Apply style preset
