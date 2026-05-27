@@ -4,9 +4,9 @@ import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
   Shield, Ruler, 
-  Image, Users, Download
+  Users
 } from 'lucide-react';
-import { RosterHub } from './RosterHub';
+
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
 import {
   formatMeasurement, unitLabel, calcSafeZones,
@@ -947,9 +947,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     e.target.value = '';
   };
 
-  const handleAddLogoToCanvas = (url: string, name: string) => {
-    fabricRef.current?.addImageFromUrl(url, name.replace(/\.[^.]+$/, ''));
-  };
+
 
   // ── Inspector right panel determination ───────────────────────────────────
   const getInspectorMode = (): 'text' | 'shape' | 'image' | 'calibration' => {
