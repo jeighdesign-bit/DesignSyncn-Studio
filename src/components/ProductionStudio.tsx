@@ -4,7 +4,7 @@ import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
   Shield, Ruler, Users,
-  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin
+  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, MapPin
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
@@ -771,12 +771,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const unit: MeasurementUnit = (project.measurementUnit as MeasurementUnit) ?? 'inches';
 
   // ── Roster Studio States & File Refs ─────────────────────────────────────────
-  const csvFileInputRef = useRef<HTMLInputElement>(null);
-  const excelFileInputRef = useRef<HTMLInputElement>(null);
-  const [newName, setNewName] = useState('');
-  const [newNumber, setNewNumber] = useState('');
-  const [newSize, setNewSize] = useState<'XS' | 'S' | 'M' | 'L' | 'XL' | 'XXL' | '3XL'>('M');
-  const [newVariant, setNewVariant] = useState<'Variant A' | 'Variant B' | 'Variant C'>('Variant A');
+  const rosterInputRef = useRef<HTMLInputElement>(null);
 
   // Helper scale function
   const calculateScale = (name: string): number => {
@@ -814,17 +809,19 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     onUpdateProject(updates);
   };
 
-  // Quick Add player handler
-  const handleQuickAdd = () => {
-    if (!newName.trim() || !newNumber.trim()) return;
-
+  // Add Default Player directly inside roster
+  const handleAddDefaultPlayer = () => {
+    const nextNumber = (project.roster.length > 0)
+      ? String(Math.max(...project.roster.map(p => isNaN(Number(p.number)) ? 0 : Number(p.number))) + 1)
+      : '1';
+    
     const newPlayer: RosterPlayer = {
       id: `player-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
-      name: newName.trim().toUpperCase(),
-      number: newNumber.trim(),
-      size: newSize,
-      nameScale: calculateScale(newName),
-      variant: newVariant,
+      name: 'NEW PLAYER',
+      number: nextNumber,
+      size: 'M',
+      nameScale: 1.0,
+      variant: 'Variant A',
       status: 'Mapped'
     };
 
@@ -833,55 +830,50 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       roster: updated,
       activePlayerId: newPlayer.id
     });
-
-    setNewName('');
-    setNewNumber('');
   };
 
-  // CSV file reading
-  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Unified Roster Upload (handles both .csv and .xlsx)
+  const handleRosterImport = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    const ext = file.name.split('.').pop()?.toLowerCase();
     
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const text = event.target?.result as string;
-      if (!text) return;
-      try {
-        const rows = parseCSV(text);
-        importRosterRows(rows);
-      } catch (err) {
-        console.error('Failed to parse CSV:', err);
-        alert('Failed to import CSV. Please check file format.');
-      }
-    };
-    reader.readAsText(file);
-    e.target.value = '';
-  };
-
-  // Excel file reading
-  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    
-    try {
-      const XLSX = await loadSheetJS();
+    if (ext === 'csv') {
       const reader = new FileReader();
       reader.onload = (event) => {
-        const data = new Uint8Array(event.target?.result as ArrayBuffer);
-        const workbook = XLSX.read(data, { type: 'array' });
-        const firstSheetName = workbook.SheetNames[0];
-        const worksheet = workbook.Sheets[firstSheetName];
-        const rows = XLSX.utils.sheet_to_json(worksheet);
-        importRosterRows(rows);
+        const text = event.target?.result as string;
+        if (!text) return;
+        try {
+          const rows = parseCSV(text);
+          importRosterRows(rows);
+        } catch (err) {
+          console.error('Failed to parse CSV:', err);
+          alert('Failed to import CSV. Please check file format.');
+        }
       };
-      reader.readAsArrayBuffer(file);
-    } catch (err) {
-      console.error('Failed to parse Excel:', err);
-      alert('Failed to import Excel. Make sure it is a valid .xlsx file.');
+      reader.readAsText(file);
+    } else if (ext === 'xlsx') {
+      loadSheetJS().then(XLSX => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          const data = new Uint8Array(event.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const rows = XLSX.utils.sheet_to_json(worksheet);
+          importRosterRows(rows);
+        };
+        reader.readAsArrayBuffer(file);
+      }).catch(err => {
+        console.error('Failed to parse Excel:', err);
+        alert('Failed to import Excel. Make sure it is a valid .xlsx file.');
+      });
+    } else {
+      alert('Unsupported file format. Please upload a .csv or .xlsx file.');
     }
     e.target.value = '';
   };
+
 
   // Common importer mapper
   const importRosterRows = (rows: any[]) => {
@@ -943,9 +935,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     alert(`Successfully generated variations for all ${project.roster.length} players! All systems validated.`);
   };
 
-  const handleBulkExport = () => {
-    onUpdateProject({ stage: 'export' });
-  };
 
   const handleBulkSync = () => {
     const updated = project.roster.map(p => ({
@@ -1444,148 +1433,125 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           display: 'flex',
           flexDirection: 'column',
           overflow: 'hidden',
-          background: '#0a0a0f',
-          borderRight: '1px solid var(--border-muted)',
+          background: '#07070a',
+          borderRight: '1px solid rgba(255, 255, 255, 0.05)',
         }}
       >
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           
-          {/* Header & Title */}
-          <div style={{ padding: '16px', borderBottom: '1px solid var(--border-muted)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Cpu size={14} style={{ color: 'var(--accent-blue)' }} />
-                <span style={{ fontSize: '12px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em' }}>ROSTER STUDIO</span>
-              </div>
-              <span style={{ fontSize: '8.5px', fontWeight: 'bold', background: 'rgba(0,112,243,0.12)', color: 'var(--accent-blue)', padding: '2px 6px', borderRadius: '10px' }}>
-                VARIATIONS
-              </span>
+          {/* Header & Simplified Roster Stats */}
+          <div style={{ padding: '16px 16px 12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+              <Cpu size={12} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
+              <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Roster Studio</span>
             </div>
             
-            {/* AI HUD Stats Bar */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px', background: '#0f0f14', padding: '6px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.03)', marginTop: '8px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '7.5px', color: 'var(--text-disabled)', textTransform: 'uppercase' }}>Total</span>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff' }}>{project.roster.length}</span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', borderLeft: '1px solid rgba(255,255,255,0.06)', borderRight: '1px solid rgba(255,255,255,0.06)' }}>
-                <span style={{ fontSize: '7.5px', color: 'var(--text-disabled)', textTransform: 'uppercase' }}>Ready</span>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--color-success)' }}>
-                  {project.roster.filter(p => p.status === 'Ready for Export').length}
-                </span>
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '7.5px', color: 'var(--text-disabled)', textTransform: 'uppercase' }}>Alerts</span>
-                <span style={{ fontSize: '11px', fontWeight: 'bold', color: project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length > 0 ? '#eb5757' : 'var(--text-disabled)' }}>
-                  {project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length}
-                </span>
-              </div>
+            {/* Inline Stats Summary */}
+            <div style={{ fontSize: '9.5px', color: 'var(--text-disabled)', fontWeight: '500', letterSpacing: '0.02em', marginTop: '2px' }}>
+              <span>{project.roster.length} Players</span>
+              <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
+              <span style={{ color: 'var(--color-success)' }}>{project.roster.filter(p => p.status === 'Ready for Export').length} Ready</span>
+              <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
+              <span style={{ color: project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length > 0 ? '#eb5757' : 'var(--text-disabled)' }}>
+                {project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length} Alerts
+              </span>
             </div>
           </div>
 
-          {/* Hidden Import Upload Inputs */}
-          <input ref={csvFileInputRef} type="file" accept=".csv" style={{ display: 'none' }} onChange={handleCSVImport} />
-          <input ref={excelFileInputRef} type="file" accept=".xlsx" style={{ display: 'none' }} onChange={handleExcelImport} />
+          {/* Unified Hidden File Upload Input */}
+          <input ref={rosterInputRef} type="file" accept=".csv, .xlsx" style={{ display: 'none' }} onChange={handleRosterImport} />
 
-          {/* Action Panel: Imports & Bulk */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-muted)', background: '#0c0c12', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-            {/* Import Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-              <button
-                onClick={() => csvFileInputRef.current?.click()}
-                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-blue)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-muted)'}
-              >
-                <Upload size={10} /> Import CSV
-              </button>
-              <button
-                onClick={() => excelFileInputRef.current?.click()}
-                style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: '#fff', fontSize: '10px', fontWeight: 'bold', padding: '6px 8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', cursor: 'pointer', transition: 'all 0.15s' }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'var(--accent-blue)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'var(--border-muted)'}
-              >
-                <FileDown size={10} /> Import Excel
-              </button>
-            </div>
+          {/* Controls & Button Hierarchy */}
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: '#09090d', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+            
+            {/* Primary CTA */}
+            <button
+              onClick={handleBulkGenerate}
+              style={{
+                width: '100%',
+                background: 'rgba(0, 112, 243, 0.1)',
+                border: '1px solid rgba(0, 112, 243, 0.35)',
+                borderRadius: '6px',
+                color: '#3b9eff',
+                fontSize: '10.5px',
+                fontWeight: 'bold',
+                padding: '7px 0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.18)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)'; }}
+            >
+              <Sparkles size={11} /> Generate All Variations
+            </button>
 
-            {/* Bulk Actions Panel */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px' }}>
-              <button onClick={handleBulkGenerate} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', background: 'rgba(0,112,243,0.08)', border: '1px solid rgba(0,112,243,0.2)', color: 'var(--accent-blue)' }}>
-                <Sparkles size={9} /> Generate All
+            {/* Secondary CTA Actions Row */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '5px' }}>
+              <button
+                onClick={() => rosterInputRef.current?.click()}
+                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+              >
+                <Upload size={9} /> Import Roster
               </button>
-              <button onClick={handleBulkExport} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.2)', color: '#c084fc' }}>
-                <FileDown size={9} /> Export All
-              </button>
-              <button onClick={handleBulkSync} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', color: 'var(--text-secondary)' }}>
-                <RefreshCw size={9} /> Sync All
-              </button>
-              <button onClick={handleAutoMap} className="inspector-btn-toggle" style={{ fontSize: '9px', padding: '4px 6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px', height: '24px', color: 'var(--text-secondary)' }}>
+              <button
+                onClick={handleAutoMap}
+                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+              >
                 <MapPin size={9} /> Auto Map
               </button>
-            </div>
-          </div>
-
-          {/* Quick Add Player Card */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border-muted)', background: '#08080c', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-            <span style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-disabled)', letterSpacing: '0.04em' }}>Quick Add Player</span>
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <input
-                type="text"
-                placeholder="SURNAME"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                style={{ flex: 1.8, background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '5px 8px', fontSize: '11px', color: '#fff', outline: 'none' }}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd(); }}
-              />
-              <input
-                type="text"
-                placeholder="NO."
-                value={newNumber}
-                onChange={(e) => setNewNumber(e.target.value)}
-                style={{ width: '40px', background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '5px 4px', fontSize: '11px', color: 'var(--accent-blue)', outline: 'none', textAlign: 'center', fontFamily: 'monospace' }}
-                onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAdd(); }}
-              />
               <button
-                onClick={handleQuickAdd}
-                style={{ width: '28px', height: '26px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}
+                onClick={handleBulkSync}
+                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
               >
-                <Plus size={14} />
+                <RefreshCw size={9} /> Sync
               </button>
-            </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '6px' }}>
-              <select
-                value={newSize}
-                onChange={(e) => setNewSize(e.target.value as any)}
-                style={{ background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value="XS">XS</option>
-                <option value="S">S</option>
-                <option value="M">M</option>
-                <option value="L">L</option>
-                <option value="XL">XL</option>
-                <option value="XXL">2XL</option>
-                <option value="3XL">3XL</option>
-              </select>
-              <select
-                value={newVariant}
-                onChange={(e) => setNewVariant(e.target.value as any)}
-                style={{ background: '#0d111d', border: '1px solid var(--border-muted)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
-              >
-                <option value="Variant A">Variant A</option>
-                <option value="Variant B">Variant B</option>
-                <option value="Variant C">Variant C</option>
-              </select>
             </div>
           </div>
 
           {/* Roster Database Scrollable List */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            
+            {/* Inline Add Player Action Row */}
+            <button
+              onClick={handleAddDefaultPlayer}
+              style={{
+                width: '100%',
+                background: 'transparent',
+                border: '1px dashed rgba(255,255,255,0.08)',
+                borderRadius: '6px',
+                color: 'var(--text-secondary)',
+                fontSize: '10px',
+                fontWeight: '600',
+                padding: '6px 0',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '4px',
+                transition: 'all 0.15s',
+                marginBottom: '4px'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0, 112, 243, 0.3)'; e.currentTarget.style.color = '#3b9eff'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
+            >
+              <Plus size={11} /> Add Player Row
+            </button>
+
             {project.roster.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed var(--border-muted)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <Users size={18} style={{ opacity: 0.4 }} />
+              <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed rgba(255, 255, 255, 0.06)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+                <Users size={16} style={{ opacity: 0.3 }} />
                 <span>No variations loaded.</span>
-                <span style={{ fontSize: '9px', opacity: 0.6 }}>Import CSV or use Quick Add above.</span>
+                <span style={{ fontSize: '9px', opacity: 0.5 }}>Import a CSV/XLSX or Add Player above.</span>
               </div>
             ) : (
               project.roster.map((player) => {
@@ -1598,29 +1564,33 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                     key={player.id}
                     onClick={() => onUpdateProject({ activePlayerId: player.id })}
                     style={{
-                      background: isActive ? 'rgba(0,112,243,0.04)' : '#0d0f14',
-                      border: isActive ? '1px solid var(--accent-blue)' : '1px solid var(--border-muted)',
-                      borderRadius: '8px',
-                      padding: '10px 12px',
+                      background: isActive ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.04)',
+                      borderRadius: '6px',
+                      padding: '8px 10px',
                       cursor: 'pointer',
                       display: 'flex',
                       flexDirection: 'column',
-                      gap: '8px',
+                      gap: isActive ? '8px' : '0px',
                       transition: 'all 0.15s',
-                      boxShadow: isActive ? '0 0 10px rgba(0,112,243,0.1)' : 'none',
+                      boxShadow: isActive ? 'inset 0 0 12px rgba(255,255,255,0.01)' : 'none',
                     }}
+                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
+                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; }}
                   >
-                    {/* Top Row: Mini Jersey, Name, Number, Delete */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
+                    {/* Collapsed / Top Row State: Info summary */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+                        {/* Selector check indicator */}
                         <div
                           style={{
-                            width: '6px',
-                            height: '6px',
+                            width: '5px',
+                            height: '5px',
                             borderRadius: '50%',
                             background: isActive ? 'var(--accent-blue)' : 'transparent',
-                            border: isActive ? 'none' : '1px solid var(--text-disabled)',
-                            boxShadow: isActive ? '0 0 6px var(--accent-blue)' : 'none'
+                            border: isActive ? 'none' : '1px solid rgba(255,255,255,0.2)',
+                            boxShadow: isActive ? '0 0 4px var(--accent-blue)' : 'none',
+                            flexShrink: 0
                           }}
                         />
                         <MiniJerseyThumbnail
@@ -1628,184 +1598,179 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                           secondaryColor={project.baseColors.secondary}
                           apparelType={project.apparelType}
                         />
+                        
+                        {/* Collapsed display Name / Number */}
+                        <span style={{ fontSize: '10.5px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+                          {player.name || 'UNNAMED'}
+                        </span>
+                        
+                        <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--accent-blue)', fontFamily: 'monospace', flexShrink: 0 }}>
+                          #{player.number || '0'}
+                        </span>
                       </div>
 
-                      {/* Name input */}
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <input
-                          type="text"
-                          value={player.name}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleFieldChange(player.id, 'name', e.target.value)}
-                          style={{
-                            width: '100%',
-                            background: 'transparent',
-                            border: 'none',
-                            borderBottom: '1px solid transparent',
-                            color: '#fff',
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            padding: '2px 0',
-                            outline: 'none',
-                            textTransform: 'uppercase'
-                          }}
-                          onFocus={(e) => e.target.style.borderBottom = '1px solid var(--accent-blue)'}
-                          onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
-                        />
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                        <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-disabled)', background: 'rgba(255,255,255,0.05)', padding: '1px 4px', borderRadius: '3px' }}>
+                          {player.size}
+                        </span>
+                        
+                        {/* Status Checkmark */}
+                        <span style={{ fontSize: '9px', fontWeight: '700', color: isReady ? 'var(--color-success)' : 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: '2px' }}>
+                          {isReady ? '✓ Ready' : 'Mapped'}
+                        </span>
                       </div>
-
-                      {/* Number input */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '1px', flexShrink: 0 }}>
-                        <span style={{ fontSize: '9px', color: 'var(--text-disabled)', fontWeight: 'bold' }}>#</span>
-                        <input
-                          type="text"
-                          value={player.number}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => handleFieldChange(player.id, 'number', e.target.value)}
-                          style={{
-                            width: '24px',
-                            background: 'transparent',
-                            border: 'none',
-                            borderBottom: '1px solid transparent',
-                            color: 'var(--accent-blue)',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            padding: '2px 0',
-                            textAlign: 'center',
-                            outline: 'none',
-                            fontFamily: 'monospace'
-                          }}
-                          onFocus={(e) => e.target.style.borderBottom = '1px solid var(--accent-blue)'}
-                          onBlur={(e) => e.target.style.borderBottom = '1px solid transparent'}
-                        />
-                      </div>
-
-                      {/* Trash action */}
-                      <button
-                        onClick={(e) => handleDeletePlayer(player.id, e)}
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: 'var(--text-disabled)',
-                          cursor: 'pointer',
-                          padding: '2px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}
-                      >
-                        <Trash2 size={11} />
-                      </button>
                     </div>
 
-                    {/* Bottom Row: Selector Toggles (Size, Variant, Status) */}
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <select
-                        value={player.size}
+                    {/* Expandable Inline Edit Controls Panel (Visible ONLY when active) */}
+                    {isActive && (
+                      <div 
+                        style={{ 
+                          display: 'flex', 
+                          flexDirection: 'column', 
+                          gap: '6px', 
+                          borderTop: '1px dashed rgba(255,255,255,0.06)', 
+                          paddingTop: '8px', 
+                          marginTop: '2px' 
+                        }} 
                         onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => handleFieldChange(player.id, 'size', e.target.value)}
-                        style={{
-                          flex: 1,
-                          background: '#07080c',
-                          border: '1px solid var(--border-muted)',
-                          borderRadius: '4px',
-                          color: 'var(--text-secondary)',
-                          fontSize: '9.5px',
-                          padding: '2px 4px',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
                       >
-                        <option value="XS">XS</option>
-                        <option value="S">S</option>
-                        <option value="M">M</option>
-                        <option value="L">L</option>
-                        <option value="XL">XL</option>
-                        <option value="XXL">2XL</option>
-                        <option value="3XL">3XL</option>
-                      </select>
-
-                      <select
-                        value={player.variant || 'Variant A'}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => handleFieldChange(player.id, 'variant', e.target.value)}
-                        style={{
-                          flex: 1.4,
-                          background: '#07080c',
-                          border: '1px solid var(--border-muted)',
-                          borderRadius: '4px',
-                          color: 'var(--text-secondary)',
-                          fontSize: '9.5px',
-                          padding: '2px 4px',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="Variant A">Variant A</option>
-                        <option value="Variant B">Variant B</option>
-                        <option value="Variant C">Variant C</option>
-                      </select>
-
-                      <select
-                        value={player.status || 'Mapped'}
-                        onClick={(e) => e.stopPropagation()}
-                        onChange={(e) => handleFieldChange(player.id, 'status', e.target.value)}
-                        style={{
-                          flex: 1.2,
-                          background: '#07080c',
-                          border: '1px solid var(--border-muted)',
-                          borderRadius: '4px',
-                          color: isReady ? 'var(--color-success)' : 'var(--accent-blue)',
-                          fontWeight: 'bold',
-                          fontSize: '9.5px',
-                          padding: '2px 4px',
-                          outline: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        <option value="Pending">Pending</option>
-                        <option value="Mapped">Mapped</option>
-                        <option value="Ready for Export">Ready</option>
-                      </select>
-                    </div>
-
-                    {/* Scale bar or Warnings Banner */}
-                    <div style={{ marginTop: '2px' }} onClick={(e) => e.stopPropagation()}>
-                      {warning ? (
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          background: 'rgba(235,87,87,0.06)',
-                          border: '1px solid rgba(235,87,87,0.18)',
-                          color: '#eb5757',
-                          fontSize: '8.5px',
-                          padding: '3px 6px',
-                          borderRadius: '4px',
-                          fontWeight: 'bold'
-                        }}>
-                          <AlertTriangle size={9} />
-                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{warning}</span>
+                        {/* Editable Name & Number Fields */}
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <input
+                            type="text"
+                            value={player.name}
+                            onChange={(e) => handleFieldChange(player.id, 'name', e.target.value)}
+                            placeholder="SURNAME"
+                            style={{
+                              flex: 1.8,
+                              background: '#0d111d',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              borderRadius: '4px',
+                              padding: '4px 6px',
+                              fontSize: '11px',
+                              color: '#fff',
+                              outline: 'none',
+                              textTransform: 'uppercase'
+                            }}
+                          />
+                          <input
+                            type="text"
+                            value={player.number}
+                            onChange={(e) => handleFieldChange(player.id, 'number', e.target.value)}
+                            placeholder="NO."
+                            style={{
+                              width: '36px',
+                              background: '#0d111d',
+                              border: '1px solid rgba(255,255,255,0.08)',
+                              borderRadius: '4px',
+                              padding: '4px 2px',
+                              fontSize: '11px',
+                              color: 'var(--accent-blue)',
+                              outline: 'none',
+                              textAlign: 'center',
+                              fontFamily: 'monospace'
+                            }}
+                          />
+                          
+                          {/* Trash Delete Action button inside expanded state */}
+                          <button
+                            onClick={(e) => handleDeletePlayer(player.id, e)}
+                            style={{
+                              width: '24px',
+                              height: '22px',
+                              background: 'transparent',
+                              border: '1px solid rgba(235, 87, 87, 0.15)',
+                              borderRadius: '4px',
+                              color: '#eb5757',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+                            title="Delete Player"
+                          >
+                            <Trash2 size={10} />
+                          </button>
                         </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <span style={{ fontSize: '8px', color: 'var(--text-disabled)', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                            SCALE {Math.round(player.nameScale * 100)}%
-                          </span>
-                          <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                            <div
-                              style={{
-                                height: '100%',
-                                width: `${player.nameScale * 100}%`,
-                                background: player.nameScale < 0.7 ? '#f2c94c' : 'var(--color-success)',
-                                borderRadius: '2px'
-                              }}
-                            />
-                          </div>
+
+                        {/* Dropdown selectors */}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.1fr', gap: '4px' }}>
+                          <select
+                            value={player.size}
+                            onChange={(e) => handleFieldChange(player.id, 'size', e.target.value)}
+                            style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+                          >
+                            <option value="XS">XS</option>
+                            <option value="S">S</option>
+                            <option value="M">M</option>
+                            <option value="L">L</option>
+                            <option value="XL">XL</option>
+                            <option value="XXL">2XL</option>
+                            <option value="3XL">3XL</option>
+                          </select>
+
+                          <select
+                            value={player.variant || 'Variant A'}
+                            onChange={(e) => handleFieldChange(player.id, 'variant', e.target.value)}
+                            style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+                          >
+                            <option value="Variant A">Variant A</option>
+                            <option value="Variant B">Variant B</option>
+                            <option value="Variant C">Variant C</option>
+                          </select>
+
+                          <select
+                            value={player.status || 'Mapped'}
+                            onChange={(e) => handleFieldChange(player.id, 'status', e.target.value)}
+                            style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: isReady ? 'var(--color-success)' : 'var(--accent-blue)', outline: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+                          >
+                            <option value="Pending">Pending</option>
+                            <option value="Mapped">Mapped</option>
+                            <option value="Ready for Export">Ready</option>
+                          </select>
                         </div>
-                      )}
-                    </div>
+
+                        {/* Inline Pre-flight warning warnings or Typo scale indicator */}
+                        <div>
+                          {warning ? (
+                            <div style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              background: 'rgba(235,87,87,0.05)',
+                              border: '1px solid rgba(235,87,87,0.15)',
+                              color: '#eb5757',
+                              fontSize: '8px',
+                              padding: '3px 6px',
+                              borderRadius: '4px',
+                              fontWeight: 'bold'
+                            }}>
+                              <AlertTriangle size={8} />
+                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{warning}</span>
+                            </div>
+                          ) : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span style={{ fontSize: '8px', color: 'var(--text-disabled)', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
+                                SCALE {Math.round(player.nameScale * 100)}%
+                              </span>
+                              <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div
+                                  style={{
+                                    height: '100%',
+                                    width: `${player.nameScale * 100}%`,
+                                    background: player.nameScale < 0.7 ? '#f2c94c' : 'var(--color-success)',
+                                    borderRadius: '2px'
+                                  }}
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 );
               })
