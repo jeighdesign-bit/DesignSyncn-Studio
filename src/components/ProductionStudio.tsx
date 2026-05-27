@@ -7,11 +7,11 @@ import {
   Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin
 } from 'lucide-react';
 
-import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
+import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode, setCenterPosition, clampObjectToLimits, clampObjectToSafeZone } from './FabricCanvas';
 import { RuleEngine } from './RuleEngine';
 
 import {
-  formatMeasurement, unitLabel, calcSafeZones,
+  formatMeasurement, unitLabel, calcSafeZones, getAnchorCoords,
   getGarmentDimensions, PX_PER_INCH, type MeasurementUnit, type ObjectBounds,
   type GarmentTemplate, generateProductionCanvasStates
 } from '../lib/measurements';
@@ -222,10 +222,23 @@ interface ProductionStudioProps {
 
 interface TextInspectorProps {
   activeObj: fabric.IText | null;
+  currentView: string;
+  unit: MeasurementUnit;
+  canvasW: number;
+  canvasH: number;
+  project: Project;
   onApply: (props: Partial<fabric.ITextProps>) => void;
 }
 
-const TextInspector: React.FC<TextInspectorProps> = ({ activeObj, onApply }) => {
+const TextInspector: React.FC<TextInspectorProps> = ({
+  activeObj,
+  currentView,
+  unit,
+  canvasW,
+  canvasH,
+  project,
+  onApply
+}) => {
   const [fontFamily, setFontFamily] = useState(activeObj?.fontFamily ?? 'Outfit');
   const [fontSize, setFontSize] = useState(activeObj?.fontSize ?? 48);
   const [fontWeight, setFontWeight] = useState<string>(String(activeObj?.fontWeight ?? '800'));
@@ -339,6 +352,18 @@ const TextInspector: React.FC<TextInspectorProps> = ({ activeObj, onApply }) => 
           </div>
         </div>
       </div>
+
+      {activeObj && (
+        <AnchorPositioner
+          activeObj={activeObj}
+          currentView={currentView}
+          unit={unit}
+          width={canvasW}
+          height={canvasH}
+          project={project}
+          onApply={onApply}
+        />
+      )}
     </div>
   );
 };
@@ -349,10 +374,23 @@ const TextInspector: React.FC<TextInspectorProps> = ({ activeObj, onApply }) => 
 
 interface ShapeInspectorProps {
   activeObj: fabric.Rect | null;
+  currentView: string;
+  unit: MeasurementUnit;
+  canvasW: number;
+  canvasH: number;
+  project: Project;
   onApply: (props: Record<string, unknown>) => void;
 }
 
-const ShapeInspector: React.FC<ShapeInspectorProps> = ({ activeObj, onApply }) => {
+const ShapeInspector: React.FC<ShapeInspectorProps> = ({
+  activeObj,
+  currentView,
+  unit,
+  canvasW,
+  canvasH,
+  project,
+  onApply
+}) => {
   const [fillColor, setFillColor] = useState(activeObj?.fill as string ?? '#0070f3');
   const [strokeColor, setStrokeColor] = useState(activeObj?.stroke as string ?? '#ffffff');
   const [strokeWidth, setStrokeWidth] = useState(activeObj?.strokeWidth ?? 2);
@@ -460,17 +498,41 @@ const ShapeInspector: React.FC<ShapeInspectorProps> = ({ activeObj, onApply }) =
             style={{ width: '100%', accentColor: 'var(--accent-blue)' }} />
         </div>
       </div>
+
+      {activeObj && (
+        <AnchorPositioner
+          activeObj={activeObj}
+          currentView={currentView}
+          unit={unit}
+          width={canvasW}
+          height={canvasH}
+          project={project}
+          onApply={onApply}
+        />
+      )}
     </div>
   );
 };
 
 interface LogoInspectorProps {
   activeObj: fabric.Image | null;
+  currentView: string;
+  unit: MeasurementUnit;
   canvasW: number;
+  canvasH: number;
+  project: Project;
   onApply: (props: Record<string, unknown>) => void;
 }
 
-const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApply }) => {
+const LogoInspector: React.FC<LogoInspectorProps> = ({
+  activeObj,
+  currentView,
+  unit,
+  canvasW,
+  canvasH,
+  project,
+  onApply
+}) => {
   const [scale, setScale] = useState(Math.round((activeObj?.scaleX ?? 1) * 100));
   const [left, setLeft] = useState(Math.round(activeObj?.left ?? 0));
   const [top, setTop] = useState(Math.round(activeObj?.top ?? 0));
@@ -604,8 +666,348 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
               Centers the selected logo inside the panel's print-safe margins perfectly.
             </span>
           </div>
+
+          <AnchorPositioner
+            activeObj={activeObj}
+            currentView={currentView}
+            unit={unit}
+            width={canvasW}
+            height={canvasH}
+            project={project}
+            onApply={onApply}
+          />
         </>
       )}
+    </div>
+  );
+};
+
+interface AnchorPositionerProps {
+  activeObj: fabric.FabricObject | null;
+  currentView: string;
+  unit: MeasurementUnit;
+  width: number;
+  height: number;
+  project: Project;
+  onApply: (patch: Record<string, any>) => void;
+}
+
+const AnchorPositioner: React.FC<AnchorPositionerProps> = ({
+  activeObj,
+  currentView,
+  unit,
+  width,
+  height,
+  project,
+  onApply
+}) => {
+  const [anchor, setAnchor] = useState<string>((activeObj as any)?.__anchor as string ?? '');
+  const [offsetX, setOffsetX] = useState<number>((activeObj as any)?.__offsetXInches ?? 0);
+  const [offsetY, setOffsetY] = useState<number>((activeObj as any)?.__offsetYInches ?? 0);
+  const [restrictToSafe, setRestrictToSafe] = useState<boolean>((activeObj as any)?.__restrictToSafe ?? false);
+  const [productionLocked, setProductionLocked] = useState<boolean>((activeObj as any)?.__productionLocked ?? false);
+
+  useEffect(() => {
+    if (!activeObj) return;
+    const objAny = activeObj as any;
+    setAnchor(objAny.__anchor as string ?? '');
+    setOffsetX(objAny.__offsetXInches ?? 0);
+    setOffsetY(objAny.__offsetYInches ?? 0);
+    setRestrictToSafe(objAny.__restrictToSafe ?? false);
+    setProductionLocked(objAny.__productionLocked ?? false);
+  }, [activeObj]);
+
+  if (!activeObj) return null;
+
+  // Convert internal inches to current unit for displays
+  const getUnitMultiplier = () => {
+    if (unit === 'cm') return 2.54;
+    if (unit === 'mm') return 25.4;
+    return 1.0;
+  };
+
+  const toDisplayValue = (inches: number) => {
+    return parseFloat((inches * getUnitMultiplier()).toFixed(2));
+  };
+
+  const fromDisplayValue = (displayVal: number) => {
+    return displayVal / getUnitMultiplier();
+  };
+
+  const updatePosition = (patch: {
+    anchor?: string;
+    offsetX?: number;
+    offsetY?: number;
+    restrict?: boolean;
+    locked?: boolean;
+  }) => {
+    const nextAnchor = patch.anchor !== undefined ? patch.anchor : anchor;
+    const nextOffsetX = patch.offsetX !== undefined ? patch.offsetX : offsetX;
+    const nextOffsetY = patch.offsetY !== undefined ? patch.offsetY : offsetY;
+    const nextRestrict = patch.restrict !== undefined ? patch.restrict : restrictToSafe;
+    const nextLocked = patch.locked !== undefined ? patch.locked : productionLocked;
+
+    setAnchor(nextAnchor);
+    setOffsetX(nextOffsetX);
+    setOffsetY(nextOffsetY);
+    setRestrictToSafe(nextRestrict);
+    setProductionLocked(nextLocked);
+
+    if (!nextAnchor) {
+      activeObj.set({
+        __anchor: undefined,
+        __restrictToSafe: nextRestrict,
+        __productionLocked: nextLocked
+      });
+      activeObj.canvas?.requestRenderAll();
+      onApply({});
+      return;
+    }
+
+    const anchorCoords = getAnchorCoords(currentView === 'sleeves_right' ? 'sleeves' : currentView, nextAnchor, width, height);
+    const targetCx = anchorCoords.x + nextOffsetX * 40;
+    const targetCy = anchorCoords.y + nextOffsetY * 40;
+
+    activeObj.set({
+      __anchor: nextAnchor,
+      __offsetXInches: nextOffsetX,
+      __offsetYInches: nextOffsetY,
+      __restrictToSafe: nextRestrict,
+      __productionLocked: nextLocked
+    });
+
+    setCenterPosition(activeObj, targetCx, targetCy);
+
+    const rules = project.rules;
+    const bInches = rules?.bleedInches ?? 0.25;
+    const sInches = rules?.safeMarginInches ?? 0.5;
+    const seamInches = rules?.seamAllowanceInches ?? 0.5;
+    const sz = calcSafeZones(width, height, bInches, sInches, seamInches);
+
+    if (nextRestrict && sz.safe) {
+      clampObjectToSafeZone(activeObj, width, height, sz);
+    } else {
+      clampObjectToLimits(activeObj, width, height, sz);
+    }
+
+    const finalCenter = activeObj.getCenterPoint();
+    const finalOffsetX = Number(((finalCenter.x - anchorCoords.x) / 40).toFixed(3));
+    const finalOffsetY = Number(((finalCenter.y - anchorCoords.y) / 40).toFixed(3));
+
+    activeObj.set({
+      __offsetXInches: finalOffsetX,
+      __offsetYInches: finalOffsetY
+    });
+
+    setOffsetX(finalOffsetX);
+    setOffsetY(finalOffsetY);
+
+    activeObj.setCoords();
+    activeObj.canvas?.requestRenderAll();
+    onApply({
+      __anchor: nextAnchor,
+      __offsetXInches: finalOffsetX,
+      __offsetYInches: finalOffsetY,
+      __restrictToSafe: nextRestrict,
+      __productionLocked: nextLocked
+    });
+  };
+
+  const handleStepper = (field: 'x' | 'y', direction: number) => {
+    const stepInInches = 0.25; // 1/4 inch step
+    if (field === 'x') {
+      const val = Number((offsetX + direction * stepInInches).toFixed(3));
+      updatePosition({ offsetX: val });
+    } else {
+      const val = Number((offsetY + direction * stepInInches).toFixed(3));
+      updatePosition({ offsetY: val });
+    }
+  };
+
+  const getAnchorOptions = () => {
+    let view = currentView === 'sleeves_right' ? 'sleeves' : currentView;
+    if (view === 'full' && activeObj) {
+      view = (activeObj as any).__panel || 'front';
+    }
+    if (view === 'sleeves_right') view = 'sleeves';
+    if (view === 'front') {
+      return [
+        { id: 'collar_base', label: 'Collar Base' },
+        { id: 'chest_center', label: 'Chest Center' },
+        { id: 'left_chest', label: 'Left Chest' },
+        { id: 'right_chest', label: 'Right Chest' },
+        { id: 'hem_base', label: 'Hem Base' }
+      ];
+    } else if (view === 'back') {
+      return [
+        { id: 'collar_base', label: 'Collar Base' },
+        { id: 'mid_back', label: 'Mid Back (Number)' },
+        { id: 'hem_base', label: 'Hem Base' }
+      ];
+    } else if (view === 'sleeves') {
+      return [
+        { id: 'sleeve_cap', label: 'Sleeve Cap' },
+        { id: 'sleeve_center', label: 'Sleeve Center' },
+        { id: 'sleeve_cuff', label: 'Sleeve Cuff' }
+      ];
+    } else if (view === 'collar') {
+      return [{ id: 'collar_center', label: 'Collar Center' }];
+    }
+    return [];
+  };
+
+  const anchorsList = getAnchorOptions();
+  const uLabel = unitLabel(unit);
+  
+  let mapTitleView = currentView;
+  if (mapTitleView === 'full' && activeObj) {
+    mapTitleView = (activeObj as any).__panel || 'front';
+  }
+
+  return (
+    <div style={{ padding: '12px', background: 'var(--bg-secondary)', border: '1px solid var(--border-muted)', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '12px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', borderBottom: '1px solid var(--border-muted)', paddingBottom: '6px' }}>
+        <MapPin size={13} style={{ color: 'var(--accent-blue)' }} />
+        <span style={{ fontSize: '10px', fontWeight: 'bold', textTransform: 'uppercase', color: '#fff', letterSpacing: '0.04em' }}>Production Anchoring</span>
+      </div>
+
+      {/* Anchor selection dropdown */}
+      <div className="inspector-control-group">
+        <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Target Tailoring Anchor</label>
+        <select
+          value={anchor}
+          onChange={e => updatePosition({ anchor: e.target.value, offsetX: 0, offsetY: 0 })}
+          className="inspector-input-dark"
+          style={{ width: '100%', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
+        >
+          <option value="">-- Dynamic Freeform --</option>
+          {anchorsList.map(opt => (
+            <option key={opt.id} value={opt.id}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+
+      {anchor && (
+        <>
+          {/* Visual Anchor Grid Map */}
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '8px 0', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '6px', background: 'var(--bg-primary)' }}>
+            <div style={{ position: 'relative', width: '120px', height: '120px', background: '#0a0b10', border: '1px dashed #1d2130', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: '8px', color: '#4a4d66', position: 'absolute', top: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{mapTitleView.toUpperCase()} MAP</span>
+              
+              {/* Anchor dot triggers */}
+              {anchorsList.map(opt => {
+                let topPos = '50%';
+                let leftPos = '50%';
+                if (opt.id === 'collar_base') { topPos = '15%'; leftPos = '50%'; }
+                else if (opt.id === 'chest_center' || opt.id === 'mid_back' || opt.id === 'sleeve_center') { topPos = '45%'; leftPos = '50%'; }
+                else if (opt.id === 'left_chest') { topPos = '35%'; leftPos = '25%'; }
+                else if (opt.id === 'right_chest') { topPos = '35%'; leftPos = '75%'; }
+                else if (opt.id === 'hem_base' || opt.id === 'sleeve_cuff') { topPos = '80%'; leftPos = '50%'; }
+                else if (opt.id === 'sleeve_cap') { topPos = '15%'; leftPos = '50%'; }
+
+                const isCurrent = anchor === opt.id;
+
+                return (
+                  <button
+                    key={opt.id}
+                    title={opt.label}
+                    onClick={() => updatePosition({ anchor: opt.id, offsetX: 0, offsetY: 0 })}
+                    style={{
+                      position: 'absolute',
+                      top: topPos,
+                      left: leftPos,
+                      transform: 'translate(-50%, -50%)',
+                      width: isCurrent ? '12px' : '8px',
+                      height: isCurrent ? '12px' : '8px',
+                      borderRadius: '50%',
+                      background: isCurrent ? 'var(--accent-blue)' : '#25293d',
+                      border: isCurrent ? '2px solid #ffffff' : '1px solid #3e4461',
+                      boxShadow: isCurrent ? '0 0 6px var(--accent-blue)' : 'none',
+                      cursor: 'pointer',
+                      padding: 0,
+                      transition: 'all 0.15s'
+                    }}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stepper Inputs */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+            <div className="inspector-control-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '4px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Offset X</span>
+                <span style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>{uLabel}</span>
+              </div>
+              <div className="rule-stepper" style={{ height: '26px' }}>
+                <button className="stepper-btn" onClick={() => handleStepper('x', -1)} style={{ width: '22px', fontSize: '10px' }}>-</button>
+                <input
+                  type="text"
+                  className="stepper-value"
+                  value={toDisplayValue(offsetX)}
+                  onChange={e => {
+                    const parsed = parseFloat(e.target.value);
+                    if (!isNaN(parsed)) updatePosition({ offsetX: fromDisplayValue(parsed) });
+                  }}
+                  style={{ fontSize: '10px' }}
+                />
+                <button className="stepper-btn" onClick={() => handleStepper('x', 1)} style={{ width: '22px', fontSize: '10px' }}>+</button>
+              </div>
+            </div>
+
+            <div className="inspector-control-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '9px', marginBottom: '4px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Offset Y</span>
+                <span style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>{uLabel}</span>
+              </div>
+              <div className="rule-stepper" style={{ height: '26px' }}>
+                <button className="stepper-btn" onClick={() => handleStepper('y', -1)} style={{ width: '22px', fontSize: '10px' }}>-</button>
+                <input
+                  type="text"
+                  className="stepper-value"
+                  value={toDisplayValue(offsetY)}
+                  onChange={e => {
+                    const parsed = parseFloat(e.target.value);
+                    if (!isNaN(parsed)) updatePosition({ offsetY: fromDisplayValue(parsed) });
+                  }}
+                  style={{ fontSize: '10px' }}
+                />
+                <button className="stepper-btn" onClick={() => handleStepper('y', 1)} style={{ width: '22px', fontSize: '10px' }}>+</button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Constraints switches */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: '8px' }}>
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '10px', color: '#fff', fontWeight: '500' }}>Restrict to Safe Margins</span>
+            <span style={{ fontSize: '8px', color: 'var(--text-disabled)' }}>Clamps bounds inside sewing seam line</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={restrictToSafe}
+            onChange={e => updatePosition({ restrict: e.target.checked })}
+            style={{ cursor: 'pointer', width: '13px', height: '13px' }}
+          />
+        </label>
+
+        <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', cursor: 'pointer' }}>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontSize: '10px', color: '#fff', fontWeight: '500' }}>Production Align Lock</span>
+            <span style={{ fontSize: '8px', color: 'var(--text-disabled)' }}>Locks position and blocks mouse dragging</span>
+          </div>
+          <input
+            type="checkbox"
+            checked={productionLocked}
+            onChange={e => updatePosition({ locked: e.target.checked })}
+            style={{ cursor: 'pointer', width: '13px', height: '13px' }}
+          />
+        </label>
+      </div>
     </div>
   );
 };
@@ -2628,6 +3030,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           {inspectorMode === 'text' ? (
             <TextInspector
               activeObj={activeTextObj}
+              currentView={currentView}
+              unit={unit}
+              canvasW={CANVAS_W}
+              canvasH={CANVAS_H}
+              project={project}
               onApply={() => {
                 fabricRef.current?.saveHistory();
               }}
@@ -2635,6 +3042,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           ) : inspectorMode === 'shape' ? (
             <ShapeInspector
               activeObj={activeShapeObj}
+              currentView={currentView}
+              unit={unit}
+              canvasW={CANVAS_W}
+              canvasH={CANVAS_H}
+              project={project}
               onApply={() => {
                 fabricRef.current?.saveHistory();
               }}
@@ -2642,7 +3054,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           ) : inspectorMode === 'image' ? (
             <LogoInspector
               activeObj={activeImageObj}
+              currentView={currentView}
+              unit={unit}
               canvasW={CANVAS_W}
+              canvasH={CANVAS_H}
+              project={project}
               onApply={() => {
                 fabricRef.current?.saveHistory();
               }}
