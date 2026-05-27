@@ -138,7 +138,8 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   const getGarmentDimensions = (size: string) => {
     const sizes = activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
     const baseSizeIndex = sizes.indexOf(activeTemplate.baseSize || "M");
-    const currentSizeIndex = sizes.indexOf(size);
+    const normalizedSize = size === 'XXL' ? '2XL' : size;
+    const currentSizeIndex = sizes.indexOf(normalizedSize);
     const sizeDiff = currentSizeIndex !== -1 ? currentSizeIndex - baseSizeIndex : 0;
     const step = activeTemplate.sizeStep || 2;
     

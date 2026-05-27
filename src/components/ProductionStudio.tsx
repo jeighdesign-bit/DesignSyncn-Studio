@@ -695,7 +695,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     return project.roster.find(p => p.id === project.activePlayerId);
   }, [project.roster, project.activePlayerId]);
 
-  const activeSize = activePlayer?.size ?? 'M';
+  const activeSizeRaw = activePlayer?.size ?? 'M';
+  const activeSize = activeSizeRaw === 'XXL' ? '2XL' : activeSizeRaw;
 
   const dims = React.useMemo(() => {
     return getGarmentDimensions(activeTemplate, activeSize);
@@ -943,8 +944,9 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 
   const handleSizeChange = (newSize: string) => {
     if (activePlayer) {
+      const sizeToSet = newSize === '2XL' ? 'XXL' : newSize;
       const updatedRoster = project.roster.map(p =>
-        p.id === activePlayer.id ? { ...p, size: newSize as any } : p
+        p.id === activePlayer.id ? { ...p, size: sizeToSet as any } : p
       );
       onUpdateProject({ roster: updatedRoster });
     }

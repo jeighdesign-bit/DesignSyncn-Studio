@@ -54,7 +54,8 @@ export function getGarmentDimensions(
 ): Record<string, { w: number; h: number }> {
   const sizes = template.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
   const baseSizeIndex = sizes.indexOf(template.baseSize || "M");
-  const currentSizeIndex = sizes.indexOf(size);
+  const normalizedSize = size === 'XXL' ? '2XL' : size;
+  const currentSizeIndex = sizes.indexOf(normalizedSize);
   
   const sizeDiff = currentSizeIndex !== -1 ? currentSizeIndex - baseSizeIndex : 0;
   
