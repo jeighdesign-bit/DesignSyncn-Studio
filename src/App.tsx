@@ -1625,7 +1625,7 @@ export default function App() {
             )}
 
             {/* Center Content Workspace - Router based on stages */}
-            <main style={{ width: '100%', height: '100%', overflow: 'hidden' }}>
+            <main style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
               
               {/* STAGE 1: BRIEF SPECIFICATIONS */}
               {project.stage === 'brief' && (
