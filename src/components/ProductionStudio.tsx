@@ -577,7 +577,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
   const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
   const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
-  const [activeLeftTab, setActiveLeftTab] = useState<'assets' | 'roster' | 'export'>('assets');
+
 
   // ── Measurement system state ──────────────────────────────────────────────
   const [selectedBounds, setSelectedBounds] = useState<ObjectBounds | null>(null);
@@ -992,149 +992,45 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           overflow: 'hidden'
         }}
       >
-        <div className="sidebar-tab-headers">
-          <button
-            className={`sidebar-tab-btn ${activeLeftTab === 'assets' ? 'active' : ''}`}
-            onClick={() => setActiveLeftTab('assets')}
-          >
-            <Image size={12} />
-            Assets
-          </button>
-          <button
-            className={`sidebar-tab-btn ${activeLeftTab === 'roster' ? 'active' : ''}`}
-            onClick={() => setActiveLeftTab('roster')}
-          >
-            <Users size={12} />
-            Roster
-          </button>
-          <button
-            className={`sidebar-tab-btn ${activeLeftTab === 'export' ? 'active' : ''}`}
-            onClick={() => setActiveLeftTab('export')}
-          >
-            <Download size={12} />
-            Export
-          </button>
-        </div>
-
         <div style={{ flex: 1, overflow: 'hidden' }}>
-          {activeLeftTab === 'assets' && (
-            <div className="assets-section" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-              <div className="assets-section-header-compact">
-                <Image size={13} style={{ color: 'var(--accent-blue)' }} />
-                <span>Sponsor Graphics</span>
-                {project.logos.length > 0 && (
-                  <span className="assets-count-badge">{project.logos.length}</span>
-                )}
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                {project.logos.length === 0 ? (
-                  <div className="logo-assets-empty">
-                    No logo assets loaded. 
-                    <br />
-                    <button 
-                      className="logo-assets-link-btn" 
-                      onClick={() => onUpdateProject({ stage: 'brief' })}
+          <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+            <div className="assets-section-header-compact">
+              <Users size={13} style={{ color: 'var(--accent-blue)' }} />
+              <span>Active Variations</span>
+              <span className="assets-count-badge">{project.roster.length}</span>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {project.roster.length === 0 ? (
+                <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '24px 0', fontSize: '11px', border: '1px dashed var(--border-muted)', borderRadius: '8px' }}>
+                  No player variations.
+                </div>
+              ) : (
+                project.roster.map((player) => {
+                  const isActive = project.activePlayerId === player.id;
+                  const isReady = player.status === 'Ready for Export';
+                  return (
+                    <div
+                      key={player.id}
+                      className={`roster-mini-card ${isActive ? 'active' : ''}`}
+                      onClick={() => onUpdateProject({ activePlayerId: player.id })}
                     >
-                      Upload in Brief Spec
-                    </button>
-                  </div>
-                ) : (
-                  <div className="logo-assets-grid">
-                    {project.logos.map((logo) => (
-                      <div
-                        key={logo.id}
-                        className="logo-asset-card"
-                        onClick={() => handleAddLogoToCanvas(logo.url, logo.name)}
-                        title="Click to place on canvas"
-                      >
-                        <div className="logo-asset-thumb">
-                          {logo.url ? <img src={logo.url} alt={logo.name} /> : 'IMG'}
-                        </div>
-                        <div className="logo-asset-info">
-                          <span className="logo-asset-name">{logo.name}</span>
-                          <span className={`logo-asset-resolution ${logo.resolutionStatus}`}>
-                            {logo.dpi} DPI
-                          </span>
-                        </div>
+                      <div className="roster-mini-card-select">
+                        <div className={`roster-mini-dot ${isActive ? 'active' : ''}`} />
+                        <span className="roster-mini-name">{player.name}</span>
+                        <span className="roster-mini-num">#{player.number}</span>
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {activeLeftTab === 'roster' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-              <div className="assets-section-header-compact">
-                <Users size={13} style={{ color: 'var(--accent-blue)' }} />
-                <span>Active Variations</span>
-                <span className="assets-count-badge">{project.roster.length}</span>
-              </div>
-              <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {project.roster.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '24px 0', fontSize: '11px', border: '1px dashed var(--border-muted)', borderRadius: '8px' }}>
-                    No player variations.
-                  </div>
-                ) : (
-                  project.roster.map((player) => {
-                    const isActive = project.activePlayerId === player.id;
-                    const isReady = player.status === 'Ready for Export';
-                    return (
-                      <div
-                        key={player.id}
-                        className={`roster-mini-card ${isActive ? 'active' : ''}`}
-                        onClick={() => onUpdateProject({ activePlayerId: player.id })}
-                      >
-                        <div className="roster-mini-card-select">
-                          <div className={`roster-mini-dot ${isActive ? 'active' : ''}`} />
-                          <span className="roster-mini-name">{player.name}</span>
-                          <span className="roster-mini-num">#{player.number}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          <span className="roster-mini-size">{player.size}</span>
-                          <span className={`roster-mini-status-badge ${isReady ? 'ready' : 'mapped'}`}>
-                            {isReady ? 'Ready' : 'Mapped'}
-                          </span>
-                        </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <span className="roster-mini-size">{player.size}</span>
+                        <span className={`roster-mini-status-badge ${isReady ? 'ready' : 'mapped'}`}>
+                          {isReady ? 'Ready' : 'Mapped'}
+                        </span>
                       </div>
-                    );
-                  })
-                )}
-              </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
-          )}
-
-          {activeLeftTab === 'export' && (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: '16px', gap: '16px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Download size={14} style={{ color: 'var(--accent-blue)' }} />
-                <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em' }}>
-                  Production Output
-                </span>
-              </div>
-              <div className="inspector-card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Variations:</span>
-                  <span style={{ color: '#fff', fontWeight: '600' }}>{project.roster.length} Sheets</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Export DPI:</span>
-                  <span style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>{project.dpi || 300} DPI</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-                  <span style={{ color: 'var(--text-secondary)' }}>Color Space:</span>
-                  <span style={{ color: '#fff', fontWeight: '600' }}>{project.colorMode || 'CMYK'}</span>
-                </div>
-              </div>
-              <button
-                className="compile-layouts-btn"
-                onClick={() => onUpdateProject({ stage: 'export' })}
-              >
-                Compile & Export
-              </button>
-            </div>
-          )}
+          </div>
         </div>
       </aside>
 
@@ -1146,50 +1042,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 
         {/* Top Bar: View Tabs + Canvas Controls */}
         <div className="studio-topbar">
-          {/* Garment Selector */}
-          <div className="studio-ctrl-group">
-            <span className="studio-ctrl-label">Garment</span>
-            <div
-              style={{
-                background: 'rgba(0, 112, 243, 0.08)',
-                border: '1px solid rgba(0, 112, 243, 0.25)',
-                color: 'var(--accent-blue)',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                padding: '4px 10px',
-                borderRadius: '6px',
-                letterSpacing: '0.02em',
-                textTransform: 'uppercase',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)'
-              }}
-            >
-              <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)' }}></span>
-              {activeTemplate.name || project.apparelType.toUpperCase().replace('_', ' ')}
-            </div>
-          </div>
-
-          {/* Size Switcher */}
-          <div className="studio-ctrl-group">
-            <span className="studio-ctrl-label">Size</span>
-            <div style={{ display: 'flex', gap: '2px' }}>
-              {(activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"]).map(s => (
-                <button
-                  key={s}
-                  className={`studio-ctrl-btn ${activeSize === s ? 'active' : ''}`}
-                  onClick={() => handleSizeChange(s)}
-                  style={{ padding: '3px 8px', fontSize: '10px' }}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Panel view tabs */}
-          <div style={{ display: 'flex', gap: '4px', borderLeft: '1px solid #1c1c28', paddingLeft: '8px' }}>
+          <div style={{ display: 'flex', gap: '4px', paddingLeft: '8px' }}>
             {[
               { id: 'front' as const, label: 'Front Panel' },
               { id: 'back' as const, label: 'Back Panel' },
@@ -1207,39 +1061,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           </div>
 
           <div style={{ flex: 1 }} />
-
-          {/* Canvas background */}
-          <div className="studio-ctrl-group">
-            <span className="studio-ctrl-label">Canvas</span>
-            <button
-              className="studio-ctrl-btn active"
-              style={{ pointerEvents: 'none' }}
-            >
-              White
-            </button>
-          </div>
-
-          {/* Advanced Mode Calibration Controls */}
-          {workspaceMode === 'advanced' && (
-            <>
-              {/* Unit Switcher */}
-              <div className="studio-ctrl-group">
-                <span className="studio-ctrl-label"><Ruler size={11} /> Unit</span>
-                {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
-                  <button
-                    key={u}
-                    className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
-                    onClick={() => onUpdateProject({ measurementUnit: u as any })}
-                    title={`Switch to ${u}`}
-                  >
-                    {u === 'inches' ? 'in' : u}
-                  </button>
-                ))}
-              </div>
-
-
-            </>
-          )}
 
           {/* Zoom Level Display */}
           <div className="studio-ctrl-group" style={{ background: 'transparent', border: 'none', gap: '0' }}>
@@ -1424,11 +1245,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           <span className="inspector-header-title">
             {inspectorMode === 'text' ? 'Text Inspector' :
               inspectorMode === 'shape' ? 'Shape Inspector' :
-                inspectorMode === 'image' ? 'Logo Properties' : 'Team Roster Database'}
+                inspectorMode === 'image' ? 'Logo Properties' : 'Workspace Configuration'}
           </span>
           {inspectorMode !== 'calibration' && (
             <span className="inspector-header-badge">
-              {inspectorMode === 'text' ? 'T' : inspectorMode === 'image' ? 'L' : 'R'}
+              {inspectorMode === 'text' ? 'T' : inspectorMode === 'image' ? 'L' : inspectorMode === 'shape' ? 'S' : 'W'}
             </span>
           )}
         </div>
@@ -1484,11 +1305,83 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               }}
             />
           ) : (
-            <RosterHub
-              project={project}
-              onUpdateRoster={(roster) => onUpdateProject({ roster })}
-              onSelectPlayer={(id) => onUpdateProject({ activePlayerId: id })}
-            />
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Garment Selector */}
+              <div>
+                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>GARMENT</span>
+                <div
+                  style={{
+                    background: 'rgba(0, 112, 243, 0.08)',
+                    border: '1px solid rgba(0, 112, 243, 0.25)',
+                    color: 'var(--accent-blue)',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)'
+                  }}
+                >
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)' }}></span>
+                  {activeTemplate.name || project.apparelType.toUpperCase().replace('_', ' ')}
+                </div>
+              </div>
+
+              {/* Size Switcher */}
+              <div>
+                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>SIZE</span>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {(activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"]).map(s => (
+                    <button
+                      key={s}
+                      className={`studio-ctrl-btn ${activeSize === s ? 'active' : ''}`}
+                      onClick={() => handleSizeChange(s)}
+                      style={{ padding: '6px 12px', flex: '1 0 20%', minWidth: '40px', fontSize: '11px' }}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Canvas Background */}
+              <div>
+                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>CANVAS</span>
+                <button
+                  className="studio-ctrl-btn active"
+                  style={{ width: '100%', padding: '6px 12px', pointerEvents: 'none' }}
+                >
+                  White
+                </button>
+              </div>
+
+              {/* Advanced Mode Calibration Controls */}
+              {workspaceMode === 'advanced' && (
+                <div>
+                  <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
+                    <Ruler size={11} /> UNIT
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
+                      <button
+                        key={u}
+                        className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
+                        style={{ flex: 1, padding: '6px 0', fontSize: '11px' }}
+                        onClick={() => onUpdateProject({ measurementUnit: u as any })}
+                        title={`Switch to ${u}`}
+                      >
+                        {u === 'inches' ? 'in' : u}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
           )}
         </div>
 
