@@ -1129,29 +1129,7 @@ export default function App() {
                       ))}
                     </div>
 
-                    <h3 className="brief-section-title">Apparel Category Spec</h3>
-                    <div className="template-grid">
-                      <div 
-                        className={`template-card ${project.apparelType === 'esports_jersey' ? 'active' : ''}`}
-                        onClick={() => handleUpdateProject({ apparelType: 'esports_jersey' })}
-                      >
-                        {/* Vector Apparel Outline Drawing */}
-                        <svg className="template-drawing" viewBox="0 0 100 120">
-                          <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" fill="none" stroke="var(--text-primary)" strokeWidth="1.5" />
-                        </svg>
-                        <span className="preset-name">Esports Raglan Jersey</span>
-                      </div>
-                      
-                      <div 
-                        className={`template-card ${project.apparelType === 'crewneck_sweatshirt' ? 'active' : ''}`}
-                        onClick={() => handleUpdateProject({ apparelType: 'crewneck_sweatshirt' })}
-                      >
-                        <svg className="template-drawing" viewBox="0 0 100 120">
-                          <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" fill="none" stroke="var(--text-primary)" strokeWidth="1.5" />
-                        </svg>
-                        <span className="preset-name">Crewneck Sweatshirt</span>
-                      </div>
-                    </div>
+
 
                     <h3 className="brief-section-title">Base Sublimation Palette</h3>
                     <div className="color-picker-grid">
