@@ -11,7 +11,7 @@ import { RosterHub } from './RosterHub';
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
 import {
   formatMeasurement, unitLabel, calcSafeZones,
-  getGarmentDimensions, type MeasurementUnit, type ObjectBounds,
+  getGarmentDimensions, PX_PER_INCH, type MeasurementUnit, type ObjectBounds,
   type GarmentTemplate
 } from '../lib/measurements';
 import * as fabric from 'fabric';
@@ -724,23 +724,27 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Artboard dimensions (in pixels at 40px/in) ────────────────────────────
+  // Driven by real garment dimensions for production accuracy
   const CANVAS_W = React.useMemo(() => {
     const view = project.activeCanvasView;
-    if (view === 'front' || view === 'back') return 1120;
-    if (view === 'sleeves') return 960;
-    if (view === 'collar') return 560;
     if (view === 'full') return 2400;
-    return 1120;
-  }, [project.activeCanvasView]);
+    const panelDims = dims[view as keyof typeof dims] ?? dims.front;
+    return Math.round(panelDims.w * PX_PER_INCH);
+  }, [project.activeCanvasView, dims]);
 
   const CANVAS_H = React.useMemo(() => {
     const view = project.activeCanvasView;
-    if (view === 'front' || view === 'back') return 1360;
-    if (view === 'sleeves') return 640;
-    if (view === 'collar') return 320;
     if (view === 'full') return 2400;
-    return 1360;
-  }, [project.activeCanvasView]);
+    const panelDims = dims[view as keyof typeof dims] ?? dims.front;
+    return Math.round(panelDims.h * PX_PER_INCH);
+  }, [project.activeCanvasView, dims]);
+
+  // ── Real-world canvas dimensions for display ──────────────────────────────
+  const currentPanelDimsInches = React.useMemo(() => {
+    const view = project.activeCanvasView;
+    if (view === 'full') return { w: 60, h: 60 };
+    return dims[view as keyof typeof dims] ?? dims.front;
+  }, [project.activeCanvasView, dims]);
 
   const viewportRef = useRef<HTMLDivElement>(null);
 
@@ -1232,6 +1236,33 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
             </>
           )}
 
+          {/* Zoom Level Display */}
+          <div className="studio-ctrl-group" style={{ background: 'transparent', border: 'none', gap: '0' }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: '10px',
+              color: 'var(--text-secondary)',
+              padding: '0 6px',
+              minWidth: '42px',
+              textAlign: 'center'
+            }}>
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+
+          {/* Dimension HUD in Topbar */}
+          <div className="studio-ctrl-group" style={{ background: 'transparent', border: '1px solid rgba(0,112,243,0.18)', gap: '0', padding: '2px 8px' }}>
+            <span style={{
+              fontFamily: 'monospace',
+              fontSize: '9px',
+              color: 'var(--accent-blue)',
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap'
+            }}>
+              {currentPanelDimsInches.w.toFixed(2)}" × {currentPanelDimsInches.h.toFixed(2)}"
+            </span>
+          </div>
+
           {/* History (Undo/Redo) controls */}
           <div className="studio-ctrl-group">
             <button className="studio-ctrl-icon-btn" onClick={() => fabricRef.current?.undo()} title="Undo (Ctrl+Z)"><Undo2 size={13} /></button>
@@ -1349,6 +1380,23 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 activeSize={activeSize}
                 offsets={layoutOffsets}
               />
+
+              {/* ── Floating Dimension HUD ──────────────────────────── */}
+              <div className="dim-hud">
+                <div className="dim-hud-row">
+                  <span className="dim-hud-icon">⬛</span>
+                  <span className="dim-hud-label">W</span>
+                  <span className="dim-hud-value">{currentPanelDimsInches.w.toFixed(2)}<span className="dim-hud-unit">"</span></span>
+                  <span className="dim-hud-sep">×</span>
+                  <span className="dim-hud-label">H</span>
+                  <span className="dim-hud-value">{currentPanelDimsInches.h.toFixed(2)}<span className="dim-hud-unit">"</span></span>
+                </div>
+                <div className="dim-hud-badges">
+                  <span className="dim-hud-badge dim-hud-badge--blue">300 DPI</span>
+                  <span className="dim-hud-badge dim-hud-badge--green">CMYK</span>
+                  <span className="dim-hud-badge dim-hud-badge--muted">{Math.round(zoom * 100)}% zoom</span>
+                </div>
+              </div>
 
             </div>
           </div>
