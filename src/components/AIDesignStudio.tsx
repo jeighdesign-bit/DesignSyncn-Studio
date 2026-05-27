@@ -158,8 +158,12 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     // Construct the combined prompt behind the scenes
     const userPrompt = project.prompt || preset?.prompt || 'Style Preset';
     const apparelName = project.apparelType === 'esports_jersey' ? 'Esports Raglan Jersey' : 'Crewneck Sweatshirt';
+    const teamContext = project.teamName ? ` for team '${project.teamName}'` : '';
+    const styleContext = project.stylePreference ? ` with a ${project.stylePreference} aesthetic` : '';
+    const visionContext = project.designVision ? `. Design Vision: ${project.designVision}` : '';
+    
     const colors = `Primary: ${project.baseColors.primary}, Secondary: ${project.baseColors.secondary}, Accent: ${project.baseColors.accent}, Highlight: ${project.baseColors.highlight}`;
-    const combinedPrompt = `${userPrompt}. Applied to a ${apparelName} with color palette [${colors}].`;
+    const combinedPrompt = `${userPrompt}${teamContext}${styleContext}. Applied to a ${apparelName} with color palette [${colors}]${visionContext}.`;
 
     setTimeout(() => {
       const newVersion: AiVersion = {

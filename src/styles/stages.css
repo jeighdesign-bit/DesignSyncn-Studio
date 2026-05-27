@@ -1,4 +1,4 @@
-/* ====================================================
+﻿/* ====================================================
    STAGE 1: BRIEF STAGE STYLING
    ==================================================== */
 .brief-workspace {
@@ -30,6 +30,75 @@
   border-bottom: 1px solid var(--border-muted);
   padding-bottom: 10px;
   margin-bottom: 8px;
+}
+
+/* Form Inputs */
+.brief-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.brief-input-group label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+}
+
+.brief-input, .brief-textarea {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-muted);
+  border-radius: var(--border-radius-sm);
+  padding: 10px 14px;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 14px;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.brief-input:focus, .brief-textarea:focus {
+  outline: none;
+  border-color: var(--accent-blue);
+  box-shadow: 0 0 0 2px rgba(0, 112, 243, 0.2);
+}
+
+.brief-textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+/* Style Pills */
+.style-pill-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.style-pill {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-muted);
+  color: var(--text-secondary);
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.style-pill:hover {
+  border-color: var(--text-secondary);
+  color: var(--text-primary);
+}
+
+.style-pill.active {
+  background: var(--accent-blue);
+  border-color: var(--accent-blue);
+  color: #fff;
 }
 
 /* Template Selectors */
@@ -214,10 +283,10 @@
 
 
 /* ====================================================
-   STAGE 2: AI DESIGN STUDIO — FULL PIPELINE LAYOUT
+   STAGE 2: AI DESIGN STUDIO â€” FULL PIPELINE LAYOUT
    ==================================================== */
 
-/* ── Top-level 3-column layout ────────────────────────────────────── */
+/* â”€â”€ Top-level 3-column layout â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-studio-layout {
   display: grid;
   grid-template-columns: 320px 1fr 280px;
@@ -226,7 +295,7 @@
   overflow: hidden;
 }
 
-/* ── LEFT PANEL ─────────────────────────────────────────────────── */
+/* â”€â”€ LEFT PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-left-panel {
   background: var(--bg-secondary);
   border-right: 1px solid var(--border-muted);
@@ -275,7 +344,7 @@
   line-height: 1.4;
 }
 
-/* ── Section Container ─────────────────────────────────────────── */
+/* â”€â”€ Section Container â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-section {
   padding: 12px 14px;
   border-bottom: 1px solid var(--border-muted);
@@ -301,7 +370,7 @@
   color: var(--text-disabled);
 }
 
-/* ── Prompt Input ───────────────────────────────────────────────── */
+/* â”€â”€ Prompt Input â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-prompt-input {
   width: 100%;
   resize: none;
@@ -339,7 +408,7 @@
   font-family: monospace;
 }
 
-/* ── Prompt Chips ───────────────────────────────────────────────── */
+/* â”€â”€ Prompt Chips â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-chip-row {
   display: flex;
   flex-wrap: wrap;
@@ -365,7 +434,7 @@
   background: rgba(0, 112, 243, 0.06);
 }
 
-/* ── Generate Button ────────────────────────────────────────────── */
+/* â”€â”€ Generate Button â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-generate-btn {
   width: 100%;
   display: flex;
@@ -400,7 +469,7 @@
   border: 1px solid var(--border-active);
 }
 
-/* ── Reference Upload Zone ─────────────────────────────────────── */
+/* â”€â”€ Reference Upload Zone â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-reference-zone {
   border: 1.5px dashed var(--border-muted);
   border-radius: 10px;
@@ -490,7 +559,7 @@
   color: var(--color-error);
 }
 
-/* ── Category Tabs ─────────────────────────────────────────────── */
+/* â”€â”€ Category Tabs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-cat-tabs {
   display: flex;
   background: var(--bg-primary);
@@ -518,7 +587,7 @@
   border: 1px solid var(--border-muted);
 }
 
-/* ── Style Presets Grid ────────────────────────────────────────── */
+/* â”€â”€ Style Presets Grid â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-presets-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -587,7 +656,7 @@
   opacity: 0.6;
 }
 
-/* ── AI Actions Toolkit ─────────────────────────────────────────── */
+/* â”€â”€ AI Actions Toolkit â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-actions-list {
   display: flex;
   flex-direction: column;
@@ -698,7 +767,7 @@
   flex-shrink: 0;
 }
 
-/* ── CENTER PANEL ───────────────────────────────────────────────── */
+/* â”€â”€ CENTER PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-center-panel {
   display: flex;
   flex-direction: column;
@@ -842,7 +911,7 @@
   color: var(--text-secondary);
 }
 
-/* ── RIGHT PANEL ────────────────────────────────────────────────── */
+/* â”€â”€ RIGHT PANEL â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 .ai-right-panel {
   background: var(--bg-secondary);
   display: flex;
@@ -1187,7 +1256,7 @@
   50% { transform: scale(1.5); opacity: 0.5; }
 }
 
-/* ── Legacy kept classes for older presets referenced elsewhere ── */
+/* â”€â”€ Legacy kept classes for older presets referenced elsewhere â”€â”€ */
 .ai-workspace { display: grid; grid-template-columns: 360px 1fr; height: 100%; width: 100%; overflow: hidden; }
 .ai-sidebar { background: var(--bg-secondary); border-right: 1px solid var(--border-muted); display: flex; flex-direction: column; height: 100%; overflow-y: auto; overflow-x: hidden; }
 .prompt-textarea { width: 100%; height: 90px; resize: none; font-size: 13px; line-height: 1.5; background: var(--bg-primary); box-sizing: border-box; }

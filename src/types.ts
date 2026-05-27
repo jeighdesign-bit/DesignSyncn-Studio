@@ -70,6 +70,9 @@ export interface ProductionRule {
 export interface Project {
   id?: string;
   name: string;
+  teamName?: string;
+  designVision?: string;
+  stylePreference?: string;
   stage: Stage;
   apparelType: ApparelType;
   baseColors: ColorPalette;

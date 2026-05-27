@@ -1093,6 +1093,42 @@ export default function App() {
                   
                   {/* Left Form controls */}
                   <div className="brief-panel">
+                    <h3 className="brief-section-title">Project Context</h3>
+                    
+                    <div className="brief-input-group">
+                      <label>Team / Organization Name</label>
+                      <input 
+                        type="text" 
+                        className="brief-input"
+                        placeholder="e.g. Cloud9, Team Liquid..."
+                        value={project.teamName || ''}
+                        onChange={(e) => handleUpdateProject({ teamName: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="brief-input-group">
+                      <label>Design Vision & Core Identity</label>
+                      <textarea 
+                        className="brief-textarea"
+                        placeholder="Describe the vibe, mascot, specific elements you want to see (e.g. 'Aggressive panther motif with sharp geometric lines')."
+                        value={project.designVision || ''}
+                        onChange={(e) => handleUpdateProject({ designVision: e.target.value })}
+                      />
+                    </div>
+
+                    <h3 className="brief-section-title">Aesthetic Preference</h3>
+                    <div className="style-pill-grid">
+                      {['Aggressive', 'Minimalist', 'Cyberpunk', 'Retro / Vintage', 'Clean Tech', 'Streetwear'].map(style => (
+                        <div 
+                          key={style}
+                          className={`style-pill ${project.stylePreference === style ? 'active' : ''}`}
+                          onClick={() => handleUpdateProject({ stylePreference: style })}
+                        >
+                          {style}
+                        </div>
+                      ))}
+                    </div>
+
                     <h3 className="brief-section-title">Apparel Category Spec</h3>
                     <div className="template-grid">
                       <div 
