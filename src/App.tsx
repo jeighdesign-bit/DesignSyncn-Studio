@@ -102,6 +102,7 @@ const createNewProject = (details: {
   dpi: number;
   colorMode: 'RGB' | 'CMYK';
   teamName?: string;
+  stylePreference?: string;
 }) => {
   return {
     ...initialProject,
@@ -113,6 +114,7 @@ const createNewProject = (details: {
     canvasSize: details.canvasSize,
     dpi: details.dpi,
     colorMode: details.colorMode,
+    stylePreference: details.stylePreference || 'Esports',
     createdAt: new Date().toISOString(),
     isArchived: false,
     baseColors: details.apparelType === 'crewneck_sweatshirt' ? {
@@ -212,6 +214,24 @@ export default function App() {
   const [newCanvasSize, setNewCanvasSize] = useState('2400 x 2400 px');
   const [newDpi, setNewDpi] = useState<number>(300);
   const [newColorMode, setNewColorMode] = useState<'RGB' | 'CMYK'>('CMYK');
+  const [modalStep, setModalStep] = useState<number>(1);
+  const [newStylePreference, setNewStylePreference] = useState<string>('Esports');
+
+  // Auto-reset when modal opens
+  useEffect(() => {
+    if (isModalOpen) {
+      setModalStep(1);
+      setNewProjectName('');
+      setNewTeamName('');
+      setNewStylePreference('Esports');
+      setNewGarmentType('esports_jersey');
+      setNewTemplateChoice('Pro Athletic Fit');
+      setNewCanvasSize('2400 x 2400 px');
+      setNewDpi(300);
+      setNewColorMode('CMYK');
+      setShowAdvancedSettings(false);
+    }
+  }, [isModalOpen]);
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(true);
   const [aiGenerating, setAiGenerating] = useState<boolean>(false);
@@ -359,6 +379,7 @@ export default function App() {
       dpi: newDpi,
       colorMode: newColorMode,
       teamName: newTeamName,
+      stylePreference: newStylePreference,
     });
 
     const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = newProj;
@@ -831,168 +852,468 @@ export default function App() {
                   </button>
                 </div>
 
-                <div className="modal-body">
-                  {/* Name */}
-                  <div className="form-group">
-                    <label className="form-label">Project Name</label>
-                    <input 
-                      type="text" 
-                      className="form-input-text" 
-                      placeholder="e.g. Neon Strike Esports Jersey"
-                      value={newProjectName}
-                      onChange={(e) => setNewProjectName(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Team / Client Name */}
-                  <div className="form-group">
-                    <label className="form-label">Team / Client Name (Optional)</label>
-                    <input 
-                      type="text" 
-                      className="form-input-text" 
-                      placeholder="e.g. Apex Predators Esports"
-                      value={newTeamName}
-                      onChange={(e) => setNewTeamName(e.target.value)}
-                    />
-                  </div>
-
-                  {/* Garment Type */}
-                  <div className="form-group">
-                    <label className="form-label">Garment Type</label>
-                    <div className="selector-card-grid">
-                      <div 
-                        className={`selector-card ${newGarmentType === 'esports_jersey' ? 'active' : ''}`}
-                        onClick={() => setNewGarmentType('esports_jersey')}
-                      >
-                        <svg viewBox="0 0 100 120" width="24" height="28" style={{ stroke: 'var(--text-primary)', fill: 'none', strokeWidth: 1.5 }}>
-                          <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
-                        </svg>
-                        <div className="selector-card-info">
-                          <span className="selector-card-title">Esports Jersey</span>
-                          <span className="selector-card-desc">Standard raglan pattern</span>
+                <div className="modal-split-container">
+                  {/* Left Column: Form & Stepper controls */}
+                  <div className="modal-controls-pane">
+                    <div>
+                      {/* Stepper progress */}
+                      <div className="modal-stepper">
+                        <div className="modal-stepper-line"></div>
+                        <div 
+                          className="modal-stepper-progress" 
+                          style={{ width: modalStep === 1 ? '0%' : modalStep === 2 ? '50%' : '100%' }}
+                        ></div>
+                        
+                        <div className={`modal-step-node ${modalStep >= 1 ? 'completed' : ''} ${modalStep === 1 ? 'active' : ''}`}>
+                          1
+                          <span className="modal-step-label">Basics</span>
+                        </div>
+                        <div className={`modal-step-node ${modalStep >= 2 ? 'completed' : ''} ${modalStep === 2 ? 'active' : ''}`}>
+                          2
+                          <span className="modal-step-label">Apparel & Style</span>
+                        </div>
+                        <div className={`modal-step-node ${modalStep >= 3 ? 'completed' : ''} ${modalStep === 3 ? 'active' : ''}`}>
+                          3
+                          <span className="modal-step-label">Settings</span>
                         </div>
                       </div>
 
-                      <div 
-                        className={`selector-card ${newGarmentType === 'crewneck_sweatshirt' ? 'active' : ''}`}
-                        onClick={() => setNewGarmentType('crewneck_sweatshirt')}
-                      >
-                        <svg viewBox="0 0 100 120" width="24" height="28" style={{ stroke: 'var(--text-primary)', fill: 'none', strokeWidth: 1.5 }}>
-                          <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" />
-                        </svg>
-                        <div className="selector-card-info">
-                          <span className="selector-card-title">Sweatshirt</span>
-                          <span className="selector-card-desc">Loose crewneck long sleeve</span>
-                        </div>
+                      {/* Step Contents */}
+                      <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {modalStep === 1 && (
+                          <>
+                            <div style={{ marginBottom: '8px' }}>
+                              <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 6px 0' }}>Establish Project Identity</h3>
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Give your design asset a clear name and set the client context.</p>
+                            </div>
+
+                            {/* Name */}
+                            <div className="form-group">
+                              <label className="form-label">Project Name</label>
+                              <input 
+                                type="text" 
+                                className="form-input-text" 
+                                placeholder="e.g. Neon Strike Esports Jersey"
+                                value={newProjectName}
+                                onChange={(e) => setNewProjectName(e.target.value)}
+                                style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
+                                autoFocus
+                              />
+                              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>A high-concept name helps the creative AI capture context.</span>
+                            </div>
+
+                            {/* Team / Client Name */}
+                            <div className="form-group">
+                              <label className="form-label">Team / Client Name (Optional)</label>
+                              <input 
+                                type="text" 
+                                className="form-input-text" 
+                                placeholder="e.g. Apex Predators Esports"
+                                value={newTeamName}
+                                onChange={(e) => setNewTeamName(e.target.value)}
+                                style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
+                              />
+                            </div>
+                          </>
+                        )}
+
+                        {modalStep === 2 && (
+                          <>
+                            <div>
+                              <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 4px 0' }}>Select Apparel & Vibe</h3>
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Choose a premium base pattern outline and aesthetic direction.</p>
+                            </div>
+
+                            {/* Garment Type Selection */}
+                            <div className="form-group">
+                              <label className="form-label">Select Garment Shape</label>
+                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div 
+                                  className={`visual-apparel-card ${newGarmentType === 'esports_jersey' ? 'active' : ''}`}
+                                  onClick={() => {
+                                    setNewGarmentType('esports_jersey');
+                                    setNewCanvasSize('2400 x 2400 px');
+                                    setNewDpi(300);
+                                    setNewColorMode('CMYK');
+                                  }}
+                                >
+                                  <svg viewBox="0 0 100 120" width="40" height="46" className="visual-apparel-card-svg" style={{ stroke: newGarmentType === 'esports_jersey' ? 'var(--accent-blue)' : '#718096', fill: 'none', strokeWidth: 1.8, marginBottom: '8px' }}>
+                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
+                                  </svg>
+                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>Esports Jersey</span>
+                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Standard raglan athletic cut</span>
+                                </div>
+
+                                <div 
+                                  className={`visual-apparel-card ${newGarmentType === 'crewneck_sweatshirt' ? 'active' : ''}`}
+                                  onClick={() => {
+                                    setNewGarmentType('crewneck_sweatshirt');
+                                    setNewCanvasSize('3000 x 3000 px');
+                                    setNewDpi(300);
+                                    setNewColorMode('CMYK');
+                                  }}
+                                >
+                                  <svg viewBox="0 0 100 120" width="40" height="46" className="visual-apparel-card-svg" style={{ stroke: newGarmentType === 'crewneck_sweatshirt' ? 'var(--accent-blue)' : '#718096', fill: 'none', strokeWidth: 1.8, marginBottom: '8px' }}>
+                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" />
+                                  </svg>
+                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>Crewneck Sweatshirt</span>
+                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Loose long sleeve streetwear fit</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Optional Style Presets */}
+                            <div className="form-group">
+                              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <span>Aesthetic Preset Vibe (Optional)</span>
+                                <span className="recommended-badge">Creative Preset</span>
+                              </label>
+                              <div className="style-chips-grid">
+                                {[
+                                  { id: 'Esports', name: 'Esports', emoji: '🎮' },
+                                  { id: 'Streetwear', name: 'Streetwear', emoji: '🧥' },
+                                  { id: 'Minimalist', name: 'Minimalist', emoji: '🌿' },
+                                  { id: 'Aggressive', name: 'Aggressive', emoji: '⚡' },
+                                  { id: 'Luxury', name: 'Luxury', emoji: '✨' },
+                                  { id: 'Futuristic', name: 'Futuristic', emoji: '🚀' },
+                                ].map((preset) => (
+                                  <div 
+                                    key={preset.id}
+                                    className={`style-preset-chip ${newStylePreference === preset.id ? 'active' : ''}`}
+                                    onClick={() => setNewStylePreference(preset.id)}
+                                  >
+                                    <span className="style-preset-emoji">{preset.emoji}</span>
+                                    <span className="style-preset-name">{preset.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </>
+                        )}
+
+                        {modalStep === 3 && (
+                          <>
+                            <div>
+                              <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 4px 0' }}>Configure Production Specs</h3>
+                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Advanced print-safe templates configured automatically.</p>
+                            </div>
+
+                            {/* Template Choice (Fit) */}
+                            <div className="form-group">
+                              <label className="form-label">Template / Pattern Fit</label>
+                              <div className="selector-card-grid">
+                                <div 
+                                  className={`selector-card ${newTemplateChoice === 'Pro Athletic Fit' ? 'active' : ''}`}
+                                  onClick={() => setNewTemplateChoice('Pro Athletic Fit')}
+                                  style={{ padding: '10px 14px', background: '#0e0e13' }}
+                                >
+                                  <div className="selector-card-info">
+                                    <span className="selector-card-title" style={{ fontSize: '12px' }}>Pro Athletic Fit</span>
+                                    <span className="selector-card-desc" style={{ fontSize: '9px' }}>Contoured, premium athletic seamlines</span>
+                                  </div>
+                                </div>
+
+                                <div 
+                                  className={`selector-card ${newTemplateChoice === 'Standard Fit' ? 'active' : ''}`}
+                                  onClick={() => setNewTemplateChoice('Standard Fit')}
+                                  style={{ padding: '10px 14px', background: '#0e0e13' }}
+                                >
+                                  <div className="selector-card-info">
+                                    <span className="selector-card-title" style={{ fontSize: '12px' }}>Standard Fit</span>
+                                    <span className="selector-card-desc" style={{ fontSize: '9px' }}>Relaxed silhouette, straight patterns</span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Automation Default Indicator */}
+                            <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.15)', padding: '10px 12px', borderRadius: '8px', alignItems: 'center' }}>
+                              <span className="recommended-badge">Auto Calibrated</span>
+                              <span style={{ fontSize: '11px', color: '#fff', fontWeight: '600' }}>
+                                Recommended for sublimation production
+                              </span>
+                            </div>
+
+                            {/* Expandable Advanced Accordion */}
+                            <div 
+                              className="advanced-accordion-trigger" 
+                              onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                              style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '10px 14px' }}
+                            >
+                              <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'rgba(255, 255, 255, 0.6)' }}>Advanced Calibration Settings</span>
+                              <ChevronDown size={14} style={{ transform: showAdvancedSettings ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                            </div>
+
+                            {showAdvancedSettings && (
+                              <div className="advanced-accordion-content" style={{ background: '#09090c', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', marginTop: '4px' }}>
+                                {/* Canvas Size */}
+                                <div className="form-group">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                    <label className="form-label">Canvas Size</label>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-disabled)' }}>
+                                      {newCanvasSize === '2400 x 2400 px' ? 'Standard Square layout' : 'High-definition blueprint'}
+                                    </span>
+                                  </div>
+                                  <div className="segmented-selector" style={{ background: '#0e0e13', borderColor: 'rgba(255,255,255,0.06)' }}>
+                                    <div 
+                                      className={`segmented-option ${newCanvasSize === '2400 x 2400 px' ? 'active' : ''}`}
+                                      onClick={() => setNewCanvasSize('2400 x 2400 px')}
+                                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                                    >
+                                      2400px {newGarmentType === 'esports_jersey' && '⭐'}
+                                    </div>
+                                    <div 
+                                      className={`segmented-option ${newCanvasSize === '3000 x 3000 px' ? 'active' : ''}`}
+                                      onClick={() => setNewCanvasSize('3000 x 3000 px')}
+                                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                                    >
+                                      3000px {newGarmentType === 'crewneck_sweatshirt' && '⭐'}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* DPI */}
+                                <div className="form-group">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                    <label className="form-label">Print Resolution</label>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-disabled)' }}>
+                                      {newDpi === 300 ? 'Best for professional printing' : 'Good for quick drafts'}
+                                    </span>
+                                  </div>
+                                  <div className="segmented-selector" style={{ background: '#0e0e13', borderColor: 'rgba(255,255,255,0.06)' }}>
+                                    <div 
+                                      className={`segmented-option ${newDpi === 150 ? 'active' : ''}`}
+                                      onClick={() => setNewDpi(150)}
+                                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                                    >
+                                      150 DPI (Fast Concept)
+                                    </div>
+                                    <div 
+                                      className={`segmented-option ${newDpi === 300 ? 'active' : ''}`}
+                                      onClick={() => setNewDpi(300)}
+                                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                                    >
+                                      300 DPI (Production) ⭐
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Color Space */}
+                                <div className="form-group">
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                    <label className="form-label">Color Space Calibration</label>
+                                    <span style={{ fontSize: '9px', color: 'var(--text-disabled)' }}>
+                                      {newColorMode === 'CMYK' ? 'Optimal ink match' : 'Vibrant screen graphics'}
+                                    </span>
+                                  </div>
+                                  <div className="segmented-selector" style={{ background: '#0e0e13', borderColor: 'rgba(255,255,255,0.06)' }}>
+                                    <div 
+                                      className={`segmented-option ${newColorMode === 'CMYK' ? 'active' : ''}`}
+                                      onClick={() => setNewColorMode('CMYK')}
+                                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                                    >
+                                      CMYK (Physical Print) ⭐
+                                    </div>
+                                    <div 
+                                      className={`segmented-option ${newColorMode === 'RGB' ? 'active' : ''}`}
+                                      onClick={() => setNewColorMode('RGB')}
+                                      style={{ padding: '6px 10px', fontSize: '11px' }}
+                                    >
+                                      RGB (Web & Digital)
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Step Navigation Controls */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      {modalStep > 1 ? (
+                        <button 
+                          className="ghost" 
+                          onClick={() => setModalStep(modalStep - 1)}
+                          style={{ padding: '8px 16px', fontSize: '12px' }}
+                        >
+                          Back
+                        </button>
+                      ) : (
+                        <button 
+                          className="ghost" 
+                          onClick={() => setIsModalOpen(false)}
+                          style={{ padding: '8px 16px', fontSize: '12px' }}
+                        >
+                          Cancel
+                        </button>
+                      )}
+
+                      {modalStep < 3 ? (
+                        <button 
+                          className="primary" 
+                          onClick={() => setModalStep(modalStep + 1)}
+                          disabled={modalStep === 1 && !newProjectName.trim()}
+                          style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          Continue
+                        </button>
+                      ) : (
+                        <button 
+                          className="primary" 
+                          onClick={handleCreateProject}
+                          disabled={!newProjectName.trim()}
+                          style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 15px rgba(0, 112, 243, 0.4)' }}
+                        >
+                          Start Designing ➔
+                        </button>
+                      )}
                     </div>
                   </div>
 
-                  {/* Advanced Settings Accordion */}
-                  <div 
-                    className="advanced-accordion-trigger" 
-                    onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                  >
-                    <span>Advanced Production Settings</span>
-                    <ChevronDown size={14} style={{ transform: showAdvancedSettings ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+                  {/* Right Column: Creative Live Preview */}
+                  <div className="modal-preview-pane">
+                    {/* Render dynamic SVG Silhouette & Details */}
+                    {(() => {
+                      const isJersey = newGarmentType === 'esports_jersey';
+                      const styleColors = {
+                        Esports: { primary: '#0070f3', secondary: '#111115', accent: '#00e5ff' },
+                        Streetwear: { primary: '#ff0055', secondary: '#1e1e24', accent: '#ffff00' },
+                        Minimalist: { primary: '#33333b', secondary: '#0e0e12', accent: '#718096' },
+                        Aggressive: { primary: '#e53e3e', secondary: '#1a1a24', accent: '#ffffff' },
+                        Luxury: { primary: '#d4af37', secondary: '#111115', accent: '#aa7c11' },
+                        Futuristic: { primary: '#00e5ff', secondary: '#09090c', accent: '#7000ff' }
+                      }[newStylePreference as 'Esports' | 'Streetwear' | 'Minimalist' | 'Aggressive' | 'Luxury' | 'Futuristic'] || { primary: '#0070f3', secondary: '#111115', accent: '#00e5ff' };
+
+                      return (
+                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+                          <div style={{ position: 'absolute', top: '16px', left: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <span style={{ fontSize: '9px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Studio Live View</span>
+                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: styleColors.primary, boxShadow: `0 0 8px ${styleColors.primary}`, display: 'inline-block' }}></span>
+                              <span style={{ fontSize: '11px', fontWeight: '800', color: '#fff', textTransform: 'capitalize' }}>
+                                {newStylePreference} Vibe Preset
+                              </span>
+                            </div>
+                          </div>
+                          
+                          {/* SVG Silhouette */}
+                          <svg viewBox="0 0 200 220" width="180" height="200" style={{ filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.6))', transition: 'all 0.3s ease' }}>
+                            <defs>
+                              <linearGradient id="garmentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" stopColor="#1a1a24" />
+                                <stop offset="100%" stopColor="#0a0a0f" />
+                              </linearGradient>
+                              {/* Cyber grid pattern */}
+                              <pattern id="hexGridPattern" width="10" height="10" patternUnits="userSpaceOnUse">
+                                <path d="M 5 0 L 10 2.5 L 10 7.5 L 5 10 L 0 7.5 L 0 2.5 Z" fill="none" stroke={styleColors.primary} strokeWidth="0.4" strokeOpacity="0.25" />
+                              </pattern>
+                            </defs>
+
+                            {/* Outer shadow / glow path */}
+                            {isJersey ? (
+                              <path d="M 40,30 C 70,12 130,12 160,30 L 180,90 L 155,98 L 158,200 C 120,208 80,208 42,200 L 45,98 L 20,90 Z" fill="none" stroke={styleColors.primary} strokeWidth="6" strokeOpacity="0.12" filter="blur(6px)" />
+                            ) : (
+                              <path d="M 40,40 C 70,22 130,22 160,40 L 190,120 L 170,126 L 160,195 L 40,195 L 30,126 L 10,120 Z" fill="none" stroke={styleColors.primary} strokeWidth="6" strokeOpacity="0.12" filter="blur(6px)" />
+                            )}
+
+                            {/* Main body garment vector */}
+                            {isJersey ? (
+                              <path d="M 40,30 C 70,12 130,12 160,30 L 180,90 L 155,98 L 158,200 C 120,208 80,208 42,200 L 45,98 L 20,90 Z" fill="url(#garmentGrad)" stroke={styleColors.primary} strokeWidth="1.5" />
+                            ) : (
+                              <path d="M 40,40 C 70,22 130,22 160,40 L 190,120 L 170,126 L 160,195 L 40,195 L 30,126 L 10,120 Z" fill="url(#garmentGrad)" stroke={styleColors.primary} strokeWidth="1.5" />
+                            )}
+
+                            {/* Style graphics */}
+                            {newStylePreference === 'Esports' && (
+                              <>
+                                <path d="M 50,80 L 100,105 L 150,80 L 150,92 L 100,117 L 50,92 Z" fill={styleColors.accent} fillOpacity="0.4" />
+                                <path d="M 50,105 L 100,130 L 150,105 L 150,115 L 100,140 L 50,115 Z" fill={styleColors.primary} fillOpacity="0.6" />
+                              </>
+                            )}
+                            {newStylePreference === 'Streetwear' && (
+                              <>
+                                <rect x="55" y="85" width="90" height="30" fill={styleColors.primary} fillOpacity="0.75" rx="3" />
+                                <circle cx="150" cy="70" r="14" fill={styleColors.accent} fillOpacity="0.25" filter="blur(1px)" />
+                                <circle cx="50" cy="140" r="16" fill={styleColors.primary} fillOpacity="0.15" filter="blur(2px)" />
+                              </>
+                            )}
+                            {newStylePreference === 'Minimalist' && (
+                              <>
+                                <rect x="92" y="80" width="16" height="16" fill="none" stroke={styleColors.accent} strokeWidth="1" strokeOpacity="0.5" />
+                                <line x1="100" y1="75" x2="100" y2="105" stroke={styleColors.accent} strokeWidth="0.5" strokeOpacity="0.3" />
+                              </>
+                            )}
+                            {newStylePreference === 'Aggressive' && (
+                              <>
+                                <path d="M 45,70 L 80,120 L 45,130 Z" fill={styleColors.primary} fillOpacity="0.7" />
+                                <path d="M 155,70 L 120,120 L 155,130 Z" fill={styleColors.primary} fillOpacity="0.7" />
+                                <path d="M 70,160 L 100,115 L 130,160 Z" fill={styleColors.accent} fillOpacity="0.5" />
+                              </>
+                            )}
+                            {newStylePreference === 'Luxury' && (
+                              <>
+                                {isJersey ? (
+                                  <>
+                                    <path d="M 40,30 C 70,12 130,12 160,30" fill="none" stroke={styleColors.accent} strokeWidth="2" />
+                                    <path d="M 20,90 L 45,98" fill="none" stroke={styleColors.accent} strokeWidth="2.5" />
+                                    <path d="M 180,90 L 155,98" fill="none" stroke={styleColors.accent} strokeWidth="2.5" />
+                                  </>
+                                ) : (
+                                  <>
+                                    <path d="M 40,40 C 70,22 130,22 160,40" fill="none" stroke={styleColors.accent} strokeWidth="2.5" />
+                                    <path d="M 10,120 L 30,126" fill="none" stroke={styleColors.accent} strokeWidth="3" />
+                                    <path d="M 190,120 L 170,126" fill="none" stroke={styleColors.accent} strokeWidth="3" />
+                                  </>
+                                )}
+                              </>
+                            )}
+                            {newStylePreference === 'Futuristic' && (
+                              <>
+                                {isJersey ? (
+                                  <path d="M 50,45 C 80,32 120,32 150,45 L 148,185 C 115,192 85,192 52,185 Z" fill="url(#hexGridPattern)" />
+                                ) : (
+                                  <path d="M 50,55 C 80,42 120,42 150,55 L 148,185 L 52,185 Z" fill="url(#hexGridPattern)" />
+                                )}
+                                <path d="M 42,100 Q 100,125 158,100" fill="none" stroke={styleColors.accent} strokeWidth="1.2" strokeDasharray="3 3" />
+                              </>
+                            )}
+
+                            {/* Dynamic Text Displays */}
+                            <text x="100" y="70" fill="#ffffff" fontSize="8" fontWeight="800" textAnchor="middle" letterSpacing="0.12em" style={{ opacity: 0.35, fontFamily: 'monospace' }}>
+                              {newTeamName ? newTeamName.toUpperCase() : 'DESIGN STUDIO'}
+                            </text>
+                            
+                            <text x="100" y="105" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle" letterSpacing="0.06em" style={{ textShadow: '0 2px 5px rgba(0,0,0,0.9)', fontFamily: 'Outfit, sans-serif' }}>
+                              {newProjectName ? (newProjectName.length > 15 ? newProjectName.slice(0, 13).toUpperCase() + '...' : newProjectName.toUpperCase()) : 'NEW JERSEY'}
+                            </text>
+
+                            {/* Fit Guidelines overlay */}
+                            {newTemplateChoice === 'Pro Athletic Fit' && (
+                              <path d="M 50,50 L 52,180 M 148,50 L 146,180" stroke="#00e5ff" strokeWidth="0.8" strokeDasharray="2 3" strokeOpacity="0.5" />
+                            )}
+                          </svg>
+
+                          {/* Quick specs pill */}
+                          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '5px', background: 'rgba(0,0,0,0.4)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', width: '100%', maxWidth: '230px' }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
+                              <span style={{ color: 'rgba(255,255,255,0.4)' }}>Garment Type:</span>
+                              <span style={{ color: '#fff', fontWeight: 'bold' }}>{isJersey ? 'Jersey' : 'Sweatshirt'}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
+                              <span style={{ color: 'rgba(255,255,255,0.4)' }}>Fit Profile:</span>
+                              <span style={{ color: styleColors.accent, fontWeight: 'bold' }}>{newTemplateChoice}</span>
+                            </div>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
+                              <span style={{ color: 'rgba(255,255,255,0.4)' }}>Resolution:</span>
+                              <span style={{ color: '#fff', fontWeight: 'bold' }}>{newDpi} DPI ({newColorMode})</span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </div>
-
-                  {showAdvancedSettings && (
-                    <div className="advanced-accordion-content">
-                      {/* Template Choice */}
-                      <div className="form-group">
-                        <label className="form-label">Template / Fit</label>
-                        <div className="selector-card-grid">
-                          <div 
-                            className={`selector-card ${newTemplateChoice === 'Pro Athletic Fit' ? 'active' : ''}`}
-                            onClick={() => setNewTemplateChoice('Pro Athletic Fit')}
-                          >
-                            <div className="selector-card-info">
-                              <span className="selector-card-title">Pro Athletic Fit</span>
-                              <span className="selector-card-desc">Contoured silhouette</span>
-                            </div>
-                          </div>
-
-                          <div 
-                            className={`selector-card ${newTemplateChoice === 'Standard Fit' ? 'active' : ''}`}
-                            onClick={() => setNewTemplateChoice('Standard Fit')}
-                          >
-                            <div className="selector-card-info">
-                              <span className="selector-card-title">Standard Fit</span>
-                              <span className="selector-card-desc">Classic straight cut</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Row of Sizing options */}
-                      <div style={{ display: 'flex', gap: '16px' }}>
-                        {/* Canvas Size */}
-                        <div className="form-group" style={{ flex: 1 }}>
-                          <label className="form-label">Canvas Size</label>
-                          <div className="segmented-selector">
-                            <div 
-                              className={`segmented-option ${newCanvasSize === '2400 x 2400 px' ? 'active' : ''}`}
-                              onClick={() => setNewCanvasSize('2400 x 2400 px')}
-                            >
-                              2400px
-                            </div>
-                            <div 
-                              className={`segmented-option ${newCanvasSize === '3000 x 3000 px' ? 'active' : ''}`}
-                              onClick={() => setNewCanvasSize('3000 x 3000 px')}
-                            >
-                              3000px
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* DPI */}
-                        <div className="form-group" style={{ flex: 1 }}>
-                          <label className="form-label">Print Resolution</label>
-                          <div className="segmented-selector">
-                            <div 
-                              className={`segmented-option ${newDpi === 150 ? 'active' : ''}`}
-                              onClick={() => setNewDpi(150)}
-                            >
-                              150 DPI
-                            </div>
-                            <div 
-                              className={`segmented-option ${newDpi === 300 ? 'active' : ''}`}
-                              onClick={() => setNewDpi(300)}
-                            >
-                              300 DPI
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Color Mode */}
-                      <div className="form-group">
-                        <label className="form-label">Color Space</label>
-                        <div className="segmented-selector">
-                          <div 
-                            className={`segmented-option ${newColorMode === 'CMYK' ? 'active' : ''}`}
-                            onClick={() => setNewColorMode('CMYK')}
-                          >
-                            CMYK (Print)
-                          </div>
-                          <div 
-                            className={`segmented-option ${newColorMode === 'RGB' ? 'active' : ''}`}
-                            onClick={() => setNewColorMode('RGB')}
-                          >
-                            RGB (Digital)
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                <div className="modal-footer">
-                  <button className="ghost" onClick={() => setIsModalOpen(false)}>Cancel</button>
-                  <button className="primary" onClick={handleCreateProject} disabled={!newProjectName.trim()}>
-                    Create Project
-                  </button>
                 </div>
               </div>
             </div>
