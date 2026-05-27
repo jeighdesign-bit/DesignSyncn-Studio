@@ -1226,16 +1226,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 ))}
               </div>
 
-              {/* Safe Zones Toggle */}
-              <div className="studio-ctrl-group">
-                <button
-                  className={`studio-ctrl-btn ${showSafeZones ? 'active' : ''}`}
-                  onClick={() => setShowSafeZones(v => !v)}
-                  title="Toggle safe zone overlays (bleed / safe margin / seam)"
-                >
-                  <Shield size={11} /> Safe Zones
-                </button>
-              </div>
+
             </>
           )}
 
