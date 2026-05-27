@@ -53,3 +53,44 @@
   --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
   --shadow-inset: inset 0 1px 2px rgba(255, 255, 255, 0.02);
 }
+
+[data-theme="light"] {
+  /* Soft Industrial Light Tone Palette */
+  --bg-primary: #f0f3f8;       /* Soft industrial light blue-grey */
+  --bg-secondary: #e2e8f0;     /* Light slate panel background */
+  --bg-tertiary: #cbd5e1;      /* Slightly darker slate panels */
+  --bg-hover: #b4c6dc;         /* Hover state panel backgrounds */
+  
+  /* Accent Colors */
+  --accent-blue: #0066cc;      /* High-contrast industrial Electric Blue */
+  --accent-blue-hover: #0052a3;
+  --accent-blue-rgb: 0, 102, 204;
+  --accent-purple: #6b21a8;    /* Sleek creative highlight purple */
+  --accent-purple-hover: #581c87;
+  
+  /* Borders and Grids */
+  --border-muted: #cbd5e1;      /* Clean slate light borders */
+  --border-active: #94a3b8;     /* Selected borders */
+  --border-focus: #0066cc;      /* Blue focused input borders */
+  
+  /* Status Colors */
+  --color-success: #10b981;
+  --color-warning: #f59e0b;
+  --color-error: #ef4444;
+  
+  /* Typography Colors */
+  --text-primary: #0f172a;     /* High-contrast deep navy slate */
+  --text-secondary: #475569;   /* Slate descriptions */
+  --text-disabled: #94a3b8;    /* Disabled text / placeholders */
+  
+  /* Grid & Pattern Styles */
+  --grid-line-color: rgba(148, 163, 184, 0.35);
+  --grid-line-major-color: rgba(148, 163, 184, 0.65);
+  --radial-glow-color: rgba(0, 102, 204, 0.02);
+
+  /* Shadows for light mode */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 8px 24px rgba(15, 23, 42, 0.12);
+  --shadow-inset: inset 0 1px 2px rgba(255, 255, 255, 0.8);
+}

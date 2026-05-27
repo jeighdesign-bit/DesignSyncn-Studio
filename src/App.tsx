@@ -10,7 +10,7 @@ import { AIDesignStudio } from './components/AIDesignStudio';
 import { 
   Layers, FileText, Download,
   ChevronLeft, ArrowRight, Sparkles, Menu, Upload, ChevronDown,
-  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy
+  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy, Sun, Moon
 } from 'lucide-react';
 
 // Default Project Settings
@@ -136,6 +136,15 @@ const createNewProject = (details: {
 export default function App() {
   const [view, setView] = useState<'landing' | 'dashboard' | 'editor'>('landing');
   
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    return (localStorage.getItem('ds-theme') as 'dark' | 'light') || 'dark';
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('ds-theme', theme);
+  }, [theme]);
+
   // Auth state
   const [session, setSession] = useState<Session | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -1432,6 +1441,30 @@ export default function App() {
                   </span>
                 </div>
               )}
+
+              {/* Theme Switcher Toggle */}
+              <button 
+                className="ghost" 
+                style={{ 
+                  padding: '6px', 
+                  marginRight: '8px', 
+                  borderRadius: '6px', 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center',
+                  background: 'var(--bg-primary)',
+                  border: '1px solid var(--border-muted)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                  color: 'var(--text-primary)',
+                  width: '28px',
+                  height: '28px'
+                }}
+                onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                title={theme === 'dark' ? 'Switch to Light Production Theme' : 'Switch to Dark Studio Theme'}
+              >
+                {theme === 'dark' ? <Sun size={14} style={{ color: '#f5a623' }} /> : <Moon size={14} style={{ color: 'var(--accent-blue)' }} />}
+              </button>
 
               <button className="primary" style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }} onClick={() => handleUpdateProject({ stage: 'export' })}>
                 Compile Layouts
