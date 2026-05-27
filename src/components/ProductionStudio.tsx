@@ -4,7 +4,7 @@ import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
   Shield, Ruler, Users,
-  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, MapPin
+  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
@@ -703,6 +703,604 @@ const createMasterCanvasJSON = (views: { front: string; back: string; sleeves: s
     console.error('Failed to create master canvas JSON:', e);
     return null;
   }
+};
+
+// ─── Modular Roster Studio Subcomponents ──────────────────────────────────────
+
+interface StatusBadgeProps {
+  status?: 'Pending' | 'Mapped' | 'Ready for Export' | string;
+}
+
+const StatusBadge: React.FC<StatusBadgeProps> = ({ status }) => {
+  let bg = 'rgba(255,255,255,0.05)';
+  let color = 'rgba(255,255,255,0.4)';
+  let label = status || 'Mapped';
+
+  if (status === 'Ready for Export') {
+    bg = 'rgba(74, 222, 128, 0.1)';
+    color = '#4ade80';
+    label = '✓ Ready';
+  } else if (status === 'Mapped') {
+    bg = 'rgba(59, 130, 246, 0.1)';
+    color = '#60a5fa';
+    label = 'Mapped';
+  } else if (status === 'Pending') {
+    bg = 'rgba(245, 158, 11, 0.1)';
+    color = '#fbbf24';
+    label = 'Pending';
+  }
+
+  return (
+    <span
+      style={{
+        fontSize: '9px',
+        fontWeight: '700',
+        color,
+        background: bg,
+        padding: '2px 6px',
+        borderRadius: '3px',
+        whiteSpace: 'nowrap',
+        display: 'inline-block',
+      }}
+    >
+      {label}
+    </span>
+  );
+};
+
+interface ProductionProgressBarProps {
+  scale: number;
+}
+
+const ProductionProgressBar: React.FC<ProductionProgressBarProps> = ({ scale }) => {
+  const percentage = Math.round(scale * 100);
+  const barColor = scale < 0.7 ? '#f2c94c' : 'var(--color-success)';
+
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+      <span style={{ fontSize: '8px', color: 'var(--text-disabled)', fontFamily: 'monospace', letterSpacing: '0.04em', flexShrink: 0 }}>
+        SCALE {percentage}%
+      </span>
+      <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
+        <div
+          style={{
+            height: '100%',
+            width: `${Math.min(100, Math.max(0, percentage))}%`,
+            background: barColor,
+            borderRadius: '2px',
+            transition: 'width 0.2s ease-in-out',
+          }}
+        />
+      </div>
+    </div>
+  );
+};
+
+interface RosterToolbarProps {
+  onGenerateAll: () => void;
+  onImportCsv: () => void;
+  onImportExcel: () => void;
+  onAutoMap: () => void;
+  onSync: () => void;
+}
+
+const RosterToolbar: React.FC<RosterToolbarProps> = ({
+  onGenerateAll,
+  onImportCsv,
+  onImportExcel,
+  onAutoMap,
+  onSync,
+}) => {
+  return (
+    <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: '#09090d', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
+      {/* Primary CTA */}
+      <button
+        onClick={onGenerateAll}
+        style={{
+          width: '100%',
+          background: 'rgba(0, 112, 243, 0.1)',
+          border: '1px solid rgba(0, 112, 243, 0.35)',
+          borderRadius: '6px',
+          color: '#3b9eff',
+          fontSize: '11px',
+          fontWeight: 'bold',
+          padding: '8px 0',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '6px',
+          transition: 'all 0.15s'
+        }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.18)'; }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)'; }}
+      >
+        <Sparkles size={11} /> Generate All Variations
+      </button>
+
+      {/* Symmetric 2x2 Grid of Secondary Compact Buttons */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
+        <button
+          onClick={onImportCsv}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '4px',
+            color: 'var(--text-secondary)',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            height: '24px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+        >
+          <Upload size={9} /> Import CSV
+        </button>
+        <button
+          onClick={onImportExcel}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '4px',
+            color: 'var(--text-secondary)',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            height: '24px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+        >
+          <FileDown size={9} /> Import Excel
+        </button>
+        <button
+          onClick={onAutoMap}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '4px',
+            color: 'var(--text-secondary)',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            height: '24px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+        >
+          <MapPin size={9} /> Auto Map
+        </button>
+        <button
+          onClick={onSync}
+          style={{
+            background: 'transparent',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '4px',
+            color: 'var(--text-secondary)',
+            fontSize: '9.5px',
+            fontWeight: 'bold',
+            height: '24px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '4px'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
+          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+        >
+          <RefreshCw size={9} /> Sync
+        </button>
+      </div>
+    </div>
+  );
+};
+
+interface AddPlayerCardProps {
+  onAdd: () => void;
+}
+
+const AddPlayerCard: React.FC<AddPlayerCardProps> = ({ onAdd }) => {
+  return (
+    <button
+      onClick={onAdd}
+      style={{
+        width: '100%',
+        background: 'transparent',
+        border: '1px dashed rgba(255,255,255,0.08)',
+        borderRadius: '6px',
+        color: 'var(--text-secondary)',
+        fontSize: '10px',
+        fontWeight: '600',
+        padding: '8px 0',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '4px',
+        transition: 'all 0.15s',
+        marginBottom: '4px'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(0, 112, 243, 0.35)';
+        e.currentTarget.style.color = '#3b9eff';
+        e.currentTarget.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.15)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+        e.currentTarget.style.color = 'var(--text-secondary)';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      <Plus size={11} /> Add Player Row
+    </button>
+  );
+};
+
+interface PlayerRosterCardProps {
+  player: RosterPlayer;
+  isActive: boolean;
+  warning: string | null;
+  roster: RosterPlayer[];
+  primaryColor: string;
+  secondaryColor: string;
+  apparelType: string;
+  onActivate: () => void;
+  onFieldChange: (id: string, field: keyof RosterPlayer, value: any) => void;
+  onDelete: (id: string, e: React.MouseEvent) => void;
+}
+
+const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
+  player,
+  isActive,
+  warning,
+  primaryColor,
+  secondaryColor,
+  apparelType,
+  onActivate,
+  onFieldChange,
+  onDelete,
+}) => {
+  const isReady = player.status === 'Ready for Export';
+
+  return (
+    <div
+      onClick={onActivate}
+      style={{
+        background: isActive ? 'rgba(0, 112, 243, 0.03)' : 'transparent',
+        border: isActive ? '1px solid rgba(0, 112, 243, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
+        borderRadius: '6px',
+        padding: '8px 10px',
+        cursor: 'pointer',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: isActive ? '8px' : '0px',
+        transition: 'all 0.15s',
+        boxShadow: isActive ? '0 0 10px rgba(0,112,243,0.05)' : 'none',
+      }}
+      onMouseEnter={(e) => {
+        if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)';
+      }}
+      onMouseLeave={(e) => {
+        if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)';
+      }}
+    >
+      {/* ROW 1: TOP ROW (Always Visible Summary) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
+          {/* Active selection dot */}
+          <div
+            style={{
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              background: isActive ? 'var(--accent-blue)' : 'transparent',
+              border: isActive ? 'none' : '1px solid rgba(255,255,255,0.2)',
+              boxShadow: isActive ? '0 0 4px var(--accent-blue)' : 'none',
+              flexShrink: 0
+            }}
+          />
+          <MiniJerseyThumbnail
+            primaryColor={primaryColor}
+            secondaryColor={secondaryColor}
+            apparelType={apparelType}
+          />
+          
+          <span style={{ fontSize: '11px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
+            {player.name || 'UNNAMED'}
+          </span>
+          
+          <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--accent-blue)', fontFamily: 'monospace', flexShrink: 0 }}>
+            #{player.number || '0'}
+          </span>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+          <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-disabled)', background: 'rgba(255,255,255,0.05)', padding: '1px 4px', borderRadius: '3px' }}>
+            {player.size === 'XXL' ? '2XL' : player.size}
+          </span>
+          
+          <StatusBadge status={player.status} />
+        </div>
+      </div>
+
+      {/* Expanded view controls */}
+      {isActive && (
+        <div 
+          style={{ 
+            display: 'flex', 
+            flexDirection: 'column', 
+            gap: '8px', 
+            borderTop: '1px solid rgba(255,255,255,0.06)', 
+            paddingTop: '8px', 
+            marginTop: '2px' 
+          }} 
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* ROW 2: MIDDLE ROW (Editable inputs NEVER overlapping) */}
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <input
+              type="text"
+              value={player.name}
+              onChange={(e) => onFieldChange(player.id, 'name', e.target.value)}
+              placeholder="SURNAME"
+              style={{
+                flex: 1,
+                background: '#0d111d',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '4px',
+                padding: '5px 8px',
+                fontSize: '11px',
+                color: '#fff',
+                outline: 'none',
+                textTransform: 'uppercase',
+                minWidth: 0, // Prevents overflow cutoff in narrow flex containers
+              }}
+            />
+            <input
+              type="text"
+              value={player.number}
+              onChange={(e) => onFieldChange(player.id, 'number', e.target.value)}
+              placeholder="00"
+              style={{
+                width: '42px',
+                flexShrink: 0,
+                background: '#0d111d',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '4px',
+                padding: '5px 2px',
+                fontSize: '11px',
+                color: 'var(--accent-blue)',
+                outline: 'none',
+                textAlign: 'center',
+                fontFamily: 'monospace'
+              }}
+            />
+            
+            <button
+              onClick={(e) => onDelete(player.id, e)}
+              style={{
+                width: '28px',
+                height: '24px',
+                flexShrink: 0,
+                background: 'transparent',
+                border: '1px solid rgba(235, 87, 87, 0.2)',
+                borderRadius: '4px',
+                color: '#eb5757',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              title="Delete Player"
+            >
+              <Trash2 size={11} />
+            </button>
+          </div>
+
+          {/* ROW 3: BOTTOM ROW (Dropdown Selectors) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.1fr', gap: '4px' }}>
+            <select
+              value={player.size}
+              onChange={(e) => onFieldChange(player.id, 'size', e.target.value)}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="XS">XS</option>
+              <option value="S">S</option>
+              <option value="M">M</option>
+              <option value="L">L</option>
+              <option value="XL">XL</option>
+              <option value="XXL">2XL</option>
+              <option value="3XL">3XL</option>
+            </select>
+
+            <select
+              value={player.variant || 'Variant A'}
+              onChange={(e) => onFieldChange(player.id, 'variant', e.target.value)}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
+            >
+              <option value="Variant A">Variant A</option>
+              <option value="Variant B">Variant B</option>
+              <option value="Variant C">Variant C</option>
+            </select>
+
+            <select
+              value={player.status || 'Mapped'}
+              onChange={(e) => onFieldChange(player.id, 'status', e.target.value)}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: isReady ? 'var(--color-success)' : 'var(--accent-blue)', outline: 'none', cursor: 'pointer', fontWeight: 'bold' }}
+            >
+              <option value="Pending">Pending</option>
+              <option value="Mapped">Mapped</option>
+              <option value="Ready for Export">Ready</option>
+            </select>
+          </div>
+
+          {/* ROW 4: LAST ROW (Scale HUD and Validation Warnings) */}
+          <div>
+            {warning ? (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'rgba(235,87,87,0.05)',
+                border: '1px solid rgba(235,87,87,0.15)',
+                color: '#eb5757',
+                fontSize: '8.5px',
+                padding: '4px 6px',
+                borderRadius: '4px',
+                fontWeight: 'bold'
+              }}>
+                <AlertTriangle size={8.5} />
+                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{warning}</span>
+              </div>
+            ) : (
+              <ProductionProgressBar scale={player.nameScale} />
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface RosterSidebarProps {
+  sidebarWidth: number;
+  project: Project;
+  warningChecker: (player: RosterPlayer, roster: RosterPlayer[]) => string | null;
+  onUpdateProject: (updates: Partial<Project>) => void;
+  onAddDefaultPlayer: () => void;
+  onRosterImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onBulkGenerate: () => void;
+  onAutoMap: () => void;
+  onBulkSync: () => void;
+  onDeletePlayer: (id: string, e: React.MouseEvent) => void;
+  onFieldChange: (id: string, field: keyof RosterPlayer, value: any) => void;
+  rosterInputRef: React.RefObject<HTMLInputElement | null>;
+}
+
+const RosterSidebar: React.FC<RosterSidebarProps> = ({
+  sidebarWidth,
+  project,
+  warningChecker,
+  onUpdateProject,
+  onAddDefaultPlayer,
+  onRosterImport,
+  onBulkGenerate,
+  onAutoMap,
+  onBulkSync,
+  onDeletePlayer,
+  onFieldChange,
+  rosterInputRef,
+}) => {
+  return (
+    <aside
+      className="layers-sidebar"
+      style={{
+        width: `${sidebarWidth}px`,
+        minWidth: `${sidebarWidth}px`,
+        maxWidth: `${sidebarWidth}px`,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        background: '#07070a',
+        borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+      }}
+    >
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* Header & Stats horizontal status row */}
+        <div style={{ padding: '16px 16px 12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+            <Cpu size={12} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
+            <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Roster Studio</span>
+          </div>
+          
+          <div style={{ fontSize: '9.5px', color: 'var(--text-disabled)', fontWeight: '500', letterSpacing: '0.02em', marginTop: '2px' }}>
+            <span>{project.roster.length} Players</span>
+            <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
+            <span style={{ color: 'var(--color-success)' }}>{project.roster.filter(p => p.status === 'Ready for Export').length} Ready</span>
+            <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
+            <span style={{ color: project.roster.filter(p => warningChecker(p, project.roster) !== null).length > 0 ? '#eb5757' : 'var(--text-disabled)' }}>
+              {project.roster.filter(p => warningChecker(p, project.roster) !== null).length} Alerts
+            </span>
+          </div>
+        </div>
+
+        {/* Hidden File Input for CSV / Excel uploads */}
+        <input ref={rosterInputRef} type="file" accept=".csv, .xlsx" style={{ display: 'none' }} onChange={onRosterImport} />
+
+        {/* Action Button Toolbar */}
+        <RosterToolbar
+          onGenerateAll={onBulkGenerate}
+          onImportCsv={() => {
+            if (rosterInputRef.current) {
+              rosterInputRef.current.setAttribute('accept', '.csv');
+              rosterInputRef.current.click();
+            }
+          }}
+          onImportExcel={() => {
+            if (rosterInputRef.current) {
+              rosterInputRef.current.setAttribute('accept', '.xlsx');
+              rosterInputRef.current.click();
+            }
+          }}
+          onAutoMap={onAutoMap}
+          onSync={onBulkSync}
+        />
+
+        {/* Roster database list */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          
+          {/* Dash outlined add player card */}
+          <AddPlayerCard onAdd={onAddDefaultPlayer} />
+
+          {project.roster.length === 0 ? (
+            <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed rgba(255, 255, 255, 0.06)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              <Users size={16} style={{ opacity: 0.3 }} />
+              <span>No variations loaded.</span>
+              <span style={{ fontSize: '9px', opacity: 0.5 }}>Import a CSV/XLSX or Add Player above.</span>
+            </div>
+          ) : (
+            project.roster.map((player) => {
+              const isActive = project.activePlayerId === player.id;
+              const warning = warningChecker(player, project.roster);
+
+              return (
+                <PlayerRosterCard
+                  key={player.id}
+                  player={player}
+                  isActive={isActive}
+                  warning={warning}
+                  roster={project.roster}
+                  primaryColor={project.baseColors.primary}
+                  secondaryColor={project.baseColors.secondary}
+                  apparelType={project.apparelType}
+                  onActivate={() => onUpdateProject({ activePlayerId: player.id })}
+                  onFieldChange={onFieldChange}
+                  onDelete={onDeletePlayer}
+                />
+              );
+            })
+          )}
+        </div>
+      </div>
+    </aside>
+  );
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1422,362 +2020,20 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── LEFT SIDEBAR: Redesigned Production Variation Roster Manager ── */}
-      <aside
-        className="layers-sidebar"
-        style={{
-          width: `${studioLeftWidth}px`,
-          minWidth: `${studioLeftWidth}px`,
-          maxWidth: `${studioLeftWidth}px`,
-          transition: isDraggingLeft ? 'none' : undefined,
-          display: 'flex',
-          flexDirection: 'column',
-          overflow: 'hidden',
-          background: '#07070a',
-          borderRight: '1px solid rgba(255, 255, 255, 0.05)',
-        }}
-      >
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-          
-          {/* Header & Simplified Roster Stats */}
-          <div style={{ padding: '16px 16px 12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
-              <Cpu size={12} style={{ color: 'var(--accent-blue)', opacity: 0.8 }} />
-              <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Roster Studio</span>
-            </div>
-            
-            {/* Inline Stats Summary */}
-            <div style={{ fontSize: '9.5px', color: 'var(--text-disabled)', fontWeight: '500', letterSpacing: '0.02em', marginTop: '2px' }}>
-              <span>{project.roster.length} Players</span>
-              <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
-              <span style={{ color: 'var(--color-success)' }}>{project.roster.filter(p => p.status === 'Ready for Export').length} Ready</span>
-              <span style={{ margin: '0 6px', opacity: 0.3 }}>•</span>
-              <span style={{ color: project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length > 0 ? '#eb5757' : 'var(--text-disabled)' }}>
-                {project.roster.filter(p => getPlayerValidationWarning(p, project.roster) !== null).length} Alerts
-              </span>
-            </div>
-          </div>
-
-          {/* Unified Hidden File Upload Input */}
-          <input ref={rosterInputRef} type="file" accept=".csv, .xlsx" style={{ display: 'none' }} onChange={handleRosterImport} />
-
-          {/* Controls & Button Hierarchy */}
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)', background: '#09090d', display: 'flex', flexDirection: 'column', gap: '8px', flexShrink: 0 }}>
-            
-            {/* Primary CTA */}
-            <button
-              onClick={handleBulkGenerate}
-              style={{
-                width: '100%',
-                background: 'rgba(0, 112, 243, 0.1)',
-                border: '1px solid rgba(0, 112, 243, 0.35)',
-                borderRadius: '6px',
-                color: '#3b9eff',
-                fontSize: '10.5px',
-                fontWeight: 'bold',
-                padding: '7px 0',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '6px',
-                transition: 'all 0.15s'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.18)'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)'; }}
-            >
-              <Sparkles size={11} /> Generate All Variations
-            </button>
-
-            {/* Secondary CTA Actions Row */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '5px' }}>
-              <button
-                onClick={() => rosterInputRef.current?.click()}
-                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
-              >
-                <Upload size={9} /> Import Roster
-              </button>
-              <button
-                onClick={handleAutoMap}
-                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
-              >
-                <MapPin size={9} /> Auto Map
-              </button>
-              <button
-                onClick={handleBulkSync}
-                style={{ background: 'transparent', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '4px', color: 'var(--text-secondary)', fontSize: '9px', fontWeight: 'bold', height: '24px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '3px' }}
-                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
-                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
-              >
-                <RefreshCw size={9} /> Sync
-              </button>
-            </div>
-          </div>
-
-          {/* Roster Database Scrollable List */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            
-            {/* Inline Add Player Action Row */}
-            <button
-              onClick={handleAddDefaultPlayer}
-              style={{
-                width: '100%',
-                background: 'transparent',
-                border: '1px dashed rgba(255,255,255,0.08)',
-                borderRadius: '6px',
-                color: 'var(--text-secondary)',
-                fontSize: '10px',
-                fontWeight: '600',
-                padding: '6px 0',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '4px',
-                transition: 'all 0.15s',
-                marginBottom: '4px'
-              }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(0, 112, 243, 0.3)'; e.currentTarget.style.color = '#3b9eff'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; e.currentTarget.style.color = 'var(--text-secondary)'; }}
-            >
-              <Plus size={11} /> Add Player Row
-            </button>
-
-            {project.roster.length === 0 ? (
-              <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed rgba(255, 255, 255, 0.06)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-                <Users size={16} style={{ opacity: 0.3 }} />
-                <span>No variations loaded.</span>
-                <span style={{ fontSize: '9px', opacity: 0.5 }}>Import a CSV/XLSX or Add Player above.</span>
-              </div>
-            ) : (
-              project.roster.map((player) => {
-                const isActive = project.activePlayerId === player.id;
-                const warning = getPlayerValidationWarning(player, project.roster);
-                const isReady = player.status === 'Ready for Export';
-
-                return (
-                  <div
-                    key={player.id}
-                    onClick={() => onUpdateProject({ activePlayerId: player.id })}
-                    style={{
-                      background: isActive ? 'rgba(255, 255, 255, 0.02)' : 'transparent',
-                      border: '1px solid rgba(255, 255, 255, 0.04)',
-                      borderRadius: '6px',
-                      padding: '8px 10px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      gap: isActive ? '8px' : '0px',
-                      transition: 'all 0.15s',
-                      boxShadow: isActive ? 'inset 0 0 12px rgba(255,255,255,0.01)' : 'none',
-                    }}
-                    onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.08)'; }}
-                    onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.borderColor = 'rgba(255,255,255,0.04)'; }}
-                  >
-                    {/* Collapsed / Top Row State: Info summary */}
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
-                        {/* Selector check indicator */}
-                        <div
-                          style={{
-                            width: '5px',
-                            height: '5px',
-                            borderRadius: '50%',
-                            background: isActive ? 'var(--accent-blue)' : 'transparent',
-                            border: isActive ? 'none' : '1px solid rgba(255,255,255,0.2)',
-                            boxShadow: isActive ? '0 0 4px var(--accent-blue)' : 'none',
-                            flexShrink: 0
-                          }}
-                        />
-                        <MiniJerseyThumbnail
-                          primaryColor={project.baseColors.primary}
-                          secondaryColor={project.baseColors.secondary}
-                          apparelType={project.apparelType}
-                        />
-                        
-                        {/* Collapsed display Name / Number */}
-                        <span style={{ fontSize: '10.5px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textTransform: 'uppercase' }}>
-                          {player.name || 'UNNAMED'}
-                        </span>
-                        
-                        <span style={{ fontSize: '10px', fontWeight: '700', color: 'var(--accent-blue)', fontFamily: 'monospace', flexShrink: 0 }}>
-                          #{player.number || '0'}
-                        </span>
-                      </div>
-
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
-                        <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-disabled)', background: 'rgba(255,255,255,0.05)', padding: '1px 4px', borderRadius: '3px' }}>
-                          {player.size}
-                        </span>
-                        
-                        {/* Status Checkmark */}
-                        <span style={{ fontSize: '9px', fontWeight: '700', color: isReady ? 'var(--color-success)' : 'rgba(255,255,255,0.4)', display: 'flex', alignItems: 'center', gap: '2px' }}>
-                          {isReady ? '✓ Ready' : 'Mapped'}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* Expandable Inline Edit Controls Panel (Visible ONLY when active) */}
-                    {isActive && (
-                      <div 
-                        style={{ 
-                          display: 'flex', 
-                          flexDirection: 'column', 
-                          gap: '6px', 
-                          borderTop: '1px dashed rgba(255,255,255,0.06)', 
-                          paddingTop: '8px', 
-                          marginTop: '2px' 
-                        }} 
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        {/* Editable Name & Number Fields */}
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <input
-                            type="text"
-                            value={player.name}
-                            onChange={(e) => handleFieldChange(player.id, 'name', e.target.value)}
-                            placeholder="SURNAME"
-                            style={{
-                              flex: 1.8,
-                              background: '#0d111d',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              borderRadius: '4px',
-                              padding: '4px 6px',
-                              fontSize: '11px',
-                              color: '#fff',
-                              outline: 'none',
-                              textTransform: 'uppercase'
-                            }}
-                          />
-                          <input
-                            type="text"
-                            value={player.number}
-                            onChange={(e) => handleFieldChange(player.id, 'number', e.target.value)}
-                            placeholder="NO."
-                            style={{
-                              width: '36px',
-                              background: '#0d111d',
-                              border: '1px solid rgba(255,255,255,0.08)',
-                              borderRadius: '4px',
-                              padding: '4px 2px',
-                              fontSize: '11px',
-                              color: 'var(--accent-blue)',
-                              outline: 'none',
-                              textAlign: 'center',
-                              fontFamily: 'monospace'
-                            }}
-                          />
-                          
-                          {/* Trash Delete Action button inside expanded state */}
-                          <button
-                            onClick={(e) => handleDeletePlayer(player.id, e)}
-                            style={{
-                              width: '24px',
-                              height: '22px',
-                              background: 'transparent',
-                              border: '1px solid rgba(235, 87, 87, 0.15)',
-                              borderRadius: '4px',
-                              color: '#eb5757',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center'
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                            title="Delete Player"
-                          >
-                            <Trash2 size={10} />
-                          </button>
-                        </div>
-
-                        {/* Dropdown selectors */}
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.3fr 1.1fr', gap: '4px' }}>
-                          <select
-                            value={player.size}
-                            onChange={(e) => handleFieldChange(player.id, 'size', e.target.value)}
-                            style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
-                          >
-                            <option value="XS">XS</option>
-                            <option value="S">S</option>
-                            <option value="M">M</option>
-                            <option value="L">L</option>
-                            <option value="XL">XL</option>
-                            <option value="XXL">2XL</option>
-                            <option value="3XL">3XL</option>
-                          </select>
-
-                          <select
-                            value={player.variant || 'Variant A'}
-                            onChange={(e) => handleFieldChange(player.id, 'variant', e.target.value)}
-                            style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer' }}
-                          >
-                            <option value="Variant A">Variant A</option>
-                            <option value="Variant B">Variant B</option>
-                            <option value="Variant C">Variant C</option>
-                          </select>
-
-                          <select
-                            value={player.status || 'Mapped'}
-                            onChange={(e) => handleFieldChange(player.id, 'status', e.target.value)}
-                            style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: isReady ? 'var(--color-success)' : 'var(--accent-blue)', outline: 'none', cursor: 'pointer', fontWeight: 'bold' }}
-                          >
-                            <option value="Pending">Pending</option>
-                            <option value="Mapped">Mapped</option>
-                            <option value="Ready for Export">Ready</option>
-                          </select>
-                        </div>
-
-                        {/* Inline Pre-flight warning warnings or Typo scale indicator */}
-                        <div>
-                          {warning ? (
-                            <div style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              background: 'rgba(235,87,87,0.05)',
-                              border: '1px solid rgba(235,87,87,0.15)',
-                              color: '#eb5757',
-                              fontSize: '8px',
-                              padding: '3px 6px',
-                              borderRadius: '4px',
-                              fontWeight: 'bold'
-                            }}>
-                              <AlertTriangle size={8} />
-                              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{warning}</span>
-                            </div>
-                          ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span style={{ fontSize: '8px', color: 'var(--text-disabled)', fontFamily: 'monospace', letterSpacing: '0.04em' }}>
-                                SCALE {Math.round(player.nameScale * 100)}%
-                              </span>
-                              <div style={{ flex: 1, height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                <div
-                                  style={{
-                                    height: '100%',
-                                    width: `${player.nameScale * 100}%`,
-                                    background: player.nameScale < 0.7 ? '#f2c94c' : 'var(--color-success)',
-                                    borderRadius: '2px'
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                  </div>
-                );
-              })
-            )}
-          </div>
-        </div>
-      </aside>
+      <RosterSidebar
+        sidebarWidth={studioLeftWidth}
+        project={project}
+        warningChecker={getPlayerValidationWarning}
+        onUpdateProject={onUpdateProject}
+        onAddDefaultPlayer={handleAddDefaultPlayer}
+        onRosterImport={handleRosterImport}
+        onBulkGenerate={handleBulkGenerate}
+        onAutoMap={handleAutoMap}
+        onBulkSync={handleBulkSync}
+        onDeletePlayer={handleDeletePlayer}
+        onFieldChange={handleFieldChange}
+        rosterInputRef={rosterInputRef}
+      />
 
       {/* Resize handle left */}
       <div onMouseDown={startResizeLeft} className={`resize-handle-vertical ${isDraggingLeft ? 'dragging' : ''}`} />
