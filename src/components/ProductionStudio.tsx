@@ -3,7 +3,7 @@ import type { Project, RosterPlayer } from '../types';
 import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
-  Shield, Ruler,
+  Shield, Ruler, Sparkles, Info
 } from 'lucide-react';
 import { AssetsLayersPanel } from './AssetsLayersPanel';
 import { RuleEngine } from './RuleEngine';
@@ -317,6 +317,237 @@ const ShapeInspector: React.FC<ShapeInspectorProps> = ({ activeObj, onApply }) =
   );
 };
 
+interface LogoInspectorProps {
+  activeObj: fabric.Image | null;
+  canvasW: number;
+  onApply: (props: Record<string, unknown>) => void;
+}
+
+const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApply }) => {
+  const [scale, setScale] = useState(Math.round((activeObj?.scaleX ?? 1) * 100));
+  const [left, setLeft] = useState(Math.round(activeObj?.left ?? 0));
+  const [top, setTop] = useState(Math.round(activeObj?.top ?? 0));
+
+  useEffect(() => {
+    if (!activeObj) return;
+    setScale(Math.round((activeObj.scaleX ?? 1) * 100));
+    setLeft(Math.round(activeObj.left ?? 0));
+    setTop(Math.round(activeObj.top ?? 0));
+  }, [activeObj]);
+
+  const apply = (patch: Record<string, unknown>) => {
+    if (!activeObj) return;
+    activeObj.set(patch as any);
+    activeObj.canvas?.requestRenderAll();
+    onApply(patch);
+  };
+
+  const centerLogo = () => {
+    if (!activeObj) return;
+    const w = activeObj.width * (activeObj.scaleX ?? 1);
+    const centeredLeft = Math.round((canvasW - w) / 2);
+    setLeft(centeredLeft);
+    apply({ left: centeredLeft });
+  };
+
+  const isHighRes = activeObj?.width && activeObj.width > 200;
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px', overflowY: 'auto', height: '100%' }}>
+      {!activeObj && (
+        <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-disabled)', fontSize: '12px' }}>
+          Select a logo on the canvas to edit its properties.
+        </div>
+      )}
+
+      {activeObj && (
+        <>
+          {/* Asset Quality check */}
+          <div className="inspector-card" style={{ background: '#0e0e12', border: '1px solid #202028', padding: '12px', borderRadius: '8px' }}>
+            <div className="inspector-label" style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Asset Quality Check</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '6px' }}>
+              <div style={{
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: isHighRes ? 'var(--color-success)' : 'var(--color-warning)',
+                boxShadow: `0 0 6px ${isHighRes ? 'var(--color-success)' : 'var(--color-warning)'}`
+              }} />
+              <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff' }}>
+                {isHighRes ? '✓ 300 DPI Production Ready' : '⚠ Low Resolution (72 DPI Warning)'}
+              </span>
+            </div>
+            <p style={{ fontSize: '9px', color: 'var(--text-disabled)', marginTop: '4px', lineHeight: '1.3' }}>
+              {isHighRes 
+                ? 'Vector or HD raster logo passes pre-flight checks. High fidelity sublimation guaranteed.'
+                : 'Sublimation printing requires high density vectors. This asset might print blurred or pixelated.'
+              }
+            </p>
+          </div>
+
+          {/* Position & Scale */}
+          <div className="inspector-card" style={{ background: '#0e0e12', border: '1px solid #202028', padding: '12px', borderRadius: '8px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div className="inspector-label" style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Position & Scaling</div>
+            
+            <div className="inspector-control-group">
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Scale Ratio</span>
+                <span style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>{scale}%</span>
+              </div>
+              <input
+                type="range" min="10" max="300" value={scale}
+                onChange={e => {
+                  const v = Number(e.target.value);
+                  setScale(v);
+                  apply({ scaleX: v / 100, scaleY: v / 100 });
+                }}
+                style={{ width: '100%', accentColor: 'var(--accent-blue)', cursor: 'pointer' }}
+              />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+              <div className="inspector-control-group">
+                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>X Coord (px)</label>
+                <input
+                  type="number" value={left} className="inspector-input-dark" style={{ width: '100%', background: '#07070a', border: '1px solid #202028', color: '#fff', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    setLeft(v);
+                    apply({ left: v });
+                  }}
+                />
+              </div>
+              <div className="inspector-control-group">
+                <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '4px' }}>Y Coord (px)</label>
+                <input
+                  type="number" value={top} className="inspector-input-dark" style={{ width: '100%', background: '#07070a', border: '1px solid #202028', color: '#fff', borderRadius: '4px', padding: '6px', fontSize: '11px' }}
+                  onChange={e => {
+                    const v = Number(e.target.value);
+                    setTop(v);
+                    apply({ top: v });
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Alignment */}
+          <div className="inspector-card" style={{ background: '#0e0e12', border: '1px solid #202028', padding: '12px', borderRadius: '8px' }}>
+            <div className="inspector-label" style={{ fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)', marginBottom: '8px' }}>Alignment Tools</div>
+            <button
+              onClick={centerLogo}
+              style={{
+                width: '100%',
+                background: 'var(--accent-blue)',
+                border: 'none',
+                color: '#fff',
+                padding: '8px',
+                borderRadius: '6px',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'background 0.2s'
+              }}
+            >
+              <Shield size={12} /> Align Chest Center
+            </button>
+            <span style={{ display: 'block', fontSize: '9px', color: 'var(--text-disabled)', marginTop: '6px', textAlign: 'center', lineHeight: '1.3' }}>
+              Centers the selected logo inside the panel's print-safe margins perfectly.
+            </span>
+          </div>
+        </>
+      )}
+    </div>
+  );
+};
+
+interface BeginnerGuidePanelProps {
+  project: Project;
+}
+
+const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', height: '100%', overflowY: 'auto' }}>
+      {/* 1. Project Specs Brief Summary */}
+      <div style={{ background: '#0e0e12', border: '1px solid #202028', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Sparkles size={14} style={{ color: 'var(--accent-blue)' }} />
+          <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', fontFamily: 'monospace' }}>
+            Active Brief Specifications
+          </span>
+        </div>
+        <div style={{ height: '1px', background: 'rgba(255,255,255,0.04)', margin: '4px 0' }} />
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Apparel Style:</span>
+            <span style={{ color: '#fff', fontWeight: '600', textTransform: 'capitalize' }}>
+              {project.apparelType ? project.apparelType.replace('_', ' ') : 'Esports Jersey'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Aesthetic Vibe:</span>
+            <span style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>
+              {project.stylePreference || 'Generic'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+            <span style={{ color: 'var(--text-secondary)' }}>Team Name:</span>
+            <span style={{ color: '#fff', fontWeight: '600' }}>
+              {project.teamName || 'Personal'}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Sublimation Layout Guidelines */}
+      <div style={{ background: '#0e0e12', border: '1px solid #202028', borderRadius: '8px', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <h4 style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: '#fff', letterSpacing: '0.05em', margin: 0 }}>
+          Sublimation Printing Guidelines
+        </h4>
+        <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.4' }}>
+          <li>
+            <strong>Chest Center Safe Zone</strong>: Always place sponsor logos inside the front-chest center zone to prevent them from getting caught in seam stitches.
+          </li>
+          <li>
+            <strong>DPI Density</strong>: Ensure logo resolutions are at least 300 DPI before producing to avoid fuzzy prints.
+          </li>
+          <li>
+            <strong>Color Bleeds</strong>: High-contrast borders are added around print panels. Keep primary vector lines away from the red outline seam lines!
+          </li>
+        </ul>
+      </div>
+
+      {/* 3. Creative suggestion Pro-Tips */}
+      <div style={{ 
+        background: 'linear-gradient(135deg, #111524 0%, #0c0e18 100%)', 
+        border: '1px solid rgba(0, 112, 243, 0.25)', 
+        borderRadius: '8px', 
+        padding: '14px', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        gap: '6px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <Info size={12} style={{ color: 'var(--accent-blue)' }} />
+          <span style={{ fontSize: '10px', fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            Creative Pro-Tip
+          </span>
+        </div>
+        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.45', margin: 0 }}>
+          {project.stylePreference === 'Cyberpunk' 
+            ? 'Cyberpunk aesthetics thrive on high-contrast neon trims. Try adding a bold magenta (#ff0055) accent line on the sleeves panel to make the wires pop!'
+            : project.stylePreference === 'Minimalist'
+            ? 'Minimalist styles rely on negative space. Try keeping the front logo small (under 6 inches) and removing all extra graphics from the chest area.'
+            : 'For tournament-ready sports styles, bold geometric split lines running from the underarms to the cuffs give a faster, athletic momentum vibe!'
+          }
+        </p>
+      </div>
+    </div>
+  );
+};
+
 // Helper functions for merging and splitting single views and master sheet JSON
 const splitMasterCanvasJSON = (masterJSONStr: string, offsets: any) => {
   try {
@@ -430,6 +661,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [activeTextObj, setActiveTextObj] = useState<fabric.IText | null>(null);
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
+  const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
+  const [workspaceMode, setWorkspaceMode] = useState<'beginner' | 'advanced'>('beginner');
 
   // ── Measurement system state ──────────────────────────────────────────────
   const [selectedBounds, setSelectedBounds] = useState<ObjectBounds | null>(null);
@@ -728,20 +961,29 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     if (!layer) {
       setActiveTextObj(null);
       setActiveShapeObj(null);
+      setActiveImageObj(null);
       return;
     }
     const obj = layer.objectRef;
     if (layer.type === 'text') {
       setActiveTextObj(obj as fabric.IText);
       setActiveShapeObj(null);
+      setActiveImageObj(null);
       setToolMode('text');
     } else if (layer.type === 'shape') {
       setActiveShapeObj(obj as fabric.Rect);
       setActiveTextObj(null);
+      setActiveImageObj(null);
       setToolMode('shape');
+    } else if (layer.type === 'image') {
+      setActiveImageObj(obj as fabric.Image);
+      setActiveTextObj(null);
+      setActiveShapeObj(null);
+      setToolMode('select');
     } else {
       setActiveTextObj(null);
       setActiveShapeObj(null);
+      setActiveImageObj(null);
     }
   }, []);
 
@@ -814,9 +1056,10 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   };
 
   // ── Inspector right panel determination ───────────────────────────────────
-  const getInspectorMode = (): 'text' | 'shape' | 'calibration' => {
-    if (toolMode === 'text') return 'text';
-    if (toolMode === 'shape') return 'shape';
+  const getInspectorMode = (): 'text' | 'shape' | 'image' | 'calibration' => {
+    if (activeTextObj) return 'text';
+    if (activeShapeObj) return 'shape';
+    if (activeImageObj) return 'image';
     return 'calibration';
   };
   const inspectorMode = getInspectorMode();
@@ -932,6 +1175,30 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 
           <div style={{ flex: 1 }} />
 
+          {/* Workspace Mode Selector */}
+          <div className="studio-ctrl-group">
+            <span className="studio-ctrl-label">Workspace Mode</span>
+            <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-muted)' }}>
+              <button
+                className={`studio-ctrl-btn ${workspaceMode === 'beginner' ? 'active' : ''}`}
+                onClick={() => {
+                  setWorkspaceMode('beginner');
+                  setShowSafeZones(false);
+                }}
+                style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', background: workspaceMode === 'beginner' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: workspaceMode === 'beginner' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
+              >
+                Beginner
+              </button>
+              <button
+                className={`studio-ctrl-btn ${workspaceMode === 'advanced' ? 'active' : ''}`}
+                onClick={() => setWorkspaceMode('advanced')}
+                style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', background: workspaceMode === 'advanced' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: workspaceMode === 'advanced' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
+              >
+                Advanced
+              </button>
+            </div>
+          </div>
+
           {/* Canvas background */}
           <div className="studio-ctrl-group">
             <span className="studio-ctrl-label">Canvas</span>
@@ -946,31 +1213,36 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
             ))}
           </div>
 
-          {/* Unit Switcher */}
-          <div className="studio-ctrl-group">
-            <span className="studio-ctrl-label"><Ruler size={11} /> Unit</span>
-            {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
-              <button
-                key={u}
-                className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
-                onClick={() => onUpdateProject({ measurementUnit: u as any })}
-                title={`Switch to ${u}`}
-              >
-                {u === 'inches' ? 'in' : u}
-              </button>
-            ))}
-          </div>
+          {/* Advanced Mode Calibration Controls */}
+          {workspaceMode === 'advanced' && (
+            <>
+              {/* Unit Switcher */}
+              <div className="studio-ctrl-group">
+                <span className="studio-ctrl-label"><Ruler size={11} /> Unit</span>
+                {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
+                  <button
+                    key={u}
+                    className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
+                    onClick={() => onUpdateProject({ measurementUnit: u as any })}
+                    title={`Switch to ${u}`}
+                  >
+                    {u === 'inches' ? 'in' : u}
+                  </button>
+                ))}
+              </div>
 
-          {/* Safe Zones Toggle */}
-          <div className="studio-ctrl-group">
-            <button
-              className={`studio-ctrl-btn ${showSafeZones ? 'active' : ''}`}
-              onClick={() => setShowSafeZones(v => !v)}
-              title="Toggle safe zone overlays (bleed / safe margin / seam)"
-            >
-              <Shield size={11} /> Safe Zones
-            </button>
-          </div>
+              {/* Safe Zones Toggle */}
+              <div className="studio-ctrl-group">
+                <button
+                  className={`studio-ctrl-btn ${showSafeZones ? 'active' : ''}`}
+                  onClick={() => setShowSafeZones(v => !v)}
+                  title="Toggle safe zone overlays (bleed / safe margin / seam)"
+                >
+                  <Shield size={11} /> Safe Zones
+                </button>
+              </div>
+            </>
+          )}
 
           {/* History (Undo/Redo) controls */}
           <div className="studio-ctrl-group">
@@ -1059,6 +1331,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 height={CANVAS_H}
                 currentView={currentView}
                 unit={unit}
+                showRulersAndGrid={workspaceMode === 'advanced'}
                 showSafeZones={showSafeZones}
                 safeZones={showSafeZones ? calcSafeZones(
                   CANVAS_W, CANVAS_H,
@@ -1136,17 +1409,18 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           <span className="inspector-header-title">
             {inspectorMode === 'text' ? 'Text Inspector' :
               inspectorMode === 'shape' ? 'Shape Inspector' :
-                'Calibration Rules'}
+                inspectorMode === 'image' ? 'Logo Properties' :
+                  workspaceMode === 'advanced' ? 'Calibration Rules' : 'Creative Brief Guide'}
           </span>
           {inspectorMode !== 'calibration' && (
             <span className="inspector-header-badge">
-              {inspectorMode === 'text' ? 'T' : 'R'}
+              {inspectorMode === 'text' ? 'T' : inspectorMode === 'image' ? 'L' : 'R'}
             </span>
           )}
         </div>
 
         {/* ── Object Measurement Panel ── */}
-        {selectedBounds && (
+        {workspaceMode === 'advanced' && selectedBounds && (
           <div className="measure-panel">
             <div className="measure-panel-title">📐 Object Measurements</div>
             <div className="measure-grid">
@@ -1172,7 +1446,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           </div>
         )}
 
-        <div key={inspectorMode} className="inspector-card-container" style={{ flex: 1, overflowY: 'auto' }}>
+        <div key={`${inspectorMode}-${workspaceMode}`} className="inspector-card-container" style={{ flex: 1, overflowY: 'auto' }}>
           {inspectorMode === 'text' ? (
             <TextInspector
               activeObj={activeTextObj}
@@ -1187,8 +1461,18 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 fabricRef.current?.saveHistory();
               }}
             />
-          ) : (
+          ) : inspectorMode === 'image' ? (
+            <LogoInspector
+              activeObj={activeImageObj}
+              canvasW={CANVAS_W}
+              onApply={() => {
+                fabricRef.current?.saveHistory();
+              }}
+            />
+          ) : workspaceMode === 'advanced' ? (
             <RuleEngine project={project} onUpdateProject={onUpdateProject} />
+          ) : (
+            <BeginnerGuidePanel project={project} />
           )}
         </div>
 

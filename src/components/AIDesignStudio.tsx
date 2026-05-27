@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Project } from '../types';
 import { MockupView } from './MockupView';
 import {
@@ -143,9 +143,33 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const [handoffDone, setHandoffDone] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Upgraded Concept Grid & Momentum states
+  const [viewMode, setViewMode] = useState<'detail' | 'grid'>('grid');
+  const [activeLoadingMessage, setActiveLoadingMessage] = useState<string>('[AI Engine] Analyzing print canvas...');
+
   const pushLog = (msg: string) => {
     setActionLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 14)]);
   };
+
+  const loadingMessages = [
+    '[AI Engine] Analyzing print canvas...',
+    '[Sublimation] Mapping layout zones...',
+    '[Vector Art] Balancing sleeve composition...',
+    '[Print Safe] Optimizing sponsor alignment...',
+    '[Aesthetics] Synthesizing print-safe margins...',
+    '[Render] Finalizing 3D blueprint matrices...',
+  ];
+
+  useEffect(() => {
+    if (!aiGenerating) return;
+    let idx = 0;
+    setActiveLoadingMessage(loadingMessages[0]);
+    const interval = setInterval(() => {
+      idx = (idx + 1) % loadingMessages.length;
+      setActiveLoadingMessage(loadingMessages[idx]);
+    }, 400);
+    return () => clearInterval(interval);
+  }, [aiGenerating]);
 
   // ── Generate handler ─────────────────────────────────────────────────────────
   const handleGenerate = () => {
@@ -166,20 +190,30 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     const combinedPrompt = `${userPrompt}${teamContext}${styleContext}. Applied to a ${apparelName} with color palette [${colors}]${visionContext}.`;
 
     setTimeout(() => {
-      const newVersion: AiVersion = {
-        id: `v${Date.now()}`,
-        label: (project.prompt || preset?.name) ?? 'Style Preset',
-        prompt: combinedPrompt,
+      const baseId = Date.now();
+      const variantSuffixes = [
+        { suffix: 'Alpha Core', pColor: project.baseColors.primary, sColor: project.baseColors.secondary, aColor: project.baseColors.accent },
+        { suffix: 'Beta Shift', pColor: project.baseColors.secondary, sColor: project.baseColors.primary, aColor: project.baseColors.accent },
+        { suffix: 'Gamma Grid', pColor: project.baseColors.primary, sColor: project.baseColors.accent, aColor: project.baseColors.highlight },
+        { suffix: 'Delta Apex', pColor: '#121217', sColor: project.baseColors.secondary, aColor: '#00e676' }
+      ];
+
+      const generatedVersions: AiVersion[] = variantSuffixes.map((varSpec, index) => ({
+        id: `v-${baseId}-${index}`,
+        label: `${(project.prompt || preset?.name || 'Concept')} ${varSpec.suffix}`,
+        prompt: `${combinedPrompt} (Variation ${varSpec.suffix})`,
         presetId: project.selectedPresetId || '',
-        accentColor: preset?.accentColor ?? project.baseColors.accent,
-        primaryColor: preset?.primaryColor ?? project.baseColors.primary,
-        secondaryColor: preset?.secondaryColor ?? project.baseColors.secondary,
+        primaryColor: varSpec.pColor,
+        secondaryColor: varSpec.sColor,
+        accentColor: varSpec.aColor,
         timestamp: new Date().toLocaleTimeString(),
-        action: 'Generated',
-      };
-      setVersions(prev => [newVersion, ...prev]);
-      setActiveVersionId(newVersion.id);
-      pushLog(`Generation complete → ${newVersion.label} ready.`);
+        action: `Generated Concept V${index + 1}`
+      }));
+
+      setVersions(prev => [...generatedVersions, ...prev]);
+      setActiveVersionId(generatedVersions[0].id); // select the first one by default
+      setViewMode('grid'); // switch to grid view to show variations
+      pushLog(`✓ Generated 4 distinct style concepts successfully.`);
     }, 1900);
   };
 
@@ -433,17 +467,37 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       </div>
 
       {/* ═══ CENTER PANEL ═══════════════════════════════════════════════════════ */}
-      <div className="ai-center-panel">
+      <div className="ai-center-panel" style={{ background: '#0a0a0e' }}>
 
         {/* Center Top Bar */}
         <div className="ai-center-topbar">
           <div className="ai-center-title-group">
             <div className="ai-center-badge">
-              <Eye size={10} /> LIVE PREVIEW
+              <Eye size={10} /> {viewMode === 'grid' && versions.length > 0 ? 'CONCEPTS GRID' : 'LIVE PREVIEW'}
             </div>
             <span className="ai-center-title">{project.name}</span>
           </div>
-          <div className="ai-center-controls">
+          <div className="ai-center-controls" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            {/* View Mode Toggle Buttons */}
+            {versions.length > 0 && (
+              <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-muted)', marginRight: '6px' }}>
+                <button
+                  className={`studio-ctrl-btn ${viewMode === 'grid' ? 'active' : ''}`}
+                  onClick={() => setViewMode('grid')}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'grid' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'grid' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Layers size={10} /> Grid View
+                </button>
+                <button
+                  className={`studio-ctrl-btn ${viewMode === 'detail' ? 'active' : ''}`}
+                  onClick={() => setViewMode('detail')}
+                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'detail' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'detail' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
+                >
+                  <Eye size={10} /> Detail View
+                </button>
+              </div>
+            )}
+
             {activeVersion && (
               <div className="ai-active-version-badge">
                 <Check size={10} /> {activeVersion.label}
@@ -452,18 +506,214 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           </div>
         </div>
 
-        {/* MockupView wrapper */}
-        <div className="ai-mockup-wrapper">
+        {/* MockupView / Concept Grid wrapper */}
+        <div className="ai-mockup-wrapper" style={{ minHeight: '0', flex: 1, display: 'flex', flexDirection: 'column' }}>
           {aiGenerating && (
             <div className="ai-generation-overlay">
               <div className="ai-gen-spinner-wrap">
                 <div className="ai-gen-spinner" />
-                <div className="ai-gen-label">Synthesizing Design Layer...</div>
-                <div className="ai-gen-sub">AI is mapping your concept to garment templates</div>
+                <div className="ai-gen-label" style={{ textShadow: '0 0 10px rgba(0, 112, 243, 0.4)' }}>
+                  {activeLoadingMessage}
+                </div>
+                <div className="ai-gen-sub">AI is mapping your custom concepts to layout templates</div>
               </div>
             </div>
           )}
-          <MockupView project={project} />
+
+          {viewMode === 'grid' && versions.length > 0 ? (
+            <div className="ai-concept-grid" style={{
+              display: 'grid',
+              gridTemplateColumns: '1fr 1fr',
+              gridTemplateRows: '1fr 1fr',
+              gap: '16px',
+              padding: '24px',
+              height: '100%',
+              boxSizing: 'border-box',
+              overflowY: 'auto'
+            }}>
+              {versions.slice(0, 4).map((version, index) => {
+                const isActive = activeVersionId === version.id;
+                return (
+                  <div
+                    key={version.id}
+                    className={`ai-concept-card ${isActive ? 'active' : ''}`}
+                    style={{
+                      position: 'relative',
+                      background: 'rgba(17, 17, 21, 0.75)',
+                      backdropFilter: 'blur(16px)',
+                      border: isActive ? '2px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.04)',
+                      borderRadius: '12px',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      padding: '12px',
+                      transition: 'all 0.2s',
+                      boxShadow: isActive ? '0 0 20px rgba(0, 112, 243, 0.25)' : 'none',
+                    }}
+                    onClick={() => {
+                      setActiveVersionId(version.id);
+                      // Update project colors to match this active version!
+                      onUpdateProject({
+                        baseColors: {
+                          ...project.baseColors,
+                          primary: version.primaryColor,
+                          secondary: version.secondaryColor,
+                          accent: version.accentColor
+                        }
+                      });
+                    }}
+                  >
+                    {/* Visual Card Gradient Header Backdrop */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 0, left: 0, right: 0, height: '4px',
+                      background: `linear-gradient(90deg, ${version.primaryColor}, ${version.secondaryColor}, ${version.accentColor})`
+                    }} />
+
+                    {/* Badge number */}
+                    <div style={{ position: 'absolute', top: 10, left: 12, fontSize: '9px', fontWeight: '800', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px', color: version.accentColor, fontFamily: 'monospace' }}>
+                      CONCEPT V{index + 1}
+                    </div>
+
+                    {/* Miniature Colored Garment SVG Preview */}
+                    <div style={{
+                      height: '130px',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      position: 'relative',
+                      margin: '10px 0'
+                    }}>
+                      <div 
+                        style={{
+                          position: 'absolute',
+                          width: '80px',
+                          height: '95px',
+                          background: `linear-gradient(135deg, ${version.primaryColor} 0%, ${version.secondaryColor} 60%, ${version.accentColor}33 100%)`,
+                          clipPath: project.apparelType === 'esports_jersey'
+                            ? 'polygon(20% 15%, 26% 8%, 50% 12%, 74% 8%, 80% 15%, 88% 38%, 78% 40%, 79% 95%, 21% 95%, 22% 40%, 12% 38%)'
+                            : project.apparelType === 'hoodie'
+                            ? 'polygon(18% 28%, 28% 22%, 50% 25%, 72% 22%, 82% 28%, 92% 52%, 82% 54%, 78% 95%, 22% 95%, 18% 54%, 8% 52%)'
+                            : 'polygon(15% 20%, 26% 12%, 50% 16%, 74% 12%, 85% 20%, 92% 42%, 81% 44%, 82% 95%, 18% 95%, 19% 44%, 8% 42%)',
+                          boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center'
+                        }}
+                      >
+                        {/* Overlay texture details */}
+                        <div style={{ position: 'absolute', inset: 0, opacity: 0.15, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, #fff 4px, #fff 8px)', mixBlendMode: 'overlay' }} />
+                        <svg viewBox="0 0 100 120" style={{ width: '100%', height: '100%', stroke: version.accentColor, strokeWidth: '1.2', fill: 'none', opacity: 0.8 }}>
+                          {project.apparelType === 'esports_jersey' && (
+                            <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z" />
+                          )}
+                          {project.apparelType === 'tshirt' && (
+                            <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" />
+                          )}
+                          {project.apparelType === 'hoodie' && (
+                            <>
+                              <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" />
+                              <path d="M 32,29 C 30,10 70,10 68,29 Z" />
+                            </>
+                          )}
+                          {(!project.apparelType || (project.apparelType !== 'esports_jersey' && project.apparelType !== 'tshirt' && project.apparelType !== 'hoodie')) && (
+                            <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" />
+                          )}
+                        </svg>
+                      </div>
+                    </div>
+
+                    {/* Card Title Label */}
+                    <div style={{ width: '100%', textAlign: 'center', marginTop: '4px', zIndex: 2 }}>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#fff', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                        {version.label}
+                      </span>
+                      <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginTop: '2px' }}>
+                        {version.action || 'Concept'}
+                      </span>
+                    </div>
+
+                    {/* Hover Translucent Overlay Action Bar */}
+                    <div className="concept-overlay" style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(9, 9, 12, 0.94)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                      gap: '8px',
+                      opacity: 0,
+                      pointerEvents: 'none',
+                      transition: 'opacity 0.2s',
+                      borderRadius: '12px',
+                      padding: '16px',
+                      boxSizing: 'border-box'
+                    }}>
+                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: version.accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
+                        V1 Setup Matrix
+                      </span>
+                      
+                      <button
+                        className="ai-quick-btn"
+                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setActiveVersionId(version.id);
+                          setViewMode('detail'); // switch to Detail inspect!
+                          pushLog(`Inspecting detailed 3D Mockup for ${version.label}`);
+                        }}
+                      >
+                        <Eye size={10} /> Refine & Edit
+                      </button>
+
+                      <button
+                        className="ai-quick-btn"
+                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          runToolAction('qk-remix', `Remix ${version.label.split(' ').pop()}`, 4);
+                        }}
+                      >
+                        <RefreshCw size={10} /> Remix Variation
+                      </button>
+
+                      <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
+                        <button
+                          className="ai-quick-btn"
+                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            runToolAction('qk-upscale', 'Upscale HD', 5);
+                          }}
+                        >
+                          <Maximize2 size={9} /> Upscale
+                        </button>
+                        <button
+                          className="ai-quick-btn"
+                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', color: '#fff', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Apply style preset
+                            onPresetSelect('cyber-hex');
+                            pushLog(`Style "Cyber Hex" queued for ${version.label}`);
+                          }}
+                        >
+                          <Sliders size={9} /> Style
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <MockupView project={project} />
+          )}
         </div>
 
         {/* Center Info Bar */}

@@ -9,8 +9,8 @@ import { PreFlightPanel } from './components/PreFlightPanel';
 import { AIDesignStudio } from './components/AIDesignStudio';
 import { 
   Layers, FileText, Download,
-  ChevronLeft, ArrowRight, Sparkles, Menu, Upload,
-  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X
+  ChevronLeft, ArrowRight, Sparkles, Menu, Upload, ChevronDown,
+  AlertTriangle, Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy
 } from 'lucide-react';
 
 // Default Project Settings
@@ -101,11 +101,13 @@ const createNewProject = (details: {
   canvasSize: string;
   dpi: number;
   colorMode: 'RGB' | 'CMYK';
+  teamName?: string;
 }) => {
   return {
     ...initialProject,
     id: `project-${Date.now()}`,
     name: details.name,
+    teamName: details.teamName || '',
     apparelType: details.apparelType,
     templateChoice: details.templateChoice,
     canvasSize: details.canvasSize,
@@ -203,6 +205,8 @@ export default function App() {
   // Project Creation Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
+  const [newTeamName, setNewTeamName] = useState('');
+  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [newGarmentType, setNewGarmentType] = useState<ApparelType>('esports_jersey');
   const [newTemplateChoice, setNewTemplateChoice] = useState('Pro Athletic Fit');
   const [newCanvasSize, setNewCanvasSize] = useState('2400 x 2400 px');
@@ -302,6 +306,48 @@ export default function App() {
     }
   };
 
+  const handleDuplicateProject = async (proj: Project) => {
+    const copyName = `${proj.name} (Copy)`;
+    const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = proj;
+
+    // Insert into Supabase
+    const { data, error } = await supabase.from('projects').insert([{
+      name: copyName, 
+      apparel_type: apparelType, 
+      stage: 'brief', // reset duplicate back to brief for fresh workflow
+      template_choice: templateChoice, 
+      canvas_size: canvasSize, 
+      dpi, 
+      color_mode: colorMode, 
+      is_archived: isArchived, 
+      project_data: projectData
+    }]).select().single();
+
+    if (error) {
+      console.error('Error duplicating project:', error);
+      alert('Failed to duplicate project.');
+      return;
+    }
+
+    // Map database response to Project interface
+    const duplicatedProj: Project = {
+      id: data.id,
+      name: data.name,
+      apparelType: data.apparel_type as ApparelType,
+      stage: data.stage as any,
+      templateChoice: data.template_choice,
+      canvasSize: data.canvas_size,
+      dpi: data.dpi,
+      colorMode: data.color_mode as any,
+      isArchived: data.is_archived,
+      createdAt: data.created_at,
+      ...data.project_data
+    };
+
+    setProjects(prev => [duplicatedProj, ...prev]);
+    addLog(`Duplicated project: ${proj.name} → ${copyName}`);
+  };
+
   const handleCreateProject = async () => {
     if (!newProjectName.trim()) return;
 
@@ -312,6 +358,7 @@ export default function App() {
       canvasSize: newCanvasSize,
       dpi: newDpi,
       colorMode: newColorMode,
+      teamName: newTeamName,
     });
 
     const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = newProj;
@@ -356,6 +403,8 @@ export default function App() {
 
     // Reset Form
     setNewProjectName('');
+    setNewTeamName('');
+    setShowAdvancedSettings(false);
     setNewGarmentType('esports_jersey');
     setNewTemplateChoice('Pro Athletic Fit');
     setNewCanvasSize('2400 x 2400 px');
@@ -668,55 +717,96 @@ export default function App() {
 
                     return (
                       <div className="project-card" key={p.id}>
-                        <div className="project-thumbnail-area">
-                          {p.apparelType === 'esports_jersey' ? (
-                            <svg className="project-thumbnail-icon" viewBox="0 0 100 120" width="54" height="64" style={{ fill: 'none', stroke: 'var(--text-secondary)', strokeWidth: '1.2' }}>
-                              <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
-                            </svg>
-                          ) : (
-                            <svg className="project-thumbnail-icon" viewBox="0 0 100 120" width="54" height="64" style={{ fill: 'none', stroke: 'var(--text-secondary)', strokeWidth: '1.2' }}>
-                              <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" />
-                            </svg>
-                          )}
+                        <div 
+                          className="project-thumbnail-area"
+                          style={{
+                            background: `linear-gradient(135deg, ${p.baseColors?.primary || '#13131a'} 0%, ${p.baseColors?.secondary || '#07070a'} 60%, ${p.baseColors?.accent || '#0070f3'}22 100%)`,
+                            height: '160px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            position: 'relative'
+                          }}
+                        >
+                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 80%)', pointerEvents: 'none' }} />
+                          
+                          <div style={{ transform: 'scale(1.15)', filter: `drop-shadow(0 0 16px ${p.baseColors?.accent || 'var(--accent-blue)'}3a)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {p.apparelType === 'esports_jersey' ? (
+                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
+                                <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
+                                <path d="M 30,20 L 30,110" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeDasharray="2,2" />
+                                <path d="M 70,20 L 70,110" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeDasharray="2,2" />
+                              </svg>
+                            ) : p.apparelType === 'tshirt' ? (
+                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
+                                <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" />
+                              </svg>
+                            ) : p.apparelType === 'hoodie' ? (
+                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
+                                <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" />
+                                <path d="M 32,29 C 30,10 70,10 68,29 Z" />
+                              </svg>
+                            ) : (
+                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
+                                <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" />
+                              </svg>
+                            )}
+                          </div>
+
                           <span className={`project-thumbnail-banner ${p.isArchived ? 'archive-tag' : 'active-tag'}`}>
-                            {p.isArchived ? 'Archived' : p.stage === 'brief' ? 'Draft' : p.stage === 'design' ? 'AI Design' : p.stage === 'studio' ? 'Studio' : 'Export'}
+                            {p.isArchived ? 'Archived' : p.stage === 'brief' ? '1. Create' : p.stage === 'design' ? '2. Generate' : p.stage === 'studio' ? '3. Refine' : '4. Produce'}
                           </span>
                         </div>
 
-                        <div className="project-card-body">
-                          <div className="project-card-title-row">
-                            <h3 className="project-card-title">{p.name}</h3>
-                            <span className="project-card-date">{createdDate}</span>
+                        <div className="project-card-body" style={{ display: 'flex', flexDirection: 'column', gap: '8px', padding: '16px' }}>
+                          <div className="project-card-title-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              <span style={{ fontSize: '9px', fontWeight: '800', textTransform: 'uppercase', color: p.baseColors?.accent || 'var(--accent-blue)', letterSpacing: '0.08em' }}>
+                                {p.teamName || 'Personal Workspace'}
+                              </span>
+                              <h3 className="project-card-title" style={{ fontSize: '14px', margin: 0 }}>{p.name}</h3>
+                            </div>
+                            <span className="project-card-date" style={{ fontSize: '9px', opacity: 0.6 }}>{createdDate}</span>
                           </div>
-                          <div className="project-spec-badges">
-                            <span className="spec-badge">
-                              {p.apparelType === 'esports_jersey' ? 'Jersey' : 'Crewneck'}
+                          
+                          <div className="project-spec-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
+                            <span className="spec-badge" style={{ fontSize: '9px', textTransform: 'capitalize' }}>
+                              {p.apparelType ? p.apparelType.replace('_', ' ') : 'Jersey'}
                             </span>
-                            {p.templateChoice && <span className="spec-badge">{p.templateChoice}</span>}
-                            {p.canvasSize && <span className="spec-badge">{p.canvasSize}</span>}
-                            {p.dpi && <span className="spec-badge">{p.dpi} DPI</span>}
-                            {p.colorMode && <span className="spec-badge">{p.colorMode}</span>}
+                            {p.templateChoice && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.templateChoice}</span>}
+                            {p.canvasSize && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.canvasSize}</span>}
+                            {p.dpi && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.dpi} DPI</span>}
+                            {p.colorMode && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.colorMode}</span>}
                           </div>
                         </div>
 
-                        <div className="project-card-footer">
-                          <button className="primary" style={{ padding: '6px 12px', fontSize: '12px' }} onClick={() => handleOpenProject(p)}>
-                            Open Workspace <ArrowRight size={12} />
+                        <div className="project-card-footer" style={{ padding: '12px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <button className="primary" style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }} onClick={() => handleOpenProject(p)}>
+                            Continue Workspace <ArrowRight size={12} />
                           </button>
                           
-                          <div className="project-actions">
+                          <div className="project-actions" style={{ display: 'flex', gap: '6px' }}>
+                            <button 
+                              title="Duplicate Project"
+                              onClick={() => handleDuplicateProject(p)}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
+                            >
+                              <Copy size={13} style={{ color: 'var(--text-secondary)' }} />
+                            </button>
                             <button 
                               title={p.isArchived ? 'Restore Project' : 'Archive Project'}
                               onClick={() => handleToggleArchive(p.id)}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                             >
-                              <Archive size={14} style={{ color: p.isArchived ? 'var(--color-success)' : 'var(--text-secondary)' }} />
+                              <Archive size={13} style={{ color: p.isArchived ? 'var(--color-success)' : 'var(--text-secondary)' }} />
                             </button>
                             <button 
                               className="delete-btn"
                               title="Delete Project"
                               onClick={() => handleDeleteProject(p.id)}
+                              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
                             >
-                              <Trash2 size={14} />
+                              <Trash2 size={13} />
                             </button>
                           </div>
                         </div>
@@ -754,6 +844,18 @@ export default function App() {
                     />
                   </div>
 
+                  {/* Team / Client Name */}
+                  <div className="form-group">
+                    <label className="form-label">Team / Client Name (Optional)</label>
+                    <input 
+                      type="text" 
+                      className="form-input-text" 
+                      placeholder="e.g. Apex Predators Esports"
+                      value={newTeamName}
+                      onChange={(e) => setNewTeamName(e.target.value)}
+                    />
+                  </div>
+
                   {/* Garment Type */}
                   <div className="form-group">
                     <label className="form-label">Garment Type</label>
@@ -786,91 +888,104 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Template Choice */}
-                  <div className="form-group">
-                    <label className="form-label">Template / Fit</label>
-                    <div className="selector-card-grid">
-                      <div 
-                        className={`selector-card ${newTemplateChoice === 'Pro Athletic Fit' ? 'active' : ''}`}
-                        onClick={() => setNewTemplateChoice('Pro Athletic Fit')}
-                      >
-                        <div className="selector-card-info">
-                          <span className="selector-card-title">Pro Athletic Fit</span>
-                          <span className="selector-card-desc">Contoured silhouette for compression</span>
-                        </div>
-                      </div>
-
-                      <div 
-                        className={`selector-card ${newTemplateChoice === 'Standard Fit' ? 'active' : ''}`}
-                        onClick={() => setNewTemplateChoice('Standard Fit')}
-                      >
-                        <div className="selector-card-info">
-                          <span className="selector-card-title">Standard Fit</span>
-                          <span className="selector-card-desc">Classic straight cut drape</span>
-                        </div>
-                      </div>
-                    </div>
+                  {/* Advanced Settings Accordion */}
+                  <div 
+                    className="advanced-accordion-trigger" 
+                    onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
+                  >
+                    <span>Advanced Production Settings</span>
+                    <ChevronDown size={14} style={{ transform: showAdvancedSettings ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
                   </div>
 
-                  {/* Row of Sizing options */}
-                  <div style={{ display: 'flex', gap: '16px' }}>
-                    {/* Canvas Size */}
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Canvas Size</label>
-                      <div className="segmented-selector">
-                        <div 
-                          className={`segmented-option ${newCanvasSize === '2400 x 2400 px' ? 'active' : ''}`}
-                          onClick={() => setNewCanvasSize('2400 x 2400 px')}
-                        >
-                          2400px
-                        </div>
-                        <div 
-                          className={`segmented-option ${newCanvasSize === '3000 x 3000 px' ? 'active' : ''}`}
-                          onClick={() => setNewCanvasSize('3000 x 3000 px')}
-                        >
-                          3000px
-                        </div>
-                      </div>
-                    </div>
+                  {showAdvancedSettings && (
+                    <div className="advanced-accordion-content">
+                      {/* Template Choice */}
+                      <div className="form-group">
+                        <label className="form-label">Template / Fit</label>
+                        <div className="selector-card-grid">
+                          <div 
+                            className={`selector-card ${newTemplateChoice === 'Pro Athletic Fit' ? 'active' : ''}`}
+                            onClick={() => setNewTemplateChoice('Pro Athletic Fit')}
+                          >
+                            <div className="selector-card-info">
+                              <span className="selector-card-title">Pro Athletic Fit</span>
+                              <span className="selector-card-desc">Contoured silhouette</span>
+                            </div>
+                          </div>
 
-                    {/* DPI */}
-                    <div className="form-group" style={{ flex: 1 }}>
-                      <label className="form-label">Print Resolution (DPI)</label>
-                      <div className="segmented-selector">
-                        <div 
-                          className={`segmented-option ${newDpi === 150 ? 'active' : ''}`}
-                          onClick={() => setNewDpi(150)}
-                        >
-                          150 DPI
-                        </div>
-                        <div 
-                          className={`segmented-option ${newDpi === 300 ? 'active' : ''}`}
-                          onClick={() => setNewDpi(300)}
-                        >
-                          300 DPI
+                          <div 
+                            className={`selector-card ${newTemplateChoice === 'Standard Fit' ? 'active' : ''}`}
+                            onClick={() => setNewTemplateChoice('Standard Fit')}
+                          >
+                            <div className="selector-card-info">
+                              <span className="selector-card-title">Standard Fit</span>
+                              <span className="selector-card-desc">Classic straight cut</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </div>
 
-                  {/* Color Mode */}
-                  <div className="form-group">
-                    <label className="form-label">Color Space</label>
-                    <div className="segmented-selector">
-                      <div 
-                        className={`segmented-option ${newColorMode === 'CMYK' ? 'active' : ''}`}
-                        onClick={() => setNewColorMode('CMYK')}
-                      >
-                        CMYK (Sublimation Print)
+                      {/* Row of Sizing options */}
+                      <div style={{ display: 'flex', gap: '16px' }}>
+                        {/* Canvas Size */}
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Canvas Size</label>
+                          <div className="segmented-selector">
+                            <div 
+                              className={`segmented-option ${newCanvasSize === '2400 x 2400 px' ? 'active' : ''}`}
+                              onClick={() => setNewCanvasSize('2400 x 2400 px')}
+                            >
+                              2400px
+                            </div>
+                            <div 
+                              className={`segmented-option ${newCanvasSize === '3000 x 3000 px' ? 'active' : ''}`}
+                              onClick={() => setNewCanvasSize('3000 x 3000 px')}
+                            >
+                              3000px
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* DPI */}
+                        <div className="form-group" style={{ flex: 1 }}>
+                          <label className="form-label">Print Resolution</label>
+                          <div className="segmented-selector">
+                            <div 
+                              className={`segmented-option ${newDpi === 150 ? 'active' : ''}`}
+                              onClick={() => setNewDpi(150)}
+                            >
+                              150 DPI
+                            </div>
+                            <div 
+                              className={`segmented-option ${newDpi === 300 ? 'active' : ''}`}
+                              onClick={() => setNewDpi(300)}
+                            >
+                              300 DPI
+                            </div>
+                          </div>
+                        </div>
                       </div>
-                      <div 
-                        className={`segmented-option ${newColorMode === 'RGB' ? 'active' : ''}`}
-                        onClick={() => setNewColorMode('RGB')}
-                      >
-                        RGB (Digital Concept)
+
+                      {/* Color Mode */}
+                      <div className="form-group">
+                        <label className="form-label">Color Space</label>
+                        <div className="segmented-selector">
+                          <div 
+                            className={`segmented-option ${newColorMode === 'CMYK' ? 'active' : ''}`}
+                            onClick={() => setNewColorMode('CMYK')}
+                          >
+                            CMYK (Print)
+                          </div>
+                          <div 
+                            className={`segmented-option ${newColorMode === 'RGB' ? 'active' : ''}`}
+                            onClick={() => setNewColorMode('RGB')}
+                          >
+                            RGB (Digital)
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <div className="modal-footer">
@@ -921,18 +1036,34 @@ export default function App() {
                 const maxUnlocked = project.maxUnlockedStage || project.stage || 'brief';
                 const maxUnlockedIndex = getStageIndex(maxUnlocked);
                 const isLocked = stageIndex > maxUnlockedIndex;
+                const isComplete = stage === 'brief' 
+                  ? (!!project.designVision && !!project.stylePreference)
+                  : stage === 'design'
+                  ? (project.logos.length > 0 || !!project.prompt)
+                  : stage === 'studio'
+                  ? (project.roster && project.roster.length > 0 && project.roster.every(p => p.status === 'Mapped' || p.status === 'Ready for Export'))
+                  : false;
+
                 return (
                   <button
                     key={stage}
                     className={`stage-tab ${project.stage === stage ? 'active' : ''} ${isLocked ? 'locked' : ''}`}
                     onClick={() => !isLocked && handleUpdateProject({ stage })}
                     disabled={isLocked}
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
                     title={isLocked ? 'Complete the previous stages to unlock.' : ''}
                   >
-                    {stage === 'brief' && 'Brief'}
-                    {stage === 'design' && 'AI Design'}
-                    {stage === 'studio' && 'Production Studio'}
-                    {stage === 'export' && 'Preflight & Export'}
+                    {isLocked ? (
+                      <Lock size={10} style={{ opacity: 0.6 }} />
+                    ) : isComplete ? (
+                      <Check size={11} style={{ color: project.stage === stage ? '#fff' : 'var(--color-success)', fontWeight: 'bold' }} />
+                    ) : project.stage === stage ? (
+                      <span className="status-dot green-pulsing" style={{ width: '4px', height: '4px', display: 'inline-block', margin: 0 }} />
+                    ) : null}
+                    {stage === 'brief' && 'Create'}
+                    {stage === 'design' && 'Generate'}
+                    {stage === 'studio' && 'Refine'}
+                    {stage === 'export' && 'Produce'}
                   </button>
                 );
               })}
@@ -1027,7 +1158,12 @@ export default function App() {
                             title={briefLocked ? 'Complete the previous stages to unlock.' : ''}
                           >
                             <FileText size={16} />
-                            {showLabels && <span className="sidebar-nav-label">1. Brief Specifications</span>}
+                            {showLabels && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
+                                <span className="sidebar-nav-label">1. Create</span>
+                                {!!project.designVision && !!project.stylePreference && <Check size={12} style={{ color: 'var(--color-success)' }} />}
+                              </div>
+                            )}
                           </button>
                           <button 
                             className={`sidebar-nav-item ${project.stage === 'design' ? 'active' : ''} ${designLocked ? 'locked' : ''}`}
@@ -1037,7 +1173,12 @@ export default function App() {
                             title={designLocked ? 'Complete the previous stages to unlock.' : ''}
                           >
                             <Sparkles size={16} />
-                            {showLabels && <span className="sidebar-nav-label">2. AI Design & Mockup</span>}
+                            {showLabels && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
+                                <span className="sidebar-nav-label">2. Generate</span>
+                                {designLocked ? <Lock size={10} style={{ opacity: 0.5 }} /> : (project.logos.length > 0 || !!project.prompt) ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : null}
+                              </div>
+                            )}
                           </button>
                           <button 
                             className={`sidebar-nav-item ${project.stage === 'studio' ? 'active' : ''} ${studioLocked ? 'locked' : ''}`}
@@ -1047,7 +1188,12 @@ export default function App() {
                             title={studioLocked ? 'Complete the previous stages to unlock.' : ''}
                           >
                             <Layers size={16} />
-                            {showLabels && <span className="sidebar-nav-label">3. Production Studio</span>}
+                            {showLabels && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
+                                <span className="sidebar-nav-label">3. Refine</span>
+                                {studioLocked ? <Lock size={10} style={{ opacity: 0.5 }} /> : (project.roster && project.roster.length > 0 && project.roster.every(p => p.status === 'Mapped' || p.status === 'Ready for Export')) ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : null}
+                              </div>
+                            )}
                           </button>
                           <button 
                             className={`sidebar-nav-item ${project.stage === 'export' ? 'active' : ''} ${exportLocked ? 'locked' : ''}`}
@@ -1057,7 +1203,12 @@ export default function App() {
                             title={exportLocked ? 'Complete the previous stages to unlock.' : ''}
                           >
                             <Download size={16} />
-                            {showLabels && <span className="sidebar-nav-label">4. Pre-Flight Export</span>}
+                            {showLabels && (
+                              <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
+                                <span className="sidebar-nav-label">4. Produce</span>
+                                {exportLocked && <Lock size={10} style={{ opacity: 0.5 }} />}
+                              </div>
+                            )}
                           </button>
                         </>
                       );

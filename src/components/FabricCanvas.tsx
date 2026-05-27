@@ -67,6 +67,7 @@ interface FabricCanvasProps {
   unit?: MeasurementUnit;
   /** Whether to render safe zone overlays */
   showSafeZones?: boolean;
+  showRulersAndGrid?: boolean;
   /** Safe zone rectangles in scene pixels (from measurements.calcSafeZones) */
   safeZones?: SafeZoneRects;
   activeTemplate?: GarmentTemplate;
@@ -215,6 +216,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   onHistoryChange,
   unit = 'inches',
   showSafeZones = false,
+  showRulersAndGrid = true,
   safeZones,
   activeTemplate,
   activeSize,
@@ -354,6 +356,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const currentViewRef = useRef(currentView);
   const unitRef = useRef(unit);
   const showSafeZonesRef = useRef(showSafeZones);
+  const showRulersAndGridRef = useRef(showRulersAndGrid);
   const safeZonesRef = useRef(safeZones);
   const offsetsRef = useRef(actualOffsets);
   const dimsRef = useRef(dims);
@@ -372,6 +375,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     currentViewRef.current = currentView;
     unitRef.current = unit;
     showSafeZonesRef.current = showSafeZones;
+    showRulersAndGridRef.current = showRulersAndGrid;
     safeZonesRef.current = safeZones;
     offsetsRef.current = actualOffsets;
     dimsRef.current = dims;
@@ -1368,13 +1372,17 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
 
     // ── Grid & Ruler Rendering events ────────────────────────────────────────
     canvas.on('before:render', () => {
-      const ctx = canvas.getContext();
-      drawGridRef.current(ctx);
+      if (showRulersAndGridRef.current) {
+        const ctx = canvas.getContext();
+        drawGridRef.current(ctx);
+      }
     });
 
     canvas.on('after:render', () => {
-      const ctx = canvas.getContext();
-      drawRulersRef.current(ctx);
+      if (showRulersAndGridRef.current) {
+        const ctx = canvas.getContext();
+        drawRulersRef.current(ctx);
+      }
     });
 
     // ── Selection events ─────────────────────────────────────────────────────
