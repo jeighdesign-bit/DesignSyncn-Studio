@@ -3,10 +3,9 @@ import type { Project, RosterPlayer } from '../types';
 import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
-  Shield, Ruler, Sparkles, Info
+  Shield, Ruler, 
+  Image, Users, Download
 } from 'lucide-react';
-import { AssetsLayersPanel } from './AssetsLayersPanel';
-import { RuleEngine } from './RuleEngine';
 import { RosterHub } from './RosterHub';
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode } from './FabricCanvas';
 import {
@@ -463,90 +462,7 @@ const LogoInspector: React.FC<LogoInspectorProps> = ({ activeObj, canvasW, onApp
   );
 };
 
-interface BeginnerGuidePanelProps {
-  project: Project;
-}
 
-const BeginnerGuidePanel: React.FC<BeginnerGuidePanelProps> = ({ project }) => {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '16px', height: '100%', overflowY: 'auto' }}>
-      {/* 1. Project Specs Brief Summary */}
-      <div className="inspector-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Sparkles size={14} style={{ color: 'var(--accent-blue)' }} />
-          <span style={{ fontSize: '11px', fontWeight: 'bold', color: 'var(--text-primary)', textTransform: 'uppercase', fontFamily: 'monospace' }}>
-            Active Brief Specifications
-          </span>
-        </div>
-        <div style={{ height: '1px', background: 'var(--border-muted)', margin: '4px 0' }} />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Apparel Style:</span>
-            <span style={{ color: 'var(--text-primary)', fontWeight: '600', textTransform: 'capitalize' }}>
-              {project.apparelType ? project.apparelType.replace('_', ' ') : 'Esports Jersey'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Aesthetic Vibe:</span>
-            <span style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>
-              {project.stylePreference || 'Generic'}
-            </span>
-          </div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
-            <span style={{ color: 'var(--text-secondary)' }}>Team Name:</span>
-            <span style={{ color: 'var(--text-primary)', fontWeight: '600' }}>
-              {project.teamName || 'Personal'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. Sublimation Layout Guidelines */}
-      <div className="inspector-card" style={{ padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-        <h4 style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em', margin: 0 }}>
-          Sublimation Printing Guidelines
-        </h4>
-        <ul style={{ paddingLeft: '14px', margin: 0, fontSize: '11px', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: '8px', lineHeight: '1.4' }}>
-          <li>
-            <strong>Chest Center Safe Zone</strong>: Always place sponsor logos inside the front-chest center zone to prevent them from getting caught in seam stitches.
-          </li>
-          <li>
-            <strong>DPI Density</strong>: Ensure logo resolutions are at least 300 DPI before producing to avoid fuzzy prints.
-          </li>
-          <li>
-            <strong>Color Bleeds</strong>: High-contrast borders are added around print panels. Keep primary vector lines away from the red outline seam lines!
-          </li>
-        </ul>
-      </div>
-
-      {/* 3. Creative suggestion Pro-Tips */}
-      <div style={{ 
-        background: 'linear-gradient(135deg, rgba(0, 112, 243, 0.06) 0%, transparent 100%)', 
-        border: '1px solid rgba(0, 112, 243, 0.2)', 
-        borderRadius: '8px', 
-        padding: '14px', 
-        display: 'flex', 
-        flexDirection: 'column', 
-        gap: '6px'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Info size={12} style={{ color: 'var(--accent-blue)' }} />
-          <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Creative Pro-Tip
-          </span>
-        </div>
-        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.45', margin: 0 }}>
-          {project.stylePreference === 'Cyberpunk' 
-            ? 'Cyberpunk aesthetics thrive on high-contrast neon trims. Try adding a bold magenta (#ff0055) accent line on the sleeves panel to make the wires pop!'
-            : project.stylePreference === 'Minimalist'
-            ? 'Minimalist styles rely on negative space. Try keeping the front logo small (under 6 inches) and removing all extra graphics from the chest area.'
-            : 'For tournament-ready sports styles, bold geometric split lines running from the underarms to the cuffs give a faster, athletic momentum vibe!'
-          }
-        </p>
-      </div>
-    </div>
-  );
-};
 
 // Helper functions for merging and splitting single views and master sheet JSON
 const splitMasterCanvasJSON = (masterJSONStr: string, offsets: any) => {
@@ -657,16 +573,15 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 }) => {
   const [toolMode, setToolMode] = useState<ToolMode>('select');
   const [canvasBg] = useState<'white' | 'dark' | 'transparent' | 'checkerboard'>('white');
-  const [layers, setLayers] = useState<FabricLayer[]>([]);
-  const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [activeTextObj, setActiveTextObj] = useState<fabric.IText | null>(null);
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
   const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
-  const [workspaceMode, setWorkspaceMode] = useState<'beginner' | 'advanced'>('beginner');
+  const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
+  const [activeLeftTab, setActiveLeftTab] = useState<'assets' | 'roster' | 'export'>('assets');
 
   // ── Measurement system state ──────────────────────────────────────────────
   const [selectedBounds, setSelectedBounds] = useState<ObjectBounds | null>(null);
-  const [showSafeZones, setShowSafeZones] = useState(false);
+  const [showSafeZones] = useState(true);
 
   // Load templates manifest dynamically
   const [templates, setTemplates] = useState<GarmentTemplate[]>([]);
@@ -786,20 +701,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     const saved = localStorage.getItem('ds-studio-right-width');
     return saved ? parseInt(saved, 10) : 320;
   });
-  const [studioBottomHeight, setStudioBottomHeight] = useState(() => {
-    const saved = localStorage.getItem('ds-studio-bottom-height');
-    const parsed = saved ? parseInt(saved, 10) : 160;
-    // Reset if stale oversized value was persisted
-    if (parsed > 220) { localStorage.removeItem('ds-studio-bottom-height'); return 160; }
-    return parsed;
-  });
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
   const [isDraggingRight, setIsDraggingRight] = useState(false);
-  const [isDraggingBottom, setIsDraggingBottom] = useState(false);
 
   useEffect(() => { localStorage.setItem('ds-studio-left-width', studioLeftWidth.toString()); }, [studioLeftWidth]);
   useEffect(() => { localStorage.setItem('ds-studio-right-width', studioRightWidth.toString()); }, [studioRightWidth]);
-  useEffect(() => { localStorage.setItem('ds-studio-bottom-height', studioBottomHeight.toString()); }, [studioBottomHeight]);
 
   // ── Panel resize handlers ──────────────────────────────────────────────────
   const startResizeLeft = (e: React.MouseEvent) => {
@@ -821,17 +727,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     const startW = studioRightWidth;
     const move = (me: MouseEvent) => setStudioRightWidth(Math.max(240, Math.min(600, startW + startX - me.clientX)));
     const up = () => { setIsDraggingRight(false); document.body.style.cursor = ''; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
-    window.addEventListener('mousemove', move);
-    window.addEventListener('mouseup', up);
-  };
-  const startResizeBottom = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setIsDraggingBottom(true);
-    document.body.style.cursor = 'row-resize';
-    const startY = e.clientY;
-    const startH = studioBottomHeight;
-    const move = (me: MouseEvent) => setStudioBottomHeight(Math.max(120, Math.min(500, startH + startY - me.clientY)));
-    const up = () => { setIsDraggingBottom(false); document.body.style.cursor = ''; window.removeEventListener('mousemove', move); window.removeEventListener('mouseup', up); };
     window.addEventListener('mousemove', move);
     window.addEventListener('mouseup', up);
   };
@@ -959,14 +854,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     }
   };
 
-  // ── Layer change handler ───────────────────────────────────────────────────
-  const handleLayersChange = useCallback((newLayers: FabricLayer[]) => {
-    setLayers(newLayers);
-  }, []);
-
   // ── Selection change handler ───────────────────────────────────────────────
   const handleSelectionChange = useCallback((layer: FabricLayer | null) => {
-    setSelectedLayerId(layer?.id ?? null);
     if (!layer) {
       setActiveTextObj(null);
       setActiveShapeObj(null);
@@ -1036,8 +925,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       }
 
       lastView.current = currentView;
-      setLayers([]);
-      setSelectedLayerId(null);
       setActiveTextObj(null);
       setActiveShapeObj(null);
       setToolMode('select');
@@ -1092,25 +979,164 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   return (
     <div style={{ display: 'flex', width: '100%', height: '100%', overflow: 'hidden' }}>
 
-      {/* ── LEFT SIDEBAR: Layers ─────────────────────────────────────────── */}
-      <AssetsLayersPanel
-        layers={layers}
-        selectedLayerId={selectedLayerId}
-        onLayerSelect={(id) => { setSelectedLayerId(id); fabricRef.current?.selectObject(id); }}
-        onToggleVisibility={(id, cur) => fabricRef.current?.setObjectVisible(id, !cur)}
-        onToggleLock={(id, cur) => fabricRef.current?.setObjectLocked(id, !cur)}
-        onBringForward={(id) => fabricRef.current?.bringForward(id)}
-        onSendBackward={(id) => fabricRef.current?.sendBackward(id)}
-        logos={project.logos}
-        onAddLogoToCanvas={handleAddLogoToCanvas}
-        onNavigateToBrief={() => onUpdateProject({ stage: 'brief' })}
+      {/* ── LEFT SIDEBAR: Streamlined Production Tabs ─────────────────────── */}
+      <aside
+        className="layers-sidebar"
         style={{
           width: `${studioLeftWidth}px`,
           minWidth: `${studioLeftWidth}px`,
           maxWidth: `${studioLeftWidth}px`,
           transition: isDraggingLeft ? 'none' : undefined,
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden'
         }}
-      />
+      >
+        <div className="sidebar-tab-headers">
+          <button
+            className={`sidebar-tab-btn ${activeLeftTab === 'assets' ? 'active' : ''}`}
+            onClick={() => setActiveLeftTab('assets')}
+          >
+            <Image size={12} />
+            Assets
+          </button>
+          <button
+            className={`sidebar-tab-btn ${activeLeftTab === 'roster' ? 'active' : ''}`}
+            onClick={() => setActiveLeftTab('roster')}
+          >
+            <Users size={12} />
+            Roster
+          </button>
+          <button
+            className={`sidebar-tab-btn ${activeLeftTab === 'export' ? 'active' : ''}`}
+            onClick={() => setActiveLeftTab('export')}
+          >
+            <Download size={12} />
+            Export
+          </button>
+        </div>
+
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          {activeLeftTab === 'assets' && (
+            <div className="assets-section" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              <div className="assets-section-header-compact">
+                <Image size={13} style={{ color: 'var(--accent-blue)' }} />
+                <span>Sponsor Graphics</span>
+                {project.logos.length > 0 && (
+                  <span className="assets-count-badge">{project.logos.length}</span>
+                )}
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
+                {project.logos.length === 0 ? (
+                  <div className="logo-assets-empty">
+                    No logo assets loaded. 
+                    <br />
+                    <button 
+                      className="logo-assets-link-btn" 
+                      onClick={() => onUpdateProject({ stage: 'brief' })}
+                    >
+                      Upload in Brief Spec
+                    </button>
+                  </div>
+                ) : (
+                  <div className="logo-assets-grid">
+                    {project.logos.map((logo) => (
+                      <div
+                        key={logo.id}
+                        className="logo-asset-card"
+                        onClick={() => handleAddLogoToCanvas(logo.url, logo.name)}
+                        title="Click to place on canvas"
+                      >
+                        <div className="logo-asset-thumb">
+                          {logo.url ? <img src={logo.url} alt={logo.name} /> : 'IMG'}
+                        </div>
+                        <div className="logo-asset-info">
+                          <span className="logo-asset-name">{logo.name}</span>
+                          <span className={`logo-asset-resolution ${logo.resolutionStatus}`}>
+                            {logo.dpi} DPI
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeLeftTab === 'roster' && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              <div className="assets-section-header-compact">
+                <Users size={13} style={{ color: 'var(--accent-blue)' }} />
+                <span>Active Variations</span>
+                <span className="assets-count-badge">{project.roster.length}</span>
+              </div>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {project.roster.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '24px 0', fontSize: '11px', border: '1px dashed var(--border-muted)', borderRadius: '8px' }}>
+                    No player variations.
+                  </div>
+                ) : (
+                  project.roster.map((player) => {
+                    const isActive = project.activePlayerId === player.id;
+                    const isReady = player.status === 'Ready for Export';
+                    return (
+                      <div
+                        key={player.id}
+                        className={`roster-mini-card ${isActive ? 'active' : ''}`}
+                        onClick={() => onUpdateProject({ activePlayerId: player.id })}
+                      >
+                        <div className="roster-mini-card-select">
+                          <div className={`roster-mini-dot ${isActive ? 'active' : ''}`} />
+                          <span className="roster-mini-name">{player.name}</span>
+                          <span className="roster-mini-num">#{player.number}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span className="roster-mini-size">{player.size}</span>
+                          <span className={`roster-mini-status-badge ${isReady ? 'ready' : 'mapped'}`}>
+                            {isReady ? 'Ready' : 'Mapped'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeLeftTab === 'export' && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', padding: '16px', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Download size={14} style={{ color: 'var(--accent-blue)' }} />
+                <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-primary)', letterSpacing: '0.05em' }}>
+                  Production Output
+                </span>
+              </div>
+              <div className="inspector-card" style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Variations:</span>
+                  <span style={{ color: '#fff', fontWeight: '600' }}>{project.roster.length} Sheets</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Export DPI:</span>
+                  <span style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>{project.dpi || 300} DPI</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px' }}>
+                  <span style={{ color: 'var(--text-secondary)' }}>Color Space:</span>
+                  <span style={{ color: '#fff', fontWeight: '600' }}>{project.colorMode || 'CMYK'}</span>
+                </div>
+              </div>
+              <button
+                className="compile-layouts-btn"
+                onClick={() => onUpdateProject({ stage: 'export' })}
+              >
+                Compile & Export
+              </button>
+            </div>
+          )}
+        </div>
+      </aside>
 
       {/* Resize handle left */}
       <div onMouseDown={startResizeLeft} className={`resize-handle-vertical ${isDraggingLeft ? 'dragging' : ''}`} />
@@ -1181,30 +1207,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           </div>
 
           <div style={{ flex: 1 }} />
-
-          {/* Workspace Mode Selector */}
-          <div className="studio-ctrl-group">
-            <span className="studio-ctrl-label">Workspace Mode</span>
-            <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-muted)' }}>
-              <button
-                className={`studio-ctrl-btn ${workspaceMode === 'beginner' ? 'active' : ''}`}
-                onClick={() => {
-                  setWorkspaceMode('beginner');
-                  setShowSafeZones(false);
-                }}
-                style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', background: workspaceMode === 'beginner' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: workspaceMode === 'beginner' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
-              >
-                Beginner
-              </button>
-              <button
-                className={`studio-ctrl-btn ${workspaceMode === 'advanced' ? 'active' : ''}`}
-                onClick={() => setWorkspaceMode('advanced')}
-                style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', background: workspaceMode === 'advanced' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: workspaceMode === 'advanced' ? '#fff' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
-              >
-                Advanced
-              </button>
-            </div>
-          </div>
 
           {/* Canvas background */}
           <div className="studio-ctrl-group">
@@ -1345,7 +1347,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 pan={pan}
                 onZoomChange={setZoom}
                 onPanChange={setPan}
-                onLayersChange={handleLayersChange}
+                onLayersChange={() => {}}
                 onSelectionChange={handleSelectionChange}
                 onSelectionMeasure={setSelectedBounds}
                 canvasBg={canvasBg}
@@ -1404,32 +1406,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
             </div>
           </div>
         </div>
-
-
-        {/* Horizontal resize handle (bottom panel) */}
-        <div onMouseDown={startResizeBottom} className={`resize-handle-horizontal ${isDraggingBottom ? 'dragging' : ''}`} />
-
-        {/* Bottom panel: Roster */}
-        <div style={{
-          height: `${studioBottomHeight}px`,
-          minHeight: `${studioBottomHeight}px`,
-          maxHeight: `${studioBottomHeight}px`,
-          background: 'var(--bg-primary)',
-          overflow: 'hidden',
-          zIndex: 10,
-          transition: isDraggingBottom ? 'none' : undefined,
-        }}>
-          <div style={{ padding: '7px 16px', background: 'var(--bg-secondary)', borderBottom: '1px solid var(--border-muted)', fontSize: '10px', fontWeight: '800', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Team Roster Variations & Output Checks
-          </div>
-          <div style={{ height: 'calc(100% - 32px)', overflowY: 'auto' }}>
-            <RosterHub
-              project={project}
-              onUpdateRoster={(roster) => onUpdateProject({ roster })}
-              onSelectPlayer={(id) => onUpdateProject({ activePlayerId: id })}
-            />
-          </div>
-        </div>
       </div>
 
       {/* Resize handle right */}
@@ -1448,8 +1424,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           <span className="inspector-header-title">
             {inspectorMode === 'text' ? 'Text Inspector' :
               inspectorMode === 'shape' ? 'Shape Inspector' :
-                inspectorMode === 'image' ? 'Logo Properties' :
-                  workspaceMode === 'advanced' ? 'Calibration Rules' : 'Creative Brief Guide'}
+                inspectorMode === 'image' ? 'Logo Properties' : 'Team Roster Database'}
           </span>
           {inspectorMode !== 'calibration' && (
             <span className="inspector-header-badge">
@@ -1508,10 +1483,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 fabricRef.current?.saveHistory();
               }}
             />
-          ) : workspaceMode === 'advanced' ? (
-            <RuleEngine project={project} onUpdateProject={onUpdateProject} />
           ) : (
-            <BeginnerGuidePanel project={project} />
+            <RosterHub
+              project={project}
+              onUpdateRoster={(roster) => onUpdateProject({ roster })}
+              onSelectPlayer={(id) => onUpdateProject({ activePlayerId: id })}
+            />
           )}
         </div>
 
