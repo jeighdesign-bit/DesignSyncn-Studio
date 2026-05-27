@@ -1,39 +1,62 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { Project } from '../types';
-import { MockupView } from './MockupView';
 import {
-  Sparkles, RefreshCw, Upload, ChevronDown, ChevronRight,
-  Zap, Type, Maximize2, Shuffle, Layers,
-  Check, Clock, Image,
-  Wand2, Scissors, AlignCenter, Sliders, Shield,
-  Eye, Star, RotateCcw, Send
+  Sparkles, RefreshCw, ChevronDown, ChevronRight,
+  Check, Clock, Send, Zap, AlertTriangle,
+  Shield, Shirt, Layers, Settings, Target,
+  TriangleAlert, CircleCheck, Info, ArrowRight,
+  Ruler, Palette, Cpu, Eye, Activity
 } from 'lucide-react';
 
-interface Preset {
-  id: string;
-  name: string;
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type GarmentPanel = 'front' | 'back' | 'left-sleeve' | 'right-sleeve' | 'collar';
+type PanelStatus = 'empty' | 'configured' | 'generated' | 'approved';
+type ZoneType = 'seam' | 'safe' | 'sponsor' | 'design';
+type InkMode = 'cmyk' | 'rgb' | 'neon';
+
+interface PanelConfig {
+  id: GarmentPanel;
+  label: string;
+  shortLabel: string;
   prompt: string;
-  style: string;
-  primaryColor: string;
-  secondaryColor: string;
-  accentColor: string;
+  status: PanelStatus;
+  zones: ZoneType[];
 }
 
-interface AiVersion {
+interface StyleDNA {
   id: string;
-  label: string;
-  prompt: string;
-  presetId: string;
-  accentColor: string;
+  name: string;
+  tag: string;
   primaryColor: string;
   secondaryColor: string;
+  accentColor: string;
+  patternDensity: 'minimal' | 'moderate' | 'heavy';
+  typographyWeight: 'light' | 'medium' | 'bold';
+  description: string;
+}
+
+interface ZoneCompliance {
+  id: string;
+  label: string;
+  status: 'ok' | 'warn' | 'error' | 'info';
+  detail: string;
+}
+
+interface GeneratedConcept {
+  id: string;
+  panelId: GarmentPanel;
+  label: string;
+  primaryColor: string;
+  secondaryColor: string;
+  accentColor: string;
+  patternKey: string;
   timestamp: string;
-  action?: string;
 }
 
 interface AIDesignStudioProps {
   project: Project;
-  presets: Preset[];
+  presets: any[];
   aiGenerating: boolean;
   onUpdateProject: (updates: Partial<Project>) => void;
   onPresetSelect: (id: string) => void;
@@ -41,812 +64,1000 @@ interface AIDesignStudioProps {
   onHandoffToProduction: () => void;
 }
 
-// ─── AI Action Categories ─────────────────────────────────────────────────────
+// ─── Constants ────────────────────────────────────────────────────────────────
 
-const AI_ACTIONS = [
+const STYLE_DNA: StyleDNA[] = [
   {
-    id: 'remover',
-    label: 'Remover Tools',
-    icon: Scissors,
-    color: '#ff4d6d',
-    tools: [
-      { id: 'rm-logo', label: 'Remove Logo', time: '~3s' },
-      { id: 'rm-text', label: 'Remove Text', time: '~2s' },
-      { id: 'rm-number', label: 'Remove Number', time: '~2s' },
-      { id: 'rm-bg', label: 'Remove Background', time: '~5s' },
-      { id: 'rm-graphic', label: 'Remove Graphics', time: '~4s' },
-    ],
+    id: 'esports-pro',
+    name: 'Esports Pro',
+    tag: 'COMPETITIVE',
+    primaryColor: '#0a0a1a',
+    secondaryColor: '#0070f3',
+    accentColor: '#00e5ff',
+    patternDensity: 'heavy',
+    typographyWeight: 'bold',
+    description: 'Aggressive geometry, high contrast panels, cyber typography'
   },
   {
-    id: 'font',
-    label: 'Font Generator',
-    icon: Type,
-    color: '#7c3aed',
-    tools: [
-      { id: 'font-esports', label: 'Esports Typography', time: '~4s' },
-      { id: 'font-number', label: 'Jersey Number Style', time: '~3s' },
-      { id: 'font-name', label: 'Player Name Style', time: '~3s' },
-      { id: 'font-futuristic', label: 'Futuristic Preset', time: '~2s' },
-    ],
+    id: 'street-league',
+    name: 'Street League',
+    tag: 'URBAN',
+    primaryColor: '#111111',
+    secondaryColor: '#ff4d4d',
+    accentColor: '#ffcc00',
+    patternDensity: 'moderate',
+    typographyWeight: 'bold',
+    description: 'Bold block colors, graffiti-inspired panel flow'
   },
   {
-    id: 'enhance',
-    label: 'Enhancement',
-    icon: Maximize2,
-    color: '#0070f3',
-    tools: [
-      { id: 'enh-upscale', label: 'Upscale Quality', time: '~8s' },
-      { id: 'enh-sharpen', label: 'Sharpen Details', time: '~4s' },
-      { id: 'enh-vector', label: 'Vector Enhance', time: '~6s' },
-      { id: 'enh-print', label: 'Print Optimization', time: '~5s' },
-      { id: 'enh-color', label: 'Color Enhancement', time: '~3s' },
-    ],
+    id: 'classic-athletic',
+    name: 'Classic Athletic',
+    tag: 'SPORT',
+    primaryColor: '#002147',
+    secondaryColor: '#c8102e',
+    accentColor: '#ffffff',
+    patternDensity: 'minimal',
+    typographyWeight: 'medium',
+    description: 'Clean side panels, traditional sports typography'
   },
   {
-    id: 'variation',
-    label: 'Design Variations',
-    icon: Shuffle,
-    color: '#00e676',
-    tools: [
-      { id: 'var-remix', label: 'Remix Design', time: '~6s' },
-      { id: 'var-colorway', label: 'Create Colorways', time: '~5s' },
-      { id: 'var-alt', label: 'Alternate Versions', time: '~7s' },
-      { id: 'var-sleeve', label: 'Matching Sleeves', time: '~4s' },
-      { id: 'var-typo', label: 'Alt Typography', time: '~3s' },
-    ],
+    id: 'neon-sublimation',
+    name: 'Neon Sublimation',
+    tag: 'NEON-INK',
+    primaryColor: '#080818',
+    secondaryColor: '#7c3aed',
+    accentColor: '#00ff88',
+    patternDensity: 'heavy',
+    typographyWeight: 'bold',
+    description: 'Fluorescent inks, reactive color zones, glow-safe bleed'
   },
   {
-    id: 'apparel',
-    label: 'Smart Apparel',
-    icon: Shield,
-    color: '#f5a623',
-    tools: [
-      { id: 'app-sleeve', label: 'Sleeve Balancing', time: '~4s' },
-      { id: 'app-symmetry', label: 'Symmetry Generate', time: '~5s' },
-      { id: 'app-edge', label: 'Edge Cleanup', time: '~3s' },
-      { id: 'app-safe', label: 'Print-Safe Adjust', time: '~4s' },
-      { id: 'app-align', label: 'Sublimation Align', time: '~3s' },
-    ],
+    id: 'minimalist',
+    name: 'Minimalist',
+    tag: 'CLEAN',
+    primaryColor: '#f5f5f5',
+    secondaryColor: '#1a1a2e',
+    accentColor: '#0070f3',
+    patternDensity: 'minimal',
+    typographyWeight: 'light',
+    description: 'White base, accent piping, studio-clean composition'
   },
+  {
+    id: 'tactical-camo',
+    name: 'Tactical Camo',
+    tag: 'MILITARY',
+    primaryColor: '#2d3a1f',
+    secondaryColor: '#4a5e2a',
+    accentColor: '#c8a84b',
+    patternDensity: 'heavy',
+    typographyWeight: 'medium',
+    description: 'Disruption pattern fills, subdued palette, matte finish'
+  }
 ];
 
-// ─── Simulated Reference Inspirations ────────────────────────────────────────
+const PANEL_PROMPT_CHIPS: Record<GarmentPanel, string[]> = {
+  front: ['Bold geometric centerpiece', 'Gradient fade from collar', 'Sponsor zone clean white', 'Armor-plate pattern overlay'],
+  back: ['Number zone clear white background', 'Full-back graphic with name clearance', 'Diagonal stripe flow', 'Mirror front panel design'],
+  'left-sleeve': ['Vertical stripe accent', 'Team color gradient fade', 'Logo placement zone', 'Diagonal mesh pattern'],
+  'right-sleeve': ['Solid secondary color', 'Piping accent line', 'Match left sleeve mirror', 'Number accent strip'],
+  collar: ['Contrast color binding', 'Sublimation gradient fade', 'Clean white inner collar', 'Pattern continuation']
+};
 
-const REFERENCE_CHIPS = [
-  'Aggressive esports front panel',
-  'Gradient sleeve flow',
-  'Neon collar accent',
-  'Dark sci-fi pattern',
-  'Cyber typography burst',
+const INITIAL_PANELS: PanelConfig[] = [
+  { id: 'front', label: 'Front Body', shortLabel: 'Front', prompt: '', status: 'empty', zones: ['sponsor', 'safe', 'seam', 'design'] },
+  { id: 'back', label: 'Back Body', shortLabel: 'Back', prompt: '', status: 'empty', zones: ['safe', 'seam', 'design'] },
+  { id: 'left-sleeve', label: 'Left Sleeve', shortLabel: 'L.Sleeve', prompt: '', status: 'empty', zones: ['seam', 'design'] },
+  { id: 'right-sleeve', label: 'Right Sleeve', shortLabel: 'R.Sleeve', prompt: '', status: 'empty', zones: ['seam', 'design'] },
+  { id: 'collar', label: 'Collar', shortLabel: 'Collar', prompt: '', status: 'empty', zones: ['seam'] },
 ];
+
+const STATUS_COLOR: Record<PanelStatus, string> = {
+  empty: '#444',
+  configured: '#f59e0b',
+  generated: '#0070f3',
+  approved: '#00e676',
+};
+
+const ZONE_COLORS: Record<ZoneType, { fill: string; stroke: string; label: string }> = {
+  seam: { fill: 'rgba(239,68,68,0.08)', stroke: '#ef4444', label: 'Seam Danger Zone' },
+  safe: { fill: 'rgba(234,179,8,0.08)', stroke: '#eab308', label: 'Name/# Safe Zone' },
+  sponsor: { fill: 'rgba(0,112,243,0.1)', stroke: '#0070f3', label: 'Sponsor Logo Zone' },
+  design: { fill: 'rgba(0,230,118,0.05)', stroke: '#00e676', label: 'Free Design Zone' },
+};
+
+// ─── Panel Garment SVG Component ──────────────────────────────────────────────
+
+const GarmentFlat: React.FC<{
+  panels: PanelConfig[];
+  activePanel: GarmentPanel;
+  concepts: GeneratedConcept[];
+  showZones: Record<ZoneType, boolean>;
+  selectedDNA: StyleDNA | null;
+  sponsorZone: boolean;
+  safeZone: number;
+  seamBleed: number;
+  onPanelClick: (id: GarmentPanel) => void;
+}> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, safeZone, onPanelClick }) => {
+
+  const getPanelConcept = (id: GarmentPanel) => concepts.find(c => c.panelId === id);
+
+  const getPanelFill = (id: GarmentPanel) => {
+    const concept = getPanelConcept(id);
+    const dna = selectedDNA;
+    if (concept) return `url(#grad-${id})`;
+    if (dna) return `${dna.primaryColor}cc`;
+    return '#16161f';
+  };
+
+  const isActive = (id: GarmentPanel) => activePanel === id;
+  const panelStatus = (id: GarmentPanel) => panels.find(p => p.id === id)?.status ?? 'empty';
+
+  return (
+    <svg
+      viewBox="0 0 640 440"
+      className="ap-garment-flat-svg"
+      style={{ width: '100%', height: '100%', maxHeight: '420px' }}
+    >
+      <defs>
+        {/* Gradients per panel based on concepts / dna */}
+        {['front','back','left-sleeve','right-sleeve','collar'].map(pid => {
+          const c = getPanelConcept(pid as GarmentPanel);
+          const dna = selectedDNA;
+          const p = c?.primaryColor ?? dna?.primaryColor ?? '#16161f';
+          const s = c?.secondaryColor ?? dna?.secondaryColor ?? '#1e1e2e';
+          const a = c?.accentColor ?? dna?.accentColor ?? '#0070f3';
+          return (
+            <linearGradient key={pid} id={`grad-${pid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor={p} />
+              <stop offset="60%" stopColor={s} />
+              <stop offset="100%" stopColor={a} stopOpacity={0.4} />
+            </linearGradient>
+          );
+        })}
+
+        {/* Seam hatch pattern */}
+        <pattern id="seam-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <line x1="0" y1="0" x2="0" y2="6" stroke="#ef4444" strokeWidth="1" strokeOpacity="0.5" />
+        </pattern>
+
+        {/* Safe zone dash */}
+        <pattern id="safe-dash" width="8" height="8" patternUnits="userSpaceOnUse">
+          <rect width="8" height="8" fill="rgba(234,179,8,0.05)" />
+        </pattern>
+
+        {/* Drop shadow filter */}
+        <filter id="panel-shadow">
+          <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000" floodOpacity="0.6" />
+        </filter>
+        <filter id="active-glow">
+          <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#0070f3" floodOpacity="0.8" />
+        </filter>
+      </defs>
+
+      {/* ── BACK BODY PANEL (left side) ── */}
+      <g
+        onClick={() => onPanelClick('back')}
+        style={{ cursor: 'pointer' }}
+        filter={isActive('back') ? 'url(#active-glow)' : 'url(#panel-shadow)'}
+      >
+        {/* Main back body */}
+        <path
+          d="M 30,120 L 60,90 L 100,105 L 110,80 L 180,75 L 180,360 L 30,360 Z"
+          fill={getPanelFill('back')}
+          stroke={isActive('back') ? '#0070f3' : '#2a2a3e'}
+          strokeWidth={isActive('back') ? 2 : 1}
+        />
+        {/* Seam danger zone - back */}
+        {showZones.seam && (
+          <path
+            d="M 35,125 L 62,95 L 98,109 L 107,85 L 175,80 L 175,355 L 35,355 Z"
+            fill="none"
+            stroke="#ef4444"
+            strokeWidth="1"
+            strokeDasharray="4 3"
+            opacity="0.7"
+          />
+        )}
+        {/* Name / Number safe zone - back center */}
+        {showZones.safe && (
+          <rect x="60" y="150" width="105" height="140" rx="2"
+            fill="rgba(234,179,8,0.07)"
+            stroke="#eab308"
+            strokeWidth="1"
+            strokeDasharray="5 4"
+          />
+        )}
+        {/* Design zone fill - back */}
+        {showZones.design && panelStatus('back') === 'empty' && (
+          <path
+            d="M 40,130 L 65,100 L 100,113 L 110,88 L 172,82 L 172,352 L 40,352 Z"
+            fill="rgba(0,230,118,0.04)"
+            stroke="#00e676"
+            strokeWidth="0.5"
+            strokeDasharray="8 6"
+          />
+        )}
+        {/* Panel label */}
+        <text x="105" y="275" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="9" fontFamily="monospace" fontWeight="bold" letterSpacing="0.08em">BACK</text>
+        {/* Status dot */}
+        <circle cx="170" cy="88" r="5" fill={STATUS_COLOR[panelStatus('back')]} />
+        {/* Active ring */}
+        {isActive('back') && <circle cx="170" cy="88" r="7" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
+      </g>
+
+      {/* ── RIGHT SLEEVE (back side — left in back view) ── */}
+      <g onClick={() => onPanelClick('right-sleeve')} style={{ cursor: 'pointer' }}
+        filter={isActive('right-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
+        <path
+          d="M 30,120 L 60,90 L 100,105 L 85,195 L 5,175 Z"
+          fill={getPanelFill('right-sleeve')}
+          stroke={isActive('right-sleeve') ? '#0070f3' : '#2a2a3e'}
+          strokeWidth={isActive('right-sleeve') ? 2 : 1}
+        />
+        {showZones.seam && (
+          <path d="M 35,122 L 63,94 L 97,108 L 82,192 L 8,173 Z"
+            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
+        )}
+        <text x="50" y="148" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">R.SLV</text>
+        <circle cx="62" cy="92" r="4" fill={STATUS_COLOR[panelStatus('right-sleeve')]} />
+        {isActive('right-sleeve') && <circle cx="62" cy="92" r="6" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
+      </g>
+
+      {/* ── LEFT SLEEVE (back side — right in back view) ── */}
+      <g onClick={() => onPanelClick('left-sleeve')} style={{ cursor: 'pointer' }}
+        filter={isActive('left-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
+        <path
+          d="M 180,75 L 230,70 L 265,90 L 265,180 L 195,195 Z"
+          fill={getPanelFill('left-sleeve')}
+          stroke={isActive('left-sleeve') ? '#0070f3' : '#2a2a3e'}
+          strokeWidth={isActive('left-sleeve') ? 2 : 1}
+        />
+        {showZones.seam && (
+          <path d="M 182,78 L 228,73 L 262,93 L 262,177 L 197,192 Z"
+            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
+        )}
+        <text x="222" y="138" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">L.SLV</text>
+        <circle cx="232" cy="72" r="4" fill={STATUS_COLOR[panelStatus('left-sleeve')]} />
+        {isActive('left-sleeve') && <circle cx="232" cy="72" r="6" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
+      </g>
+
+      {/* SEPARATOR LINE */}
+      <line x1="300" y1="60" x2="300" y2="410" stroke="#1e1e2e" strokeWidth="3" />
+      <text x="300" y="425" textAnchor="middle" fill="rgba(255,255,255,0.12)" fontSize="7" fontFamily="monospace" letterSpacing="0.12em">FRONT / BACK LAYOUT</text>
+
+      {/* ── FRONT BODY PANEL (right side) ── */}
+      <g onClick={() => onPanelClick('front')} style={{ cursor: 'pointer' }}
+        filter={isActive('front') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
+        <path
+          d="M 330,120 L 360,90 L 400,105 L 460,75 L 530,75 L 540,80 L 545,105 L 590,90 L 620,120 L 620,360 L 330,360 Z"
+          fill={getPanelFill('front')}
+          stroke={isActive('front') ? '#0070f3' : '#2a2a3e'}
+          strokeWidth={isActive('front') ? 2 : 1}
+        />
+        {/* Collar notch on front */}
+        <path d="M 450,75 Q 475,100 500,75" fill="none" stroke={isActive('collar') ? '#0070f3' : '#555'} strokeWidth={isActive('collar') ? 2 : 1} />
+
+        {/* Seam danger zone - front */}
+        {showZones.seam && (
+          <path
+            d="M 338,125 L 365,96 L 403,110 L 462,80 L 526,80 L 538,85 L 542,109 L 587,95 L 614,125 L 614,354 L 338,354 Z"
+            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7"
+          />
+        )}
+        {/* Sponsor zone - front top chest */}
+        {showZones.sponsor && sponsorZone && (
+          <rect x="390" y="115" width="180" height="65" rx="3"
+            fill="rgba(0,112,243,0.12)"
+            stroke="#0070f3"
+            strokeWidth="1.2"
+            strokeDasharray="6 4"
+          />
+        )}
+        {sponsorZone && (
+          <text x="480" y="152" textAnchor="middle" fill="#0070f3" fontSize="8" fontFamily="monospace" fontWeight="bold" opacity="0.7">SPONSOR ZONE</text>
+        )}
+        {/* Name/Number safe zone - front back */}
+        {showZones.safe && (
+          <rect x="370" y="215" width="220" height="100" rx="2"
+            fill="rgba(234,179,8,0.07)"
+            stroke="#eab308"
+            strokeWidth="1"
+            strokeDasharray="5 4"
+          />
+        )}
+        {showZones.safe && (
+          <text x="480" y="270" textAnchor="middle" fill="#eab308" fontSize="7" fontFamily="monospace" opacity="0.6">NAME / # SAFE ZONE</text>
+        )}
+        {/* Free design zone */}
+        {showZones.design && (
+          <rect x="345" y="130" width="280" height="218" rx="2"
+            fill="rgba(0,230,118,0.03)"
+            stroke="#00e676"
+            strokeWidth="0.5"
+            strokeDasharray="10 8"
+          />
+        )}
+        {/* Panel label */}
+        <text x="480" y="340" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="9" fontFamily="monospace" fontWeight="bold" letterSpacing="0.08em">FRONT</text>
+        {/* Status dot */}
+        <circle cx="610" cy="130" r="5" fill={STATUS_COLOR[panelStatus('front')]} />
+        {isActive('front') && <circle cx="610" cy="130" r="7" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
+      </g>
+
+      {/* ── LEFT SLEEVE (front side) ── */}
+      <g onClick={() => onPanelClick('left-sleeve')} style={{ cursor: 'pointer' }}
+        filter={isActive('left-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
+        <path
+          d="M 330,120 L 360,90 L 400,105 L 390,200 L 310,185 Z"
+          fill={getPanelFill('left-sleeve')}
+          stroke={isActive('left-sleeve') ? '#0070f3' : '#2a2a3e'}
+          strokeWidth={isActive('left-sleeve') ? 2 : 1}
+        />
+        {showZones.seam && (
+          <path d="M 335,122 L 363,94 L 397,108 L 387,197 L 314,182 Z"
+            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
+        )}
+        <text x="355" y="152" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">L.SLV</text>
+      </g>
+
+      {/* ── RIGHT SLEEVE (front side) ── */}
+      <g onClick={() => onPanelClick('right-sleeve')} style={{ cursor: 'pointer' }}
+        filter={isActive('right-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
+        <path
+          d="M 590,90 L 620,120 L 690,175 L 615,195 L 600,105 Z"
+          fill={getPanelFill('right-sleeve')}
+          stroke={isActive('right-sleeve') ? '#0070f3' : '#2a2a3e'}
+          strokeWidth={isActive('right-sleeve') ? 2 : 1}
+        />
+        {showZones.seam && (
+          <path d="M 592,93 L 617,123 L 686,172 L 612,192 L 602,108 Z"
+            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
+        )}
+        <text x="640" y="148" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">R.SLV</text>
+      </g>
+
+      {/* ── COLLAR PANEL (front) ── */}
+      <g onClick={() => onPanelClick('collar')} style={{ cursor: 'pointer' }}>
+        <path
+          d="M 450,75 Q 475,105 500,75 L 540,80 L 530,75 Q 505,65 475,68 Q 445,65 460,75 Z"
+          fill={getPanelFill('collar')}
+          stroke={isActive('collar') ? '#0070f3' : '#3a3a4e'}
+          strokeWidth={isActive('collar') ? 2 : 1}
+        />
+        <circle cx="475" cy="80" r="4" fill={STATUS_COLOR[panelStatus('collar')]} />
+      </g>
+
+      {/* Zone Legend */}
+      <g transform="translate(310, 370)">
+        {showZones.seam && <><rect x="0" y="0" width="8" height="8" fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" /><text x="11" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Seam Zone</text></>}
+        {showZones.safe && <><rect x="80" y="0" width="8" height="8" fill="none" stroke="#eab308" strokeWidth="1" strokeDasharray="3 2" /><text x="91" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Safe Zone</text></>}
+        {showZones.sponsor && sponsorZone && <><rect x="158" y="0" width="8" height="8" fill="rgba(0,112,243,0.2)" stroke="#0070f3" strokeWidth="1" /><text x="169" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Sponsor</text></>}
+        {showZones.design && <><rect x="225" y="0" width="8" height="8" fill="none" stroke="#00e676" strokeWidth="0.5" strokeDasharray="4 3" /><text x="236" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Design Area</text></>}
+      </g>
+    </svg>
+  );
+};
+
+// ─── Main Component ───────────────────────────────────────────────────────────
 
 export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   project,
-  presets,
   aiGenerating,
   onUpdateProject,
-  onPresetSelect,
   onGenerate,
   onHandoffToProduction,
 }) => {
-  // ── Local State ──────────────────────────────────────────────────────────────
-  const [designCategory, setDesignCategory] = useState<'esports' | 'futuristic'>('esports');
-  const [openActions, setOpenActions] = useState<string[]>(['enhance']);
-  const [activeToolAction, setActiveToolAction] = useState<string | null>(null);
-  const [toolProgress, setToolProgress] = useState<Record<string, 'idle' | 'running' | 'done'>>({});
+  // ── State ──────────────────────────────────────────────────────────────────
+  const [activePanel, setActivePanel] = useState<GarmentPanel>('front');
+  const [panels, setPanels] = useState<PanelConfig[]>(INITIAL_PANELS);
+  const [selectedDNA, setSelectedDNA] = useState<StyleDNA | null>(null);
+  const [concepts, setConcepts] = useState<GeneratedConcept[]>([]);
+  const [showZones, setShowZones] = useState<Record<ZoneType, boolean>>({
+    seam: true, safe: true, sponsor: true, design: true
+  });
+  const [sponsorZone, setSponsorZone] = useState(true);
+  const [safeZoneRadius, setSafeZoneRadius] = useState(0.5);
+  const [seamBleed, setSeamBleed] = useState<0.25 | 0.5 | 0.75>(0.5);
+  const [inkMode, setInkMode] = useState<InkMode>('cmyk');
   const [actionLog, setActionLog] = useState<string[]>([]);
-  const [versions, setVersions] = useState<AiVersion[]>([]);
-  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
-  const [referenceUploaded, setReferenceUploaded] = useState<boolean>(false);
-  const [isDragOver, setIsDragOver] = useState<boolean>(false);
-  const [handoffProcessing, setHandoffProcessing] = useState<boolean>(false);
-  const [handoffDone, setHandoffDone] = useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [generating, setGenerating] = useState(false);
+  const [loadingMsg, setLoadingMsg] = useState('');
+  const [handoffProcessing, setHandoffProcessing] = useState(false);
+  const [handoffDone, setHandoffDone] = useState(false);
+  const [activeTab, setActiveTab] = useState<'prompt' | 'constraints' | 'style'>('prompt');
 
-  // Upgraded Concept Grid & Momentum states
-  const [viewMode, setViewMode] = useState<'detail' | 'grid'>('grid');
-  const [activeLoadingMessage, setActiveLoadingMessage] = useState<string>('[AI Engine] Analyzing print canvas...');
-
-  const pushLog = (msg: string) => {
-    setActionLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 14)]);
-  };
-
-  const loadingMessages = [
-    '[AI Engine] Analyzing print canvas...',
-    '[Sublimation] Mapping layout zones...',
-    '[Vector Art] Balancing sleeve composition...',
-    '[Print Safe] Optimizing sponsor alignment...',
-    '[Aesthetics] Synthesizing print-safe margins...',
-    '[Render] Finalizing 3D blueprint matrices...',
+  const LOADING_MSGS = [
+    '[PANEL AI] Mapping front body layout zones...',
+    '[SAFE ZONE] Calculating name clearance margin...',
+    '[SPONSOR] Detecting chest placement boundaries...',
+    '[SEAM] Applying bleed compensation matrix...',
+    '[COLOR] Mapping sublimation ink density...',
+    '[VECTOR] Compositing panel flow gradients...',
+    '[COMPLIANCE] Running zone conflict check...',
+    '[ENGINE] Finalizing production layout data...',
   ];
 
   useEffect(() => {
-    if (!aiGenerating) return;
-    let idx = 0;
-    setActiveLoadingMessage(loadingMessages[0]);
-    const interval = setInterval(() => {
-      idx = (idx + 1) % loadingMessages.length;
-      setActiveLoadingMessage(loadingMessages[idx]);
-    }, 400);
-    return () => clearInterval(interval);
-  }, [aiGenerating]);
+    if (!generating) return;
+    let i = 0;
+    setLoadingMsg(LOADING_MSGS[0]);
+    const t = setInterval(() => {
+      i = (i + 1) % LOADING_MSGS.length;
+      setLoadingMsg(LOADING_MSGS[i]);
+    }, 420);
+    return () => clearInterval(t);
+  }, [generating]);
 
-  // ── Generate handler ─────────────────────────────────────────────────────────
+  const pushLog = (msg: string) =>
+    setActionLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 19)]);
+
+  const activeConfig = panels.find(p => p.id === activePanel)!;
+
+  const updatePanel = (id: GarmentPanel, updates: Partial<PanelConfig>) => {
+    setPanels(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
   const handleGenerate = () => {
-    if (!project.prompt && !project.selectedPresetId) return;
+    const configuredPanels = panels.filter(p => p.prompt.trim() !== '' || selectedDNA !== null);
+    if (configuredPanels.length === 0 && !selectedDNA) return;
+
+    setGenerating(true);
     onGenerate();
-    pushLog(`Generating: "${project.prompt || (presets.find(p => p.id === project.selectedPresetId)?.name ?? '')}"`);
+    pushLog(`AI Engine: Generating layout for ${configuredPanels.length > 0 ? configuredPanels.length + ' configured panels' : 'all panels via Style DNA'}`);
 
-    const preset = presets.find(p => p.id === project.selectedPresetId);
-    
-    // Construct the combined prompt behind the scenes
-    const userPrompt = project.prompt || preset?.prompt || 'Style Preset';
-    const apparelName = project.apparelType === 'esports_jersey' ? 'Esports Raglan Jersey' : 'Crewneck Sweatshirt';
-    const teamContext = project.teamName ? ` for team '${project.teamName}'` : '';
-    const styleContext = project.stylePreference ? ` with a ${project.stylePreference} aesthetic` : '';
-    const visionContext = project.designVision ? `. Design Vision: ${project.designVision}` : '';
-    
-    const colors = `Primary: ${project.baseColors.primary}, Secondary: ${project.baseColors.secondary}, Accent: ${project.baseColors.accent}, Highlight: ${project.baseColors.highlight}`;
-    const combinedPrompt = `${userPrompt}${teamContext}${styleContext}. Applied to a ${apparelName} with color palette [${colors}]${visionContext}.`;
+    const dna = selectedDNA;
+    const targetPanels: GarmentPanel[] = ['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'];
 
     setTimeout(() => {
-      const baseId = Date.now();
-      const variantSuffixes = [
-        { suffix: 'Alpha Core', pColor: project.baseColors.primary, sColor: project.baseColors.secondary, aColor: project.baseColors.accent },
-        { suffix: 'Beta Shift', pColor: project.baseColors.secondary, sColor: project.baseColors.primary, aColor: project.baseColors.accent },
-        { suffix: 'Gamma Grid', pColor: project.baseColors.primary, sColor: project.baseColors.accent, aColor: project.baseColors.highlight },
-        { suffix: 'Delta Apex', pColor: '#121217', sColor: project.baseColors.secondary, aColor: '#00e676' }
-      ];
+      const newConcepts: GeneratedConcept[] = targetPanels.map(pid => {
+        const panel = panels.find(p => p.id === pid);
+        const colorShift = pid === 'back' ? 0.8 : pid.includes('sleeve') ? 0.6 : 1;
+        return {
+          id: `c-${pid}-${Date.now()}`,
+          panelId: pid,
+          label: panel?.prompt || (dna ? dna.name : 'Base Concept'),
+          primaryColor: dna?.primaryColor ?? project.baseColors.primary,
+          secondaryColor: dna?.secondaryColor ?? project.baseColors.secondary,
+          accentColor: dna?.accentColor ?? project.baseColors.accent,
+          patternKey: `${dna?.id ?? 'default'}-${pid}`,
+          timestamp: new Date().toLocaleTimeString(),
+        };
+      });
 
-      const generatedVersions: AiVersion[] = variantSuffixes.map((varSpec, index) => ({
-        id: `v-${baseId}-${index}`,
-        label: `${(project.prompt || preset?.name || 'Concept')} ${varSpec.suffix}`,
-        prompt: `${combinedPrompt} (Variation ${varSpec.suffix})`,
-        presetId: project.selectedPresetId || '',
-        primaryColor: varSpec.pColor,
-        secondaryColor: varSpec.sColor,
-        accentColor: varSpec.aColor,
-        timestamp: new Date().toLocaleTimeString(),
-        action: `Generated Concept V${index + 1}`
-      }));
-
-      setVersions(prev => [...generatedVersions, ...prev]);
-      setActiveVersionId(generatedVersions[0].id); // select the first one by default
-      setViewMode('grid'); // switch to grid view to show variations
-      pushLog(`✓ Generated 4 distinct style concepts successfully.`);
-    }, 1900);
+      setConcepts(newConcepts);
+      setPanels(prev => prev.map(p => ({
+        ...p,
+        status: p.prompt.trim() !== '' || selectedDNA !== null ? 'generated' : 'configured'
+      })));
+      setGenerating(false);
+      pushLog(`✓ Panel layout generated — ${targetPanels.length} panels mapped successfully`);
+      pushLog(`✓ Zone compliance: seam bleed ${seamBleed}", safe margin ${safeZoneRadius}"`);
+    }, 3200);
   };
 
-  // ── AI Action Tool handler ───────────────────────────────────────────────────
-  const runToolAction = (toolId: string, toolLabel: string, seconds: number) => {
-    if (toolProgress[toolId] === 'running') return;
-    setActiveToolAction(toolId);
-    setToolProgress(prev => ({ ...prev, [toolId]: 'running' }));
-    pushLog(`AI Action: ${toolLabel} — processing...`);
-    setTimeout(() => {
-      setToolProgress(prev => ({ ...prev, [toolId]: 'done' }));
-      setActiveToolAction(null);
-      pushLog(`✓ ${toolLabel} complete.`);
-      // Add result as a new version
-      const preset = presets.find(p => p.id === project.selectedPresetId);
-      const newVersion: AiVersion = {
-        id: `v${Date.now()}`,
-        label: `${toolLabel}`,
-        prompt: toolLabel,
-        presetId: project.selectedPresetId ?? '',
-        accentColor: preset?.accentColor ?? project.baseColors.accent,
-        primaryColor: preset?.primaryColor ?? project.baseColors.primary,
-        secondaryColor: preset?.secondaryColor ?? project.baseColors.secondary,
-        timestamp: new Date().toLocaleTimeString(),
-        action: toolLabel,
-      };
-      setVersions(prev => [newVersion, ...prev]);
-      setActiveVersionId(newVersion.id);
-    }, seconds * 1000);
+  const handleApprovePanel = (id: GarmentPanel) => {
+    updatePanel(id, { status: 'approved' });
+    pushLog(`✓ Panel "${panels.find(p => p.id === id)?.label}" approved for production`);
   };
 
-  // ── Reference Upload ─────────────────────────────────────────────────────────
-  const handleReferenceUpload = () => {
-    setReferenceUploaded(true);
-    pushLog('Reference image uploaded — moodboard analysis complete.');
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    setIsDragOver(false);
-    setReferenceUploaded(true);
-    pushLog('Reference image dropped — style analysis active.');
-  };
-
-  // ── Production Handoff ───────────────────────────────────────────────────────
   const handleHandoff = () => {
     setHandoffProcessing(true);
-    pushLog('Sending approved design to Production Studio...');
+    pushLog('Sending approved panels to Production Studio...');
     setTimeout(() => {
-      pushLog('✓ Artwork mapped to garment templates. Production Studio ready.');
+      pushLog('✓ All garment panels mapped. Production Studio is ready.');
       setHandoffProcessing(false);
       setHandoffDone(true);
-      setTimeout(() => onHandoffToProduction(), 800);
-    }, 1600);
+      setTimeout(() => onHandoffToProduction(), 700);
+    }, 1800);
   };
 
-  // ── Toggle action accordion ──────────────────────────────────────────────────
-  const toggleAction = (id: string) => {
-    setOpenActions(prev => prev.includes(id) ? prev.filter(a => a !== id) : [...prev, id]);
+  // ── Zone Compliance ────────────────────────────────────────────────────────
+  const configuredCount = panels.filter(p => p.status !== 'empty').length;
+  const approvedCount = panels.filter(p => p.status === 'approved').length;
+  const hasFrontConfig = panels.find(p => p.id === 'front')?.status !== 'empty';
+  const hasBackConfig = panels.find(p => p.id === 'back')?.status !== 'empty';
+
+  const zoneCompliance: ZoneCompliance[] = [
+    {
+      id: 'seam',
+      label: 'Seam Bleed',
+      status: 'ok',
+      detail: `${seamBleed}" bleed applied to all panels`
+    },
+    {
+      id: 'safe',
+      label: 'Name / # Safe Zone',
+      status: safeZoneRadius >= 0.4 ? 'ok' : 'warn',
+      detail: safeZoneRadius >= 0.4 ? `${safeZoneRadius}" margin — adequate clearance` : 'Margin may clip player names'
+    },
+    {
+      id: 'sponsor',
+      label: 'Sponsor Zone',
+      status: sponsorZone ? (hasFrontConfig ? 'ok' : 'warn') : 'info',
+      detail: sponsorZone ? (hasFrontConfig ? 'Reserved — front chest clear' : 'Reserved but front panel not configured') : 'Sponsor zone not reserved'
+    },
+    {
+      id: 'ink',
+      label: 'Ink Mode',
+      status: inkMode === 'cmyk' ? 'ok' : inkMode === 'neon' ? 'warn' : 'ok',
+      detail: inkMode === 'cmyk' ? 'CMYK — print-safe' : inkMode === 'rgb' ? 'RGB — check printer profile' : 'Neon — verify fluorescent ink stock'
+    },
+    {
+      id: 'panels',
+      label: 'Panel Coverage',
+      status: configuredCount >= 4 ? 'ok' : configuredCount >= 2 ? 'warn' : 'error',
+      detail: `${configuredCount}/5 panels configured`
+    },
+    {
+      id: 'front-back',
+      label: 'Front & Back',
+      status: hasFrontConfig && hasBackConfig ? 'ok' : 'warn',
+      detail: hasFrontConfig && hasBackConfig ? 'Both main panels configured' : 'Front and/or back panel missing'
+    },
+  ];
+
+  const complianceIcon = (status: ZoneCompliance['status']) => {
+    if (status === 'ok') return <CircleCheck size={11} style={{ color: '#00e676' }} />;
+    if (status === 'warn') return <TriangleAlert size={11} style={{ color: '#f59e0b' }} />;
+    if (status === 'error') return <AlertTriangle size={11} style={{ color: '#ef4444' }} />;
+    return <Info size={11} style={{ color: '#0070f3' }} />;
   };
 
-  const filteredPresets = presets.filter(p =>
-    designCategory === 'esports'
-      ? ['cyber-hex', 'mech-plate'].includes(p.id)
-      : ['glitch-camo', 'retro-grid'].includes(p.id)
-  );
+  const allCompliant = zoneCompliance.every(z => z.status === 'ok' || z.status === 'info');
 
-  const hasGeneratedContent = versions.length > 0 || !!project.selectedPresetId;
-  const activeVersion = versions.find(v => v.id === activeVersionId);
-
-  // ── Render ───────────────────────────────────────────────────────────────────
+  // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="ai-studio-layout">
+    <div className="ap-engine-layout">
 
       {/* ═══ LEFT PANEL ═══════════════════════════════════════════════════════ */}
-      <div className="ai-left-panel">
+      <div className="ap-left-panel">
 
-        {/* Panel Header */}
-        <div className="ai-left-header">
-          <div className="ai-left-badge"><Sparkles size={9} /> AI DESIGN STUDIO</div>
-          <div className="ai-left-title">Apparel Generator</div>
-          <div className="ai-left-subtitle">Create, refine, and generate production-ready designs</div>
+        {/* Header */}
+        <div className="ap-left-header">
+          <div className="ap-engine-badge"><Cpu size={9} /> APPAREL AI ENGINE</div>
+          <div className="ap-left-title">Panel Layout Studio</div>
+          <div className="ap-left-subtitle">Configure each garment panel independently for production</div>
         </div>
 
-        {/* ── SECTION 1: Prompt Input ── */}
-        <div className="ai-section">
-          <div className="ai-section-label">
-            <Wand2 size={11} /> Prompt
-          </div>
-          <textarea
-            className="ai-prompt-input"
-            placeholder={`Describe your jersey design...\ne.g. "Futuristic black and purple esports jersey with flame accents and cyber typography"`}
-            value={project.prompt}
-            onChange={e => onUpdateProject({ prompt: e.target.value })}
-            rows={4}
-          />
-          <div className="ai-prompt-meta">
-            <span className="ai-char-count">{project.prompt.length}/500</span>
-          </div>
-
-          {/* Prompt Chips */}
-          <div className="ai-chip-row">
-            {REFERENCE_CHIPS.map(chip => (
+        {/* Panel Selector Tabs */}
+        <div className="ap-panel-selector">
+          <div className="ap-section-label"><Shirt size={11} /> Garment Panels</div>
+          <div className="ap-panel-tabs">
+            {panels.map(p => (
               <button
-                key={chip}
-                className="ai-chip"
-                onClick={() => onUpdateProject({ prompt: chip })}
+                key={p.id}
+                className={`ap-panel-tab ${activePanel === p.id ? 'active' : ''}`}
+                onClick={() => setActivePanel(p.id)}
+                title={p.label}
               >
-                + {chip}
+                <span className="ap-panel-tab-dot" style={{ background: STATUS_COLOR[p.status] }} />
+                <span className="ap-panel-tab-label">{p.shortLabel}</span>
               </button>
             ))}
           </div>
 
-          <button
-            className={`ai-generate-btn ${aiGenerating ? 'loading' : ''}`}
-            onClick={handleGenerate}
-            disabled={aiGenerating || (!project.prompt && !project.selectedPresetId)}
-          >
-            {aiGenerating ? (
-              <><RefreshCw size={14} className="animate-spin" /> Generating Design...</>
-            ) : (
-              <><Sparkles size={14} /> Generate Apparel Design</>
-            )}
+          {/* Active Panel Status */}
+          <div className="ap-panel-status-row">
+            <span className="ap-panel-name">{activeConfig.label}</span>
+            <span className="ap-panel-badge" style={{ background: `${STATUS_COLOR[activeConfig.status]}22`, color: STATUS_COLOR[activeConfig.status], border: `1px solid ${STATUS_COLOR[activeConfig.status]}55` }}>
+              {activeConfig.status.toUpperCase()}
+            </span>
+          </div>
+        </div>
+
+        {/* Content Tabs */}
+        <div className="ap-content-tabs">
+          <button className={`ap-content-tab ${activeTab === 'prompt' ? 'active' : ''}`} onClick={() => setActiveTab('prompt')}>
+            <Target size={10} /> Prompt
+          </button>
+          <button className={`ap-content-tab ${activeTab === 'style' ? 'active' : ''}`} onClick={() => setActiveTab('style')}>
+            <Palette size={10} /> Style DNA
+          </button>
+          <button className={`ap-content-tab ${activeTab === 'constraints' ? 'active' : ''}`} onClick={() => setActiveTab('constraints')}>
+            <Settings size={10} /> Constraints
           </button>
         </div>
 
-        {/* ── SECTION 2: Reference Upload ── */}
-        <div className="ai-section">
-          <div className="ai-section-label">
-            <Image size={11} /> Reference & Moodboard
-          </div>
-          <div
-            className={`ai-reference-zone ${isDragOver ? 'drag-over' : ''} ${referenceUploaded ? 'uploaded' : ''}`}
-            onDragOver={e => { e.preventDefault(); setIsDragOver(true); }}
-            onDragLeave={() => setIsDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleReferenceUpload} />
-            {referenceUploaded ? (
-              <>
-                <div className="ai-ref-uploaded-icon"><Check size={16} /></div>
-                <div className="ai-ref-uploaded-label">Reference Active</div>
-                <div className="ai-ref-uploaded-sub">Style analysis running</div>
-              </>
-            ) : (
-              <>
-                <Upload size={20} className="ai-ref-icon" />
-                <div className="ai-ref-label">Drop reference image</div>
-                <div className="ai-ref-sub">Competitor jersey, moodboard, or inspiration</div>
-              </>
+        {/* ── TAB: Prompt ── */}
+        {activeTab === 'prompt' && (
+          <div className="ap-section">
+            <div className="ap-section-label"><Target size={11} /> Panel Instructions — {activeConfig.label}</div>
+            <textarea
+              className="ap-prompt-input"
+              placeholder={`Describe the ${activeConfig.label.toLowerCase()} design...\ne.g. "${PANEL_PROMPT_CHIPS[activePanel][0]}"`}
+              value={activeConfig.prompt}
+              rows={4}
+              onChange={e => {
+                updatePanel(activePanel, {
+                  prompt: e.target.value,
+                  status: e.target.value.trim() ? 'configured' : 'empty'
+                });
+              }}
+            />
+
+            {/* Prompt chips */}
+            <div className="ap-chip-row">
+              {PANEL_PROMPT_CHIPS[activePanel].map(chip => (
+                <button
+                  key={chip}
+                  className="ap-chip"
+                  onClick={() => updatePanel(activePanel, { prompt: chip, status: 'configured' })}
+                >
+                  + {chip}
+                </button>
+              ))}
+            </div>
+
+            {/* Panel actions */}
+            {activeConfig.status === 'generated' && (
+              <button className="ap-approve-btn" onClick={() => handleApprovePanel(activePanel)}>
+                <Check size={12} /> Approve This Panel
+              </button>
             )}
           </div>
-          {referenceUploaded && (
-            <button className="ai-ref-clear" onClick={() => setReferenceUploaded(false)}>
-              ✕ Clear reference
-            </button>
-          )}
-        </div>
+        )}
 
-        {/* ── SECTION 3: Style Presets ── */}
-        <div className="ai-section">
-          <div className="ai-section-label">
-            <Star size={11} /> Style Presets
-          </div>
-          <div className="ai-cat-tabs">
-            <button
-              className={`ai-cat-tab ${designCategory === 'esports' ? 'active' : ''}`}
-              onClick={() => setDesignCategory('esports')}
-            >Esports</button>
-            <button
-              className={`ai-cat-tab ${designCategory === 'futuristic' ? 'active' : ''}`}
-              onClick={() => setDesignCategory('futuristic')}
-            >Streetwear</button>
-          </div>
-          <div className="ai-presets-grid">
-            {filteredPresets.map(preset => (
-              <div
-                key={preset.id}
-                className={`ai-preset-card ${project.selectedPresetId === preset.id ? 'active' : ''}`}
-                onClick={() => onPresetSelect(preset.id)}
-              >
+        {/* ── TAB: Style DNA ── */}
+        {activeTab === 'style' && (
+          <div className="ap-section">
+            <div className="ap-section-label"><Palette size={11} /> Style DNA — Applied to All Panels</div>
+            <div className="ap-style-dna-grid">
+              {STYLE_DNA.map(dna => (
                 <div
-                  className="ai-preset-thumb"
-                  style={{ background: `linear-gradient(145deg, ${preset.primaryColor}, ${preset.secondaryColor} 60%, ${preset.accentColor}33)` }}
+                  key={dna.id}
+                  className={`ap-dna-card ${selectedDNA?.id === dna.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedDNA(selectedDNA?.id === dna.id ? null : dna);
+                    if (selectedDNA?.id !== dna.id) {
+                      onUpdateProject({
+                        baseColors: {
+                          ...project.baseColors,
+                          primary: dna.primaryColor,
+                          secondary: dna.secondaryColor,
+                          accent: dna.accentColor,
+                        }
+                      });
+                      pushLog(`Style DNA: "${dna.name}" selected`);
+                    }
+                  }}
                 >
-                  <div className="ai-preset-geo" style={{ borderColor: preset.accentColor }} />
-                  {project.selectedPresetId === preset.id && (
-                    <div className="ai-preset-check" style={{ background: preset.accentColor }}><Check size={8} /></div>
-                  )}
+                  <div className="ap-dna-swatch">
+                    <div style={{ background: dna.primaryColor, flex: 2 }} />
+                    <div style={{ background: dna.secondaryColor, flex: 1.5 }} />
+                    <div style={{ background: dna.accentColor, flex: 0.5 }} />
+                  </div>
+                  <div className="ap-dna-info">
+                    <div className="ap-dna-name">{dna.name}</div>
+                    <div className="ap-dna-tag">{dna.tag}</div>
+                  </div>
+                  {selectedDNA?.id === dna.id && <div className="ap-dna-check"><Check size={8} /></div>}
                 </div>
-                <div className="ai-preset-label">{preset.name}</div>
-                <div className="ai-preset-accent-bar" style={{ background: preset.accentColor }} />
+              ))}
+            </div>
+            {selectedDNA && (
+              <div className="ap-dna-desc">
+                <Info size={10} />
+                <span>{selectedDNA.description}</span>
               </div>
-            ))}
+            )}
           </div>
-        </div>
+        )}
 
-        {/* ── SECTION 4: AI Actions Toolkit ── */}
-        <div className="ai-section ai-section-actions">
-          <div className="ai-section-label">
-            <Zap size={11} /> AI Actions Toolkit
-          </div>
-          <div className="ai-actions-list">
-            {AI_ACTIONS.map(category => {
-              const Icon = category.icon;
-              const isOpen = openActions.includes(category.id);
-              return (
-                <div key={category.id} className="ai-action-category">
+        {/* ── TAB: Production Constraints ── */}
+        {activeTab === 'constraints' && (
+          <div className="ap-section">
+            <div className="ap-section-label"><Settings size={11} /> Production Constraints</div>
+
+            <div className="ap-constraint-block">
+              <div className="ap-constraint-row">
+                <label className="ap-constraint-label">
+                  <Shield size={10} /> Sponsor Zone
+                </label>
+                <button
+                  className={`ap-toggle ${sponsorZone ? 'on' : ''}`}
+                  onClick={() => setSponsorZone(v => !v)}
+                >
+                  <span className="ap-toggle-knob" />
+                </button>
+              </div>
+              <div className="ap-constraint-hint">Reserve top-front chest for sponsor logo placement</div>
+            </div>
+
+            <div className="ap-constraint-block">
+              <div className="ap-constraint-row">
+                <label className="ap-constraint-label">
+                  <Ruler size={10} /> Name/# Safe Margin
+                </label>
+                <span className="ap-constraint-value">{safeZoneRadius}"</span>
+              </div>
+              <input
+                type="range"
+                min="0.25" max="1.0" step="0.05"
+                value={safeZoneRadius}
+                onChange={e => setSafeZoneRadius(parseFloat(e.target.value))}
+                className="ap-range-slider"
+              />
+              <div className="ap-range-labels"><span>0.25"</span><span>0.5"</span><span>1.0"</span></div>
+            </div>
+
+            <div className="ap-constraint-block">
+              <div className="ap-constraint-row">
+                <label className="ap-constraint-label">
+                  <Layers size={10} /> Seam Bleed
+                </label>
+              </div>
+              <div className="ap-bleed-options">
+                {([0.25, 0.5, 0.75] as const).map(val => (
                   <button
-                    className={`ai-action-header ${isOpen ? 'open' : ''}`}
-                    onClick={() => toggleAction(category.id)}
+                    key={val}
+                    className={`ap-bleed-opt ${seamBleed === val ? 'active' : ''}`}
+                    onClick={() => setSeamBleed(val)}
                   >
-                    <div className="ai-action-header-left">
-                      <div className="ai-action-icon-wrap" style={{ background: `${category.color}18`, border: `1px solid ${category.color}40` }}>
-                        <Icon size={11} style={{ color: category.color }} />
-                      </div>
-                      <span>{category.label}</span>
-                    </div>
-                    {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    {val}"
                   </button>
-                  {isOpen && (
-                    <div className="ai-action-tools">
-                      {category.tools.map(tool => {
-                        const status = toolProgress[tool.id] ?? 'idle';
-                        return (
-                          <button
-                            key={tool.id}
-                            className={`ai-tool-btn ${status}`}
-                            onClick={() => {
-                              const secs = parseInt(tool.time.replace(/[^0-9]/g, ''), 10);
-                              runToolAction(tool.id, tool.label, secs);
-                            }}
-                            disabled={status === 'running' || activeToolAction !== null}
-                          >
-                            <span className="ai-tool-name">{tool.label}</span>
-                            <span className="ai-tool-time">
-                              {status === 'running' ? <RefreshCw size={9} className="animate-spin" /> : status === 'done' ? <Check size={9} style={{ color: '#00e676' }} /> : tool.time}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  )}
+                ))}
+              </div>
+            </div>
+
+            <div className="ap-constraint-block">
+              <div className="ap-constraint-row">
+                <label className="ap-constraint-label">
+                  <Palette size={10} /> Sublimation Ink Mode
+                </label>
+              </div>
+              <div className="ap-ink-options">
+                {(['cmyk', 'rgb', 'neon'] as const).map(mode => (
+                  <button
+                    key={mode}
+                    className={`ap-ink-opt ${inkMode === mode ? 'active' : ''}`}
+                    onClick={() => setInkMode(mode)}
+                  >
+                    {mode.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Zone Visibility Toggles */}
+            <div className="ap-constraint-block">
+              <div className="ap-section-label" style={{ marginBottom: '8px' }}><Eye size={10} /> Overlay Visibility</div>
+              {(Object.keys(showZones) as ZoneType[]).map(zone => (
+                <div key={zone} className="ap-constraint-row" style={{ marginBottom: '6px' }}>
+                  <label className="ap-constraint-label" style={{ color: ZONE_COLORS[zone].stroke }}>
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', border: `1px solid ${ZONE_COLORS[zone].stroke}`, marginRight: '4px' }} />
+                    {ZONE_COLORS[zone].label}
+                  </label>
+                  <button
+                    className={`ap-toggle ${showZones[zone] ? 'on' : ''}`}
+                    onClick={() => setShowZones(prev => ({ ...prev, [zone]: !prev[zone] }))}
+                  >
+                    <span className="ap-toggle-knob" />
+                  </button>
                 </div>
-              );
-            })}
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Generate Button */}
+        <div className="ap-generate-section">
+          <button
+            className={`ap-generate-btn ${generating ? 'loading' : ''}`}
+            onClick={handleGenerate}
+            disabled={generating || (panels.every(p => p.prompt.trim() === '') && !selectedDNA)}
+          >
+            {generating ? (
+              <><RefreshCw size={14} className="animate-spin" /> Generating Layout...</>
+            ) : (
+              <><Sparkles size={14} /> Generate Panel Layout</>
+            )}
+          </button>
+          <div className="ap-generate-meta">
+            {configuredCount > 0
+              ? `${configuredCount}/5 panels configured • ${selectedDNA ? selectedDNA.name + ' DNA active' : 'No style DNA'}`
+              : selectedDNA
+              ? `Style DNA: ${selectedDNA.name} • No panel prompts`
+              : 'Configure at least one panel or select a Style DNA'}
           </div>
         </div>
 
       </div>
 
       {/* ═══ CENTER PANEL ═══════════════════════════════════════════════════════ */}
-      <div className="ai-center-panel" style={{ background: 'var(--bg-primary)' }}>
+      <div className="ap-center-panel">
 
-        {/* Center Top Bar */}
-        <div className="ai-center-topbar">
-          <div className="ai-center-title-group">
-            <div className="ai-center-badge">
-              <Eye size={10} /> {viewMode === 'grid' && versions.length > 0 ? 'CONCEPTS GRID' : 'LIVE PREVIEW'}
-            </div>
-            <span className="ai-center-title">{project.name}</span>
+        {/* Top Bar */}
+        <div className="ap-center-topbar">
+          <div className="ap-center-badge-group">
+            <div className="ap-center-badge"><Layers size={10} /> GARMENT FLAT VIEW</div>
+            <span className="ap-center-title">{project.name}</span>
           </div>
-          <div className="ai-center-controls" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            {/* View Mode Toggle Buttons */}
-            {versions.length > 0 && (
-              <div style={{ display: 'flex', background: 'var(--bg-primary)', padding: '2px', borderRadius: '6px', border: '1px solid var(--border-muted)', marginRight: '6px' }}>
-                <button
-                  className={`studio-ctrl-btn ${viewMode === 'grid' ? 'active' : ''}`}
-                  onClick={() => setViewMode('grid')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'grid' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'grid' ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
-                >
-                  <Layers size={10} /> Grid View
-                </button>
-                <button
-                  className={`studio-ctrl-btn ${viewMode === 'detail' ? 'active' : ''}`}
-                  onClick={() => setViewMode('detail')}
-                  style={{ padding: '3px 8px', fontSize: '10px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px', background: viewMode === 'detail' ? 'var(--bg-hover)' : 'transparent', border: 'none', color: viewMode === 'detail' ? 'var(--text-primary)' : 'var(--text-secondary)', cursor: 'pointer', borderRadius: '4px' }}
-                >
-                  <Eye size={10} /> Detail View
-                </button>
-              </div>
-            )}
-
-            {activeVersion && (
-              <div className="ai-active-version-badge">
-                <Check size={10} /> {activeVersion.label}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* MockupView / Concept Grid wrapper */}
-        <div className="ai-mockup-wrapper" style={{ minHeight: '0', flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {aiGenerating && (
-            <div className="ai-generation-overlay">
-              <div className="ai-gen-spinner-wrap">
-                <div className="ai-gen-spinner" />
-                <div className="ai-gen-label" style={{ textShadow: '0 0 10px rgba(0, 112, 243, 0.4)' }}>
-                  {activeLoadingMessage}
-                </div>
-                <div className="ai-gen-sub">AI is mapping your custom concepts to layout templates</div>
-              </div>
-            </div>
-          )}
-
-          {viewMode === 'grid' && versions.length > 0 ? (
-            <div className="ai-concept-grid" style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr',
-              gridTemplateRows: '1fr 1fr',
-              gap: '16px',
-              padding: '24px',
-              height: '100%',
-              boxSizing: 'border-box',
-              overflowY: 'auto'
-            }}>
-              {versions.slice(0, 4).map((version, index) => {
-                const isActive = activeVersionId === version.id;
-                return (
+          <div className="ap-center-controls">
+            {concepts.length > 0 && (
+              <div className="ap-panel-pills">
+                {panels.map(p => (
                   <div
-                    key={version.id}
-                    className={`ai-concept-card ${isActive ? 'active' : ''}`}
-                    style={{
-                      position: 'relative',
-                      background: 'rgba(var(--bg-secondary-rgb), 0.75)',
-                      backdropFilter: 'blur(16px)',
-                      border: isActive ? '2px solid var(--accent-blue)' : '1px solid var(--border-muted)',
-                      borderRadius: '12px',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      cursor: 'pointer',
-                      padding: '12px',
-                      transition: 'all 0.2s',
-                      boxShadow: isActive ? '0 0 20px rgba(var(--accent-blue-rgb), 0.25)' : 'none',
-                    }}
-                    onClick={() => {
-                      setActiveVersionId(version.id);
-                      // Update project colors to match this active version!
-                      onUpdateProject({
-                        baseColors: {
-                          ...project.baseColors,
-                          primary: version.primaryColor,
-                          secondary: version.secondaryColor,
-                          accent: version.accentColor
-                        }
-                      });
-                    }}
+                    key={p.id}
+                    className="ap-panel-pill"
+                    style={{ borderColor: STATUS_COLOR[p.status], color: STATUS_COLOR[p.status] }}
+                    title={p.label}
                   >
-                    {/* Visual Card Gradient Header Backdrop */}
-                    <div style={{
-                      position: 'absolute',
-                      top: 0, left: 0, right: 0, height: '4px',
-                      background: `linear-gradient(90deg, ${version.primaryColor}, ${version.secondaryColor}, ${version.accentColor})`
-                    }} />
-
-                    {/* Badge number */}
-                    <div style={{ position: 'absolute', top: 10, left: 12, fontSize: '9px', fontWeight: '800', background: 'rgba(0,0,0,0.4)', padding: '2px 6px', borderRadius: '4px', color: version.accentColor, fontFamily: 'monospace' }}>
-                      CONCEPT V{index + 1}
-                    </div>
-
-                    {/* Miniature Colored Garment SVG Preview */}
-                    <div style={{
-                      height: '130px',
-                      width: '100%',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      position: 'relative',
-                      margin: '10px 0'
-                    }}>
-                      <div 
-                        style={{
-                          position: 'absolute',
-                          width: '80px',
-                          height: '95px',
-                          background: `linear-gradient(135deg, ${version.primaryColor} 0%, ${version.secondaryColor} 60%, ${version.accentColor}33 100%)`,
-                          clipPath: project.apparelType === 'esports_jersey'
-                            ? 'polygon(20% 15%, 26% 8%, 50% 12%, 74% 8%, 80% 15%, 88% 38%, 78% 40%, 79% 95%, 21% 95%, 22% 40%, 12% 38%)'
-                            : project.apparelType === 'hoodie'
-                            ? 'polygon(18% 28%, 28% 22%, 50% 25%, 72% 22%, 82% 28%, 92% 52%, 82% 54%, 78% 95%, 22% 95%, 18% 54%, 8% 52%)'
-                            : 'polygon(15% 20%, 26% 12%, 50% 16%, 74% 12%, 85% 20%, 92% 42%, 81% 44%, 82% 95%, 18% 95%, 19% 44%, 8% 42%)',
-                          boxShadow: 'inset 0 0 10px rgba(0,0,0,0.5)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center'
-                        }}
-                      >
-                        {/* Overlay texture details */}
-                        <div style={{ position: 'absolute', inset: 0, opacity: 0.15, backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 4px, #fff 4px, #fff 8px)', mixBlendMode: 'overlay' }} />
-                        <svg viewBox="0 0 100 120" style={{ width: '100%', height: '100%', stroke: version.accentColor, strokeWidth: '1.2', fill: 'none', opacity: 0.8 }}>
-                          {project.apparelType === 'esports_jersey' && (
-                            <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z" />
-                          )}
-                          {project.apparelType === 'tshirt' && (
-                            <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" />
-                          )}
-                          {project.apparelType === 'hoodie' && (
-                            <>
-                              <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" />
-                              <path d="M 32,29 C 30,10 70,10 68,29 Z" />
-                            </>
-                          )}
-                          {(!project.apparelType || (project.apparelType !== 'esports_jersey' && project.apparelType !== 'tshirt' && project.apparelType !== 'hoodie')) && (
-                            <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" />
-                          )}
-                        </svg>
-                      </div>
-                    </div>
-
-                    {/* Card Title Label */}
-                    <div style={{ width: '100%', textAlign: 'center', marginTop: '4px', zIndex: 2 }}>
-                      <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)', display: 'block', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
-                        {version.label}
-                      </span>
-                      <span style={{ fontSize: '9px', color: 'var(--text-disabled)', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', marginTop: '2px' }}>
-                        {version.action || 'Concept'}
-                      </span>
-                    </div>
-
-                    {/* Hover Translucent Overlay Action Bar */}
-                    <div className="concept-overlay" style={{
-                      position: 'absolute',
-                      inset: 0,
-                      background: 'rgba(var(--bg-primary-rgb), 0.96)',
-                      backdropFilter: 'blur(8px)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      gap: '8px',
-                      opacity: 0,
-                      pointerEvents: 'none',
-                      transition: 'opacity 0.2s',
-                      borderRadius: '12px',
-                      padding: '16px',
-                      boxSizing: 'border-box'
-                    }}>
-                      <span style={{ fontSize: '10px', fontWeight: 'bold', color: version.accentColor, textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                        V1 Setup Matrix
-                      </span>
-                      
-                      <button
-                        className="ai-quick-btn"
-                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setActiveVersionId(version.id);
-                          setViewMode('detail'); // switch to Detail inspect!
-                          pushLog(`Inspecting detailed 3D Mockup for ${version.label}`);
-                        }}
-                      >
-                        <Eye size={10} /> Refine & Edit
-                      </button>
-
-                      <button
-                        className="ai-quick-btn"
-                        style={{ width: '100%', padding: '6px', fontSize: '10px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          runToolAction('qk-remix', `Remix ${version.label.split(' ').pop()}`, 4);
-                        }}
-                      >
-                        <RefreshCw size={10} /> Remix Variation
-                      </button>
-
-                      <div style={{ display: 'flex', gap: '6px', width: '100%' }}>
-                        <button
-                          className="ai-quick-btn"
-                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            runToolAction('qk-upscale', 'Upscale HD', 5);
-                          }}
-                        >
-                          <Maximize2 size={9} /> Upscale
-                        </button>
-                        <button
-                          className="ai-quick-btn"
-                          style={{ flex: 1, padding: '5px', fontSize: '9px', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', color: 'var(--text-primary)', cursor: 'pointer', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Apply style preset
-                            onPresetSelect('cyber-hex');
-                            pushLog(`Style "Cyber Hex" queued for ${version.label}`);
-                          }}
-                        >
-                          <Sliders size={9} /> Style
-                        </button>
-                      </div>
-                    </div>
+                    {p.shortLabel}
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <MockupView project={project} />
-          )}
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Center Info Bar */}
-        {hasGeneratedContent && !aiGenerating && (
-          <div className="ai-center-infobar">
-            <div className="ai-center-info-item">
-              <Layers size={11} />
-              <span>{versions.length > 0 ? `${versions.length} version${versions.length > 1 ? 's' : ''} generated` : 'Style preset active'}</span>
+        {/* Garment Flat Canvas */}
+        <div className="ap-flat-canvas-wrapper">
+          {generating && (
+            <div className="ap-generation-overlay">
+              <div className="ap-gen-spinner-wrap">
+                <div className="ap-gen-spinner" />
+                <div className="ap-gen-label">{loadingMsg}</div>
+                <div className="ap-gen-sub">Panel-aware AI composition engine active</div>
+              </div>
             </div>
-            <div className="ai-center-info-item">
-              <AlignCenter size={11} />
-              <span>Sublimation layout ready</span>
-            </div>
-            <div className="ai-center-info-item">
-              <Shield size={11} />
-              <span>Print-safe margins: ✓</span>
-            </div>
+          )}
+
+          <GarmentFlat
+            panels={panels}
+            activePanel={activePanel}
+            concepts={concepts}
+            showZones={showZones}
+            selectedDNA={selectedDNA}
+            sponsorZone={sponsorZone}
+            safeZone={safeZoneRadius}
+            seamBleed={seamBleed}
+            onPanelClick={(id) => setActivePanel(id)}
+          />
+        </div>
+
+        {/* Canvas Bottom Info Bar */}
+        <div className="ap-canvas-infobar">
+          <div className="ap-canvas-info-item">
+            <Ruler size={10} />
+            <span>Bleed: {seamBleed}"</span>
           </div>
-        )}
+          <div className="ap-canvas-info-item">
+            <Shield size={10} />
+            <span>Safe: {safeZoneRadius}"</span>
+          </div>
+          <div className="ap-canvas-info-item">
+            <Palette size={10} />
+            <span>{inkMode.toUpperCase()}</span>
+          </div>
+          <div className="ap-canvas-info-item">
+            <Activity size={10} />
+            <span>{concepts.length > 0 ? `${concepts.length} panels rendered` : 'Awaiting generation'}</span>
+          </div>
+          <div className="ap-canvas-info-item" style={{ marginLeft: 'auto' }}>
+            <span style={{ color: allCompliant ? '#00e676' : '#f59e0b', fontWeight: 700 }}>
+              {allCompliant ? '✓ Compliant' : '⚠ Review Required'}
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* ═══ RIGHT PANEL ════════════════════════════════════════════════════════ */}
-      <div className="ai-right-panel">
+      <div className="ap-right-panel">
 
         {/* Right Header */}
-        <div className="ai-right-header">
-          <span className="ai-right-title">Outputs & Versions</span>
-          {versions.length > 0 && (
-            <span className="ai-right-count">{versions.length}</span>
-          )}
+        <div className="ap-right-header">
+          <span className="ap-right-title">Panel Status</span>
+          <span className="ap-right-count" style={{ background: approvedCount === 5 ? '#00e67622' : '#0070f322', color: approvedCount === 5 ? '#00e676' : '#0070f3' }}>
+            {approvedCount}/5 approved
+          </span>
         </div>
 
-        {/* Version History */}
-        <div className="ai-versions-list">
-          {versions.length === 0 ? (
-            <div className="ai-versions-empty">
-              <div className="ai-versions-empty-icon"><Sparkles size={22} /></div>
-              <div className="ai-versions-empty-label">No outputs yet</div>
-              <div className="ai-versions-empty-sub">Generate a design to see versions here</div>
-            </div>
-          ) : (
-            versions.map((version) => (
-              <div
-                key={version.id}
-                className={`ai-version-card ${activeVersionId === version.id ? 'active' : ''}`}
-                onClick={() => setActiveVersionId(version.id)}
-                title={`Behind-the-scenes Prompt:\n${version.prompt}`}
-              >
-                <div
-                  className="ai-version-thumb"
-                  style={{ background: `linear-gradient(135deg, ${version.primaryColor}, ${version.secondaryColor} 60%, ${version.accentColor}44)` }}
-                >
-                  <div className="ai-version-thumb-geo" style={{ borderColor: version.accentColor }} />
-                  {activeVersionId === version.id && (
-                    <div className="ai-version-active-dot" style={{ background: version.accentColor }} />
-                  )}
-                </div>
-                <div className="ai-version-info">
-                  <div className="ai-version-label">{version.label}</div>
-                  <div className="ai-version-action">{version.action}</div>
-                  <div className="ai-version-time">{version.timestamp}</div>
-                </div>
-                {activeVersionId === version.id && (
-                  <div className="ai-version-active-badge"><Check size={8} /></div>
-                )}
+        {/* Panel Status Board */}
+        <div className="ap-panel-status-board">
+          {panels.map(p => (
+            <div
+              key={p.id}
+              className={`ap-panel-status-item ${activePanel === p.id ? 'active' : ''}`}
+              onClick={() => setActivePanel(p.id)}
+            >
+              <div className="ap-panel-status-dot" style={{ background: STATUS_COLOR[p.status] }} />
+              <div className="ap-panel-status-info">
+                <div className="ap-panel-status-name">{p.label}</div>
+                <div className="ap-panel-status-state">{p.status}</div>
               </div>
-            ))
-          )}
+              <div className="ap-panel-status-actions">
+                {p.status === 'generated' && (
+                  <button className="ap-status-approve" onClick={e => { e.stopPropagation(); handleApprovePanel(p.id); }}>
+                    <Check size={9} />
+                  </button>
+                )}
+                {p.status === 'approved' && <CircleCheck size={14} style={{ color: '#00e676' }} />}
+              </div>
+            </div>
+          ))}
         </div>
 
-        {/* Quick Actions */}
-        {versions.length > 0 && (
-          <div className="ai-right-quick-actions">
-            <div className="ai-right-section-label">Quick Actions</div>
-            <button className="ai-quick-btn" onClick={() => runToolAction('qk-remix', 'Remix Active', 4)}>
-              <RotateCcw size={11} /> Remix Active
-            </button>
-            <button className="ai-quick-btn" onClick={() => runToolAction('qk-colorway', 'New Colorway', 4)}>
-              <Sliders size={11} /> New Colorway
-            </button>
-            <button className="ai-quick-btn" onClick={() => runToolAction('qk-upscale', 'Upscale Quality', 5)}>
-              <Maximize2 size={11} /> Upscale Quality
-            </button>
+        {/* Zone Compliance Report */}
+        <div className="ap-compliance-section">
+          <div className="ap-right-section-label">
+            <Shield size={10} /> Zone Compliance
+            <span className="ap-compliance-badge" style={{
+              background: allCompliant ? '#00e67615' : '#f59e0b15',
+              color: allCompliant ? '#00e676' : '#f59e0b',
+              border: `1px solid ${allCompliant ? '#00e67640' : '#f59e0b40'}`
+            }}>
+              {allCompliant ? 'PASS' : 'REVIEW'}
+            </span>
           </div>
-        )}
+          <div className="ap-compliance-list">
+            {zoneCompliance.map(item => (
+              <div key={item.id} className="ap-compliance-item">
+                <div className="ap-compliance-icon">{complianceIcon(item.status)}</div>
+                <div className="ap-compliance-text">
+                  <div className="ap-compliance-label">{item.label}</div>
+                  <div className="ap-compliance-detail">{item.detail}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
 
         {/* Activity Log */}
-        <div className="ai-right-log">
-          <div className="ai-right-section-label">
-            <Clock size={10} /> Studio Log
-            <div className={`ai-log-dot ${aiGenerating || activeToolAction ? 'pulsing' : ''}`} />
+        <div className="ap-right-log">
+          <div className="ap-right-section-label">
+            <Clock size={10} /> Production Log
+            <div className={`ap-log-dot ${generating ? 'pulsing' : ''}`} />
           </div>
-          <div className="ai-log-entries">
+          <div className="ap-log-entries">
             {actionLog.length === 0 ? (
-              <div className="ai-log-empty">Activity will appear here.</div>
+              <div className="ap-log-empty">Production activity will appear here.</div>
             ) : (
-              actionLog.slice(0, 6).map((entry, i) => (
-                <div key={i} className="ai-log-entry">{entry}</div>
+              actionLog.slice(0, 8).map((entry, i) => (
+                <div key={i} className="ap-log-entry">{entry}</div>
               ))
             )}
           </div>
         </div>
 
-        {/* Production Handoff CTA */}
-        <div className="ai-handoff-section">
-          <div className="ai-handoff-desc">
-            Finalize your design and send it to the Production Studio for automatic garment mapping.
+        {/* Production Handoff */}
+        <div className="ap-handoff-section">
+          <div className="ap-handoff-summary">
+            <div className="ap-handoff-stat">
+              <span className="ap-handoff-stat-val" style={{ color: configuredCount >= 2 ? '#00e676' : '#f59e0b' }}>{configuredCount}</span>
+              <span className="ap-handoff-stat-label">Panels</span>
+            </div>
+            <div className="ap-handoff-stat">
+              <span className="ap-handoff-stat-val" style={{ color: approvedCount > 0 ? '#00e676' : '#555' }}>{approvedCount}</span>
+              <span className="ap-handoff-stat-label">Approved</span>
+            </div>
+            <div className="ap-handoff-stat">
+              <span className="ap-handoff-stat-val" style={{ color: allCompliant ? '#00e676' : '#f59e0b' }}>{allCompliant ? '✓' : '⚠'}</span>
+              <span className="ap-handoff-stat-label">Compliant</span>
+            </div>
           </div>
           <button
-            className={`ai-handoff-btn ${handoffProcessing ? 'processing' : ''} ${handoffDone ? 'done' : ''}`}
+            className={`ap-handoff-btn ${handoffProcessing ? 'processing' : ''} ${handoffDone ? 'done' : ''}`}
             onClick={handleHandoff}
             disabled={handoffProcessing || handoffDone}
           >
             {handoffDone ? (
-              <><Check size={15} /> Mapped to Production</>
+              <><Check size={14} /> Sent to Production</>
             ) : handoffProcessing ? (
-              <><RefreshCw size={14} className="animate-spin" /> Mapping Artwork...</>
+              <><RefreshCw size={13} className="animate-spin" /> Mapping Panels...</>
             ) : (
-              <><Send size={14} /> Send to Production</>
+              <><ArrowRight size={14} /> Send to Production</>
             )}
           </button>
           {!handoffDone && (
-            <div className="ai-handoff-meta">
-              <div className="ai-handoff-step"><div className="ai-handoff-dot" />Map to garment panels</div>
-              <div className="ai-handoff-step"><div className="ai-handoff-dot" />Align sublimation zones</div>
-              <div className="ai-handoff-step"><div className="ai-handoff-dot" />Apply print-safe margins</div>
+            <div className="ap-handoff-checklist">
+              <div className="ap-handoff-check"><div className="ap-handoff-check-dot" style={{ background: concepts.length > 0 ? '#00e676' : '#333' }} />Panels generated</div>
+              <div className="ap-handoff-check"><div className="ap-handoff-check-dot" style={{ background: allCompliant ? '#00e676' : '#f59e0b' }} />Zone compliance</div>
+              <div className="ap-handoff-check"><div className="ap-handoff-check-dot" style={{ background: approvedCount > 0 ? '#00e676' : '#333' }} />Panels approved</div>
             </div>
           )}
         </div>
 
       </div>
-
     </div>
   );
 };
