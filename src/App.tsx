@@ -1089,170 +1089,400 @@ export default function App() {
               
               {/* STAGE 1: BRIEF SPECIFICATIONS */}
               {project.stage === 'brief' && (
-                <div className="brief-workspace">
-                  
-                  {/* Left Form controls */}
-                  <div className="brief-panel">
-                    <h3 className="brief-section-title">Project Context</h3>
-                    
-                    <div className="brief-input-group">
-                      <label>Team / Organization Name</label>
-                      <input 
-                        type="text" 
-                        className="brief-input"
-                        placeholder="e.g. Cloud9, Team Liquid..."
-                        value={project.teamName || ''}
-                        onChange={(e) => handleUpdateProject({ teamName: e.target.value })}
-                      />
-                    </div>
+                <div className="brief-workspace-premium">
+                  {/* Backdrop glow atmosphere */}
+                  <div className="atmosphere-glow secondary-glow"></div>
+                  <div className="atmosphere-glow primary-glow"></div>
 
-                    <div className="brief-input-group">
-                      <label>Design Vision & Core Identity</label>
-                      <textarea 
-                        className="brief-textarea"
-                        placeholder="Describe the vibe, mascot, specific elements you want to see (e.g. 'Aggressive panther motif with sharp geometric lines')."
-                        value={project.designVision || ''}
-                        onChange={(e) => handleUpdateProject({ designVision: e.target.value })}
-                      />
-                    </div>
-
-                    <h3 className="brief-section-title">Aesthetic Preference</h3>
-                    <div className="style-pill-grid">
-                      {['Aggressive', 'Minimalist', 'Cyberpunk', 'Retro / Vintage', 'Clean Tech', 'Streetwear'].map(style => (
-                        <div 
-                          key={style}
-                          className={`style-pill ${project.stylePreference === style ? 'active' : ''}`}
-                          onClick={() => handleUpdateProject({ stylePreference: style })}
-                        >
-                          {style}
+                  <div className="brief-grid-layout">
+                    {/* LEFT COLUMN: Inputs & Options */}
+                    <div className="brief-column left-column">
+                      
+                      {/* Section: Apparel Type Selection */}
+                      <div className="brief-section-premium">
+                        <div className="section-header-premium">
+                          <span className="section-step-badge">Step 1</span>
+                          <h3 className="section-title-premium">Select Apparel Type</h3>
                         </div>
-                      ))}
-                    </div>
-
-
-
-                    <h3 className="brief-section-title">Base Sublimation Palette</h3>
-                    <div className="color-picker-grid">
-                      <div className="color-input-wrapper">
-                        <label>Primary</label>
-                        <div className="color-swatch-picker" style={{ background: project.baseColors.primary }}>
-                          <input type="color" value={project.baseColors.primary} onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, primary: e.target.value } })} />
-                        </div>
-                      </div>
-
-                      <div className="color-input-wrapper">
-                        <label>Secondary</label>
-                        <div className="color-swatch-picker" style={{ background: project.baseColors.secondary }}>
-                          <input type="color" value={project.baseColors.secondary} onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, secondary: e.target.value } })} />
-                        </div>
-                      </div>
-
-                      <div className="color-input-wrapper">
-                        <label>Accent</label>
-                        <div className="color-swatch-picker" style={{ background: project.baseColors.accent }}>
-                          <input type="color" value={project.baseColors.accent} onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, accent: e.target.value } })} />
-                        </div>
-                      </div>
-
-                      <div className="color-input-wrapper">
-                        <label>Highlight</label>
-                        <div className="color-swatch-picker" style={{ background: project.baseColors.highlight }}>
-                          <input type="color" value={project.baseColors.highlight} onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, highlight: e.target.value } })} />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Graphics and Logo uploads */}
-                  <div className="brief-panel">
-                    <h3 className="brief-section-title">Sponsor Graphic Uploads</h3>
-                    <p style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px' }}>
-                      Verify vector compatibility and pixel resolution constraints before committing prints.
-                    </p>
-                    
-                    <div className="logo-dropzone" onClick={loadHighResLogo}>
-                      <Upload size={24} className="logo-dropzone-icon" />
-                      <div>
-                        <span style={{ color: 'var(--accent-blue)', fontWeight: '600' }}>Upload sponsor logo file</span> or click here to mock high-res upload
-                      </div>
-                      <span style={{ fontSize: '10px', color: 'var(--text-disabled)' }}>SVG, High-res PNG (300 DPI target)</span>
-                    </div>
-
-                    <div style={{ display: 'flex', gap: '10px' }}>
-                      <button className="ghost" onClick={loadLowResLogo} style={{ flex: 1, fontSize: '11px', gap: '4px' }}>
-                        <AlertTriangle size={12} style={{ color: 'var(--color-warning)' }} /> Mock Low-Res Upload
-                      </button>
-                    </div>
-
-                    <div className="logo-list">
-                      <h4 style={{ fontSize: '11px', fontWeight: '700', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
-                        Uploaded Logos ({project.logos.length})
-                      </h4>
-                      {project.logos.length === 0 ? (
-                        <div style={{ padding: '20px 0', textAlign: 'center', fontSize: '11px', color: 'var(--text-disabled)', background: 'var(--bg-primary)', border: '1px solid var(--border-muted)', borderRadius: '6px' }}>
-                          No logo assets loaded. Click above to load sample files.
-                        </div>
-                      ) : (
-                        project.logos.map((logo) => (
-                          <div className="logo-item" key={logo.id}>
-                            <div className="logo-item-info">
-                              <div className="logo-thumbnail">
-                                {logo.url ? <img src={logo.url} alt={logo.name} /> : 'IMG'}
-                              </div>
-                              <div className="logo-details">
-                                <span className="logo-filename">{logo.name}</span>
-                                {logo.resolutionStatus === 'high' ? (
-                                  <span className="logo-specs high-res">✓ High Res ({logo.dpi} DPI)</span>
-                                ) : (
-                                  <span className="logo-specs low-res">⚠ Low Res ({logo.dpi} DPI)</span>
+                        <p className="section-desc-premium">Choose your garment silhouette. This establishes sublimation zones and future production templates.</p>
+                        
+                        <div className="apparel-cards-grid">
+                          {[
+                            { id: 'esports_jersey', label: 'Esports Jersey', desc: 'Competitive sublimation layout with sponsor zones.' },
+                            { id: 'tshirt', label: 'T-Shirt', desc: 'Standard street fit with flat-lay preview borders.' },
+                            { id: 'hoodie', label: 'Hoodie', desc: 'Premium fleece fit with full pouch print bleed.' },
+                            { id: 'longsleeve', label: 'Long Sleeve', desc: 'Sleeve cuff wrapping & arm print boundaries.' },
+                            { id: 'basketball_jersey', label: 'Basketball Jersey', desc: 'Sleeveless cut layout with shoulder strap margins.' },
+                            { id: 'polo_shirt', label: 'Polo Shirt', desc: 'Collared pattern with front placket exclusions.' },
+                            { id: 'compression_wear', label: 'Compression Wear', desc: 'High-stretch active panels and seam safety limits.' },
+                            { id: 'cycling_jersey', label: 'Cycling Jersey', desc: 'Aerodynamic rear pocket division templates.' },
+                            { id: 'custom_apparel', label: 'Custom Apparel', desc: 'Create dynamic guidelines for atypical silhouettes.' }
+                          ].map(app => (
+                            <div 
+                              key={app.id} 
+                              className={`apparel-card-premium ${project.apparelType === app.id ? 'active' : ''}`}
+                              onClick={() => handleUpdateProject({ apparelType: app.id })}
+                            >
+                              <div className="apparel-card-icon-wrapper">
+                                {app.id === 'esports_jersey' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                                {app.id === 'tshirt' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                                {app.id === 'hoodie' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                                  </svg>
+                                )}
+                                {app.id === 'longsleeve' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                                {app.id === 'basketball_jersey' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                                {app.id === 'polo_shirt' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="2" />
+                                  </svg>
+                                )}
+                                {app.id === 'compression_wear' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
+                                )}
+                                {app.id === 'cycling_jersey' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                    <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
+                                  </svg>
+                                )}
+                                {app.id === 'custom_apparel' && (
+                                  <svg viewBox="0 0 100 100" className="apparel-icon-svg">
+                                    <path d="M 50,10 L 90,30 L 90,70 L 50,90 L 10,70 L 10,30 Z" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                  </svg>
                                 )}
                               </div>
+                              <div className="apparel-card-details">
+                                <span className="apparel-card-title">{app.label}</span>
+                                <span className="apparel-card-desc">{app.desc}</span>
+                              </div>
                             </div>
-                            <button className="ghost" onClick={() => deleteLogo(logo.id)} style={{ padding: '6px' }}>
-                              <Trash2 size={12} style={{ color: 'var(--text-disabled)' }} />
-                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Section: Creative Direction & Prompt Help Chips */}
+                      <div className="brief-section-premium">
+                        <div className="section-header-premium">
+                          <span className="section-step-badge">Step 2</span>
+                          <h3 className="section-title-premium">Creative Direction</h3>
+                        </div>
+                        <p className="section-desc-premium">Outline your design vision. What are the key elements, graphic symbols, or creative themes the AI should integrate?</p>
+                        
+                        <div className="creative-direction-wrapper">
+                          <textarea 
+                            className="premium-textarea"
+                            placeholder="Describe your vision (e.g. 'Sleek esports jersey featuring dark gradient hues, glowing cyberpunk wireframes, and sharp geometry overlays...')"
+                            value={project.designVision || ''}
+                            onChange={(e) => handleUpdateProject({ designVision: e.target.value })}
+                          />
+                          
+                          <div className="helper-chips-container">
+                            <span className="helper-chips-label">Inspire prompt:</span>
+                            <div className="helper-chips-grid">
+                              {[
+                                'Aggressive', 'Minimal', 'Cyberpunk', 'Tournament Ready', 'Futuristic',
+                                'Streetwear', 'Techwear', 'Sharp Geometry', 'Neon', 'Premium'
+                              ].map(chip => (
+                                <button 
+                                  key={chip}
+                                  type="button"
+                                  className="helper-chip"
+                                  onClick={() => {
+                                    const currentVision = project.designVision || '';
+                                    const appendix = currentVision ? ` ${chip}` : chip;
+                                    handleUpdateProject({ designVision: currentVision + appendix });
+                                  }}
+                                >
+                                  + {chip}
+                                </button>
+                              ))}
+                            </div>
                           </div>
-                        ))
-                      )}
+                        </div>
+                      </div>
+
+                      {/* Section: Creative Style Selection */}
+                      <div className="brief-section-premium">
+                        <div className="section-header-premium">
+                          <span className="section-step-badge">Step 3</span>
+                          <h3 className="section-title-premium">Creative Style Selection</h3>
+                        </div>
+                        <p className="section-desc-premium">Specify the aesthetic mood profile. This directs the complexity limits of synthesized patterns.</p>
+                        
+                        <div className="style-cards-grid">
+                          {[
+                            { id: 'Cyberpunk', title: 'Cyberpunk', desc: 'Electric high-voltage lines, neon highlights, and terminal interface themes.' },
+                            { id: 'Minimalist', title: 'Minimalist', desc: 'Flat shapes, spacious layouts, lightweight patterns, and clean negative space.' },
+                            { id: 'Tournament', title: 'Tournament', desc: 'Sharp geometric dividers, bold sports stripes, and speed trails.' },
+                            { id: 'Streetwear', title: 'Streetwear', desc: 'Heavy canvas grunge, graffiti splashbacks, and offset abstract forms.' },
+                            { id: 'Techwear', title: 'Techwear', desc: 'Tactical cargo grids, modular blueprint structures, and monochrome plates.' },
+                            { id: 'Retro / Vintage', title: 'Retro / Vintage', desc: '80s arcade vaporwave, pixel patterns, and saturated sunset stripes.' },
+                            { id: 'Clean Tech', title: 'Clean Tech', desc: 'Sophisticated matte layering, metallic gloss overlays, and professional club status.' }
+                          ].map(style => (
+                            <div 
+                              key={style.id}
+                              className={`style-card-premium ${project.stylePreference === style.id ? 'active' : ''}`}
+                              onClick={() => handleUpdateProject({ stylePreference: style.id })}
+                            >
+                              <div className="style-card-accent" />
+                              <div className="style-card-body">
+                                <span className="style-card-title">{style.title}</span>
+                                <span className="style-card-desc">{style.desc}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Section: Reference Assets */}
+                      <div className="brief-section-premium">
+                        <div className="section-header-premium">
+                          <span className="section-step-badge">Step 4</span>
+                          <h3 className="section-title-premium">Reference Assets</h3>
+                        </div>
+                        <p className="section-desc-premium">Provide reference logs, sponsor branding vector silhouettes, or custom texture files.</p>
+                        
+                        <div className="premium-dropzone" onClick={loadHighResLogo}>
+                          <Upload size={28} className="premium-dropzone-icon" />
+                          <div className="premium-dropzone-content">
+                            <span>Drag & drop sponsor logos or moodboards here</span>
+                            <span className="highlight-upload">or click to mock high-res upload</span>
+                          </div>
+                          <span className="dropzone-sub">Accepts vector SVG, PNG (target 300 DPI for production)</span>
+                        </div>
+
+                        <div className="mock-actions-row">
+                          <button className="premium-ghost-btn" onClick={loadLowResLogo}>
+                            <AlertTriangle size={14} className="warning-color" /> Add Low-Res Mock Asset
+                          </button>
+                        </div>
+
+                        <div className="uploaded-assets-panel">
+                          <span className="uploaded-assets-title">Uploaded Assets ({project.logos.length})</span>
+                          {project.logos.length === 0 ? (
+                            <div className="uploaded-assets-empty">
+                              No graphic assets loaded. Upload logos above to verify print readiness.
+                            </div>
+                          ) : (
+                            <div className="uploaded-assets-grid">
+                              {project.logos.map((logo) => (
+                                <div className="uploaded-asset-card" key={logo.id}>
+                                  <div className="uploaded-asset-thumb">
+                                    {logo.url ? <img src={logo.url} alt={logo.name} /> : <div className="asset-thumb-placeholder">PNG</div>}
+                                  </div>
+                                  <div className="uploaded-asset-details">
+                                    <span className="uploaded-asset-name">{logo.name}</span>
+                                    <span className={`uploaded-asset-specs ${logo.resolutionStatus === 'high' ? 'specs-success' : 'specs-warning'}`}>
+                                      {logo.resolutionStatus === 'high' ? `✓ High Res (${logo.dpi} DPI)` : `⚠ Low Res (${logo.dpi} DPI)`}
+                                    </span>
+                                  </div>
+                                  <button className="delete-asset-btn" onClick={() => deleteLogo(logo.id)} title="Remove asset">
+                                    <Trash2 size={12} />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* RIGHT COLUMN: Live AI Dashboard Feedback & Floating Preview */}
+                    <div className="brief-column right-column">
+                      
+                      {/* Active AI Project Analysis */}
+                      <div className="ai-analysis-panel-premium">
+                        <div className="panel-glow-accent" />
+                        <div className="analysis-header">
+                          <Sparkles size={16} className="sparkle-glow" />
+                          <h4>AI Project Analysis</h4>
+                        </div>
+                        <p className="analysis-intro">Evaluating project readiness and parameters based on real-time setup configuration.</p>
+                        
+                        <div className="analysis-metrics-grid">
+                          <div className="metric-box">
+                            <span className="metric-label">Detected Vibe</span>
+                            <span className="metric-val text-neon-blue">
+                              {project.stylePreference || 'Unspecified'}
+                            </span>
+                          </div>
+                          <div className="metric-box">
+                            <span className="metric-label">Production Speed</span>
+                            <span className="metric-val text-neon-purple">
+                              {project.apparelType ? 'Sublimation Ready' : 'Awaiting Outline'}
+                            </span>
+                          </div>
+                          <div className="metric-box">
+                            <span className="metric-label">Sponsor Integrity</span>
+                            <span className="metric-val">
+                              {project.logos.length > 0 ? (
+                                project.logos.some(l => l.resolutionStatus === 'low') ? '⚠ Resolution Issues' : '✓ Print Ready'
+                              ) : 'Awaiting Graphics'}
+                            </span>
+                          </div>
+                          <div className="metric-box">
+                            <span className="metric-label">Print Complexity</span>
+                            <span className="metric-val">
+                              {(project.designVision || '').length > 40 ? 'High Detail' : (project.designVision || '').length > 0 ? 'Medium' : 'Flat Base'}
+                            </span>
+                          </div>
+                          <div className="metric-box">
+                            <span className="metric-label">AI Prompt Setup</span>
+                            <span className="metric-val">
+                              {project.designVision ? `${Math.min(100, Math.round(project.designVision.length * 1.5))}% Confident` : 'Needs Prompt'}
+                            </span>
+                          </div>
+                          <div className="metric-box">
+                            <span className="metric-label">Print Canvas Space</span>
+                            <span className="metric-val">
+                              {project.canvasSize || '2400 x 2400 px'}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Floating Garment Preview */}
+                      <div className="live-preview-panel-premium">
+                        <span className="preview-label-premium">Live Blueprint Preview</span>
+                        
+                        <div className="floating-silhouette-container">
+                          {/* Silhouette SVG drawing loaded dynamically */}
+                          <div className="floating-silhouette-silhouette">
+                            {project.apparelType === 'esports_jersey' && (
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-jersey">
+                                <path d="M 20,20 C 35,10 65,10 80,20 L 92,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <path d="M 30,20 L 30,113" fill="none" stroke="rgba(0,112,243,0.15)" strokeWidth="1" strokeDasharray="2,2" />
+                                <path d="M 70,20 L 70,113" fill="none" stroke="rgba(0,112,243,0.15)" strokeWidth="1" strokeDasharray="2,2" />
+                                <circle cx="50" cy="50" r="1.5" fill="var(--accent-blue)" />
+                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="6" fontFamily="monospace">ESPORTS JERSEY PANEL</text>
+                              </svg>
+                            )}
+                            {project.apparelType === 'tshirt' && (
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-tshirt">
+                                <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="6" fontFamily="monospace">STREETWEAR T-SHIRT</text>
+                              </svg>
+                            )}
+                            {project.apparelType === 'hoodie' && (
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-hoodie">
+                                <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <path d="M 32,29 C 30,10 70,10 68,29 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <path d="M 35,90 L 35,102 L 65,102 L 65,90 Z" fill="none" stroke="rgba(0,112,243,0.25)" strokeWidth="1" />
+                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="6" fontFamily="monospace">ROOFTOP HOODIE</text>
+                              </svg>
+                            )}
+                            {(!project.apparelType || (project.apparelType !== 'esports_jersey' && project.apparelType !== 'tshirt' && project.apparelType !== 'hoodie')) && (
+                              <svg viewBox="0 0 100 120" className="preview-garment-svg glow-generic">
+                                <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.5" />
+                                <text x="50" y="80" textAnchor="middle" fill="var(--text-disabled)" fontSize="5" fontFamily="monospace">{project.apparelType ? project.apparelType.toUpperCase().replace('_', ' ') : 'APPAREL SYMMETRY'}</text>
+                              </svg>
+                            )}
+                          </div>
+                          
+                          <div className="silhouette-spec-box">
+                            <span className="spec-item-badge">SVG Matrix</span>
+                            <span className="spec-item-badge">Active Anchor Grids</span>
+                            <span className="spec-item-badge">Flat Bleeds</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Project Readiness System */}
+                      <div className="readiness-panel-premium">
+                        <h4 className="readiness-panel-title">Project Setup Readiness</h4>
+                        
+                        <div className="checklist-items">
+                          <div className="checklist-item-row ready">
+                            <span className="checklist-icon">✓</span>
+                            <div className="checklist-info">
+                              <span className="checklist-title">Apparel Category Selected</span>
+                              <span className="checklist-desc">Establishing rules for: {project.apparelType ? project.apparelType.replace('_', ' ') : 'Default'}</span>
+                            </div>
+                          </div>
+
+                          <div className={`checklist-item-row ${project.designVision ? 'ready' : 'pending'}`}>
+                            <span className="checklist-icon">{project.designVision ? '✓' : '⚠'}</span>
+                            <div className="checklist-info">
+                              <span className="checklist-title">Creative Direction Input</span>
+                              <span className="checklist-desc">{project.designVision ? 'AI vision instructions saved' : 'Missing creative instruction brief'}</span>
+                            </div>
+                          </div>
+
+                          <div className={`checklist-item-row ${project.stylePreference ? 'ready' : 'pending'}`}>
+                            <span className="checklist-icon">{project.stylePreference ? '✓' : '⚠'}</span>
+                            <div className="checklist-info">
+                              <span className="checklist-title">Creative Style Direction</span>
+                              <span className="checklist-desc">{project.stylePreference ? `Aesthetic vibe set to ${project.stylePreference}` : 'No style cards selected'}</span>
+                            </div>
+                          </div>
+
+                          <div className={`checklist-item-row ${project.logos.length > 0 ? 'ready' : 'warning'}`}>
+                            <span className="checklist-icon">{project.logos.length > 0 ? '✓' : '⚠'}</span>
+                            <div className="checklist-info">
+                              <span className="checklist-title">Sponsor branding & Assets</span>
+                              <span className="checklist-desc">
+                                {project.logos.length > 0 
+                                  ? `${project.logos.length} graphic references verified` 
+                                  : 'No sponsor or vector assets uploaded'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
                     </div>
                   </div>
 
-                  {/* Proceed Button */}
-                  <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
-                    <button 
-                      className="primary" 
-                      onClick={() => handleUpdateProject({ stage: 'design' })}
-                      style={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        gap: '8px', 
-                        padding: '12px 24px', 
-                        fontSize: '13px', 
-                        fontWeight: '600',
-                        borderRadius: '8px',
-                        background: 'linear-gradient(135deg, var(--accent-blue) 0%, #0055cc 100%)',
-                        boxShadow: '0 4px 12px rgba(0, 112, 243, 0.25)',
-                        border: 'none',
-                        cursor: 'pointer',
-                        color: '#fff',
-                        transition: 'transform 0.2s, box-shadow 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'translateY(-1px)';
-                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 112, 243, 0.35)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'none';
-                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 112, 243, 0.25)';
-                      }}
-                    >
-                      Proceed to AI Design
-                      <ArrowRight size={16} />
-                    </button>
+                  {/* Sticky Cinematic Action Bar */}
+                  <div className="sticky-action-bar-premium">
+                    <div className="action-bar-left">
+                      <div className="readiness-status-badge">
+                        <div className="status-dot green-pulsing" />
+                        <span>AI Engine Initialized</span>
+                      </div>
+                      <div className="action-bar-summary">
+                        <span>{project.logos.length} uploaded asset{project.logos.length !== 1 ? 's' : ''}</span>
+                        <span className="divider-dot" />
+                        <span className="text-glow-accent">{project.stylePreference || 'Generic'} Aesthetic</span>
+                      </div>
+                    </div>
+
+                    <div className="action-bar-right">
+                      <button 
+                        className="continue-btn-premium"
+                        onClick={() => handleUpdateProject({ stage: 'design' })}
+                      >
+                        Continue to AI Design <ArrowRight size={16} />
+                      </button>
+                    </div>
                   </div>
 
                 </div>
               )}
+
 
               {/* STAGE 2: AI DESIGN STUDIO — FULL PIPELINE */}
               {project.stage === 'design' && (
