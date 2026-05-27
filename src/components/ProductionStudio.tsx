@@ -788,7 +788,10 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   });
   const [studioBottomHeight, setStudioBottomHeight] = useState(() => {
     const saved = localStorage.getItem('ds-studio-bottom-height');
-    return saved ? parseInt(saved, 10) : 240;
+    const parsed = saved ? parseInt(saved, 10) : 160;
+    // Reset if stale oversized value was persisted
+    if (parsed > 220) { localStorage.removeItem('ds-studio-bottom-height'); return 160; }
+    return parsed;
   });
   const [isDraggingLeft, setIsDraggingLeft] = useState(false);
   const [isDraggingRight, setIsDraggingRight] = useState(false);
