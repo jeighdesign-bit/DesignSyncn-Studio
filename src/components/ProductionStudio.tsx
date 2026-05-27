@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import type { Project, RosterPlayer } from '../types';
+import type { Project, RosterPlayer, SponsorLogo } from '../types';
 import {
   MousePointer2, Type, Square, Hand, Move,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
@@ -13,7 +13,7 @@ import { RuleEngine } from './RuleEngine';
 import {
   formatMeasurement, unitLabel, calcSafeZones,
   getGarmentDimensions, PX_PER_INCH, type MeasurementUnit, type ObjectBounds,
-  type GarmentTemplate
+  type GarmentTemplate, generateProductionCanvasStates
 } from '../lib/measurements';
 import * as fabric from 'fabric';
 
@@ -991,6 +991,7 @@ interface PlayerRosterCardProps {
   primaryColor: string;
   secondaryColor: string;
   apparelType: string;
+  logos: SponsorLogo[];
   onActivate: () => void;
   onFieldChange: (id: string, field: keyof RosterPlayer, value: any) => void;
   onDelete: (id: string, e: React.MouseEvent) => void;
@@ -1004,13 +1005,13 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
   primaryColor,
   secondaryColor,
   apparelType,
+  logos,
   onActivate,
   onFieldChange,
   onDelete,
 }) => {
   const isReady = player.status === 'Ready for Export';
   const isMinimal = sidebarWidth < 240;
-  const isCompact = sidebarWidth >= 240 && sidebarWidth < 320;
 
   return (
     <div
@@ -1019,11 +1020,11 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
         background: isActive ? 'rgba(0, 112, 243, 0.03)' : 'transparent',
         border: isActive ? '1px solid rgba(0, 112, 243, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
         borderRadius: '6px',
-        padding: isMinimal ? '6px 8px' : '8px 10px',
+        padding: isMinimal ? '4px 6px' : '6px 8px',
         cursor: 'pointer',
         display: 'flex',
         flexDirection: 'column',
-        gap: isActive ? '8px' : '0px',
+        gap: isActive ? '6px' : '0px',
         transition: 'all 0.15s',
         boxShadow: isActive ? '0 0 10px rgba(0,112,243,0.05)' : 'none',
       }}
@@ -1093,99 +1094,83 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
           style={{ 
             display: 'flex', 
             flexDirection: 'column', 
-            gap: isMinimal ? '6px' : '8px', 
+            gap: '6px', 
             borderTop: '1px solid rgba(255,255,255,0.06)', 
-            paddingTop: isMinimal ? '6px' : '8px', 
+            paddingTop: '6px', 
             marginTop: '2px' 
           }} 
           onClick={(e) => e.stopPropagation()}
         >
-          {/* ROW 2: MIDDLE ROW (Adapts fields to stack vertically in compact modes) */}
-          <div 
-            style={{ 
-              display: 'flex', 
-              flexDirection: isMinimal || isCompact ? 'column' : 'row', 
-              gap: '6px', 
-              alignItems: isMinimal || isCompact ? 'stretch' : 'center' 
-            }}
-          >
+          {/* ROW 2: Compact input grid (Name, Number, Delete) */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 50px 24px', gap: '4px', alignItems: 'center' }}>
             <input
               type="text"
               value={player.name}
               onChange={(e) => onFieldChange(player.id, 'name', e.target.value)}
-              placeholder="SURNAME"
+              placeholder="NAME"
               style={{
-                flex: 1,
                 background: '#0d111d',
                 border: '1px solid rgba(255,255,255,0.08)',
                 borderRadius: '4px',
-                padding: isMinimal ? '4px 6px' : '5px 8px',
-                fontSize: '11px',
+                padding: '4px 6px',
+                fontSize: '10px',
                 color: '#fff',
                 outline: 'none',
                 textTransform: 'uppercase',
-                minWidth: 0,
+                width: '100%',
+                boxSizing: 'border-box'
               }}
             />
             
-            <div style={{ display: 'flex', gap: '6px', width: isMinimal || isCompact ? '100%' : 'auto' }}>
-              <input
-                type="text"
-                value={player.number}
-                onChange={(e) => onFieldChange(player.id, 'number', e.target.value)}
-                placeholder="00"
-                style={{
-                  width: isMinimal || isCompact ? '100%' : '42px',
-                  flex: isMinimal || isCompact ? 1 : 'none',
-                  background: '#0d111d',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  borderRadius: '4px',
-                  padding: isMinimal ? '4px 2px' : '5px 2px',
-                  fontSize: '11px',
-                  color: 'var(--accent-blue)',
-                  outline: 'none',
-                  textAlign: 'center',
-                  fontFamily: 'monospace'
-                }}
-              />
-              
-              <button
-                onClick={(e) => onDelete(player.id, e)}
-                style={{
-                  width: isMinimal || isCompact ? '28px' : '28px',
-                  height: isMinimal ? '22px' : '24px',
-                  flexShrink: 0,
-                  background: 'transparent',
-                  border: '1px solid rgba(235, 87, 87, 0.2)',
-                  borderRadius: '4px',
-                  color: '#eb5757',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  transition: 'all 0.15s'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
-                title="Delete Player"
-              >
-                <Trash2 size={11} />
-              </button>
-            </div>
+            <input
+              type="text"
+              value={player.number}
+              onChange={(e) => onFieldChange(player.id, 'number', e.target.value)}
+              placeholder="00"
+              style={{
+                background: '#0d111d',
+                border: '1px solid rgba(255,255,255,0.08)',
+                borderRadius: '4px',
+                padding: '4px 2px',
+                fontSize: '10px',
+                color: 'var(--accent-blue)',
+                outline: 'none',
+                textAlign: 'center',
+                fontFamily: 'monospace',
+                width: '100%',
+                boxSizing: 'border-box'
+              }}
+            />
+            
+            <button
+              onClick={(e) => onDelete(player.id, e)}
+              style={{
+                width: '24px',
+                height: '24px',
+                background: 'transparent',
+                border: '1px solid rgba(235, 87, 87, 0.2)',
+                borderRadius: '4px',
+                color: '#eb5757',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.15s'
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(235, 87, 87, 0.1)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; }}
+              title="Delete Player"
+            >
+              <Trash2 size={11} />
+            </button>
           </div>
 
-          {/* ROW 3: BOTTOM ROW (Drop-downs stack vertically on minimal, compact grids on compact, horizontal on desktop) */}
-          <div 
-            style={{ 
-              display: 'grid', 
-              gridTemplateColumns: isMinimal ? '1fr' : isCompact ? '1fr 1fr' : '1fr 1.3fr 1.1fr', 
-              gap: '4px' 
-            }}
-          >
+          {/* ROW 3: Controls dropdown grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '4px' }}>
             <select
               value={player.size}
               onChange={(e) => onFieldChange(player.id, 'size', e.target.value)}
-              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer', width: '100%' }}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer', width: '100%' }}
             >
               <option value="XS">XS</option>
               <option value="S">S</option>
@@ -1199,7 +1184,7 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
             <select
               value={player.variant || 'Variant A'}
               onChange={(e) => onFieldChange(player.id, 'variant', e.target.value)}
-              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '4px 6px', fontSize: '10px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer', width: '100%' }}
+              style={{ background: '#0d111d', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '4px', padding: '3px 4px', fontSize: '9.5px', color: 'var(--text-secondary)', outline: 'none', cursor: 'pointer', width: '100%' }}
             >
               <option value="Variant A">Variant A</option>
               <option value="Variant B">Variant B</option>
@@ -1210,12 +1195,11 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
               value={player.status || 'Mapped'}
               onChange={(e) => onFieldChange(player.id, 'status', e.target.value)}
               style={{ 
-                gridColumn: isCompact ? 'span 2' : 'auto',
                 background: '#0d111d', 
                 border: '1px solid rgba(255,255,255,0.08)', 
                 borderRadius: '4px', 
-                padding: '4px 6px', 
-                fontSize: '10px', 
+                padding: '3px 4px', 
+                fontSize: '9.5px', 
                 color: isReady ? 'var(--color-success)' : 'var(--accent-blue)', 
                 outline: 'none', 
                 cursor: 'pointer', 
@@ -1229,7 +1213,43 @@ const PlayerRosterCard: React.FC<PlayerRosterCardProps> = ({
             </select>
           </div>
 
-          {/* ROW 4: LAST ROW (Scale HUD and Validation Warnings) */}
+          {/* Optional Sponsor Logo Mapping Checkboxes */}
+          {logos.length > 0 && (
+            <div style={{
+              marginTop: '2px',
+              borderTop: '1px solid rgba(255,255,255,0.05)',
+              paddingTop: '6px'
+            }}>
+              <div style={{ fontSize: '8.5px', fontWeight: 'bold', color: 'var(--text-disabled)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>Logo Mapping</div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                {logos.map(logo => {
+                  const isMapped = player.sponsorMapping ? player.sponsorMapping.includes(logo.id) : true;
+                  return (
+                    <label key={logo.id} style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '8.5px', color: 'rgba(255,255,255,0.8)', cursor: 'pointer', background: 'rgba(255,255,255,0.02)', padding: '2px 4px', borderRadius: '3px', border: '1px solid rgba(255,255,255,0.05)', userSelect: 'none' }}>
+                      <input
+                        type="checkbox"
+                        checked={isMapped}
+                        onChange={(e) => {
+                          const currentMapping = player.sponsorMapping || logos.map(l => l.id);
+                          let newMapping: string[];
+                          if (e.target.checked) {
+                            newMapping = [...currentMapping, logo.id];
+                          } else {
+                            newMapping = currentMapping.filter(id => id !== logo.id);
+                          }
+                          onFieldChange(player.id, 'sponsorMapping', newMapping);
+                        }}
+                        style={{ margin: 0, width: '10px', height: '10px', cursor: 'pointer' }}
+                      />
+                      {logo.name.replace(/_Primary|_Sponsor|_Web/g, '').substring(0, 12)}
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Validation Warnings / Progress */}
           <div>
             {warning ? (
               <div style={{
@@ -1464,6 +1484,7 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
                   primaryColor={project.baseColors.primary}
                   secondaryColor={project.baseColors.secondary}
                   apparelType={project.apparelType}
+                  logos={project.logos}
                   onActivate={() => onUpdateProject({ activePlayerId: player.id })}
                   onFieldChange={onFieldChange}
                   onDelete={onDeletePlayer}
@@ -1475,6 +1496,19 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
       </div>
     </aside>
   );
+};
+
+const getSizeScaleFactor = (size: string): number => {
+  switch (size) {
+    case 'XS': return 0.8;
+    case 'S': return 0.87;
+    case 'M': return 0.93;
+    case 'L': return 1.0;
+    case 'XL': return 1.07;
+    case 'XXL': return 1.13;
+    case '3XL': return 1.2;
+    default: return 1.0;
+  }
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1705,8 +1739,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       ...p,
       status: 'Ready for Export' as const
     }));
-    onUpdateProject({ roster: updated });
-    alert(`Successfully generated variations for all ${project.roster.length} players! All systems validated.`);
+    onUpdateProject({ 
+      roster: updated,
+      activeCanvasView: 'roster_previews'
+    });
+    alert(`Successfully generated variations for all ${project.roster.length} players! Switch to Roster Previews tab to review.`);
   };
 
 
@@ -2456,69 +2493,78 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               }}
             >
               {/* ── FABRIC CANVAS ────────────────────────────────────── */}
-              <FabricCanvas
-                key={`canvas-${currentView}`}
-                ref={fabricRef}
-                toolMode={toolMode}
-                zoom={zoom}
-                pan={pan}
-                onZoomChange={setZoom}
-                onPanChange={setPan}
-                onLayersChange={() => {}}
-                onSelectionChange={handleSelectionChange}
-                onSelectionMeasure={setSelectedBounds}
-                canvasBg={canvasBg}
-                width={CANVAS_W}
-                height={CANVAS_H}
-                currentView={currentView}
-                unit={unit}
-                showRulersAndGrid={workspaceMode === 'advanced'}
-                showSafeZones={showSafeZones}
-                safeZones={showSafeZones ? calcSafeZones(
-                  CANVAS_W, CANVAS_H,
-                  project.rules.bleedInches,
-                  project.rules.safeMarginInches,
-                  project.rules.seamAllowanceInches,
-                ) : undefined}
-                initialUndoStack={currentView === 'full' ? [masterCanvasState.current] : (undoHistory.current as any)[currentView]}
-                initialRedoStack={currentView === 'full' ? [] : (redoHistory.current as any)[currentView]}
-                onHistoryChange={(undoStack, redoStack) => {
-                  if (currentView !== 'full') {
-                    undoHistory.current[currentView] = undoStack;
-                    redoHistory.current[currentView] = redoStack;
-                  }
-                  const latestState = undoStack[undoStack.length - 1] || '{"objects":[]}';
-                  const currentStates = project.canvasStates || {};
-                  if (currentView !== 'full' && (currentStates as any)[currentView] !== latestState) {
-                    onUpdateProject({
-                      canvasStates: {
-                        ...currentStates,
-                        [currentView]: latestState
-                      }
-                    });
-                  }
-                }}
-                activeTemplate={activeTemplate}
-                activeSize={activeSize}
-                offsets={layoutOffsets}
-              />
+              {currentView === 'roster_previews' ? (
+                <RosterPreviewsGrid
+                  project={project}
+                  getSizeScaleFactor={getSizeScaleFactor}
+                />
+              ) : (
+                <FabricCanvas
+                  key={`canvas-${currentView}`}
+                  ref={fabricRef}
+                  toolMode={toolMode}
+                  zoom={zoom}
+                  pan={pan}
+                  onZoomChange={setZoom}
+                  onPanChange={setPan}
+                  onLayersChange={() => {}}
+                  onSelectionChange={handleSelectionChange}
+                  onSelectionMeasure={setSelectedBounds}
+                  canvasBg={canvasBg}
+                  width={CANVAS_W}
+                  height={CANVAS_H}
+                  currentView={currentView}
+                  unit={unit}
+                  showRulersAndGrid={workspaceMode === 'advanced'}
+                  showSafeZones={showSafeZones}
+                  safeZones={showSafeZones ? calcSafeZones(
+                    CANVAS_W, CANVAS_H,
+                    project.rules.bleedInches,
+                    project.rules.safeMarginInches,
+                    project.rules.seamAllowanceInches,
+                  ) : undefined}
+                  initialUndoStack={currentView === 'full' ? [masterCanvasState.current] : (undoHistory.current as any)[currentView]}
+                  initialRedoStack={currentView === 'full' ? [] : (redoHistory.current as any)[currentView]}
+                  onHistoryChange={(undoStack, redoStack) => {
+                    if (currentView !== 'full') {
+                      undoHistory.current[currentView] = undoStack;
+                      redoHistory.current[currentView] = redoStack;
+                    }
+                    const latestState = undoStack[undoStack.length - 1] || '{"objects":[]}';
+                    const currentStates = project.canvasStates || {};
+                    if (currentView !== 'full' && (currentStates as any)[currentView] !== latestState) {
+                      onUpdateProject({
+                        canvasStates: {
+                          ...currentStates,
+                          [currentView]: latestState
+                        }
+                      });
+                    }
+                  }}
+                  activeTemplate={activeTemplate}
+                  activeSize={activeSize}
+                  offsets={layoutOffsets}
+                />
+              )}
 
               {/* ── Floating Dimension HUD ──────────────────────────── */}
-              <div className="dim-hud">
-                <div className="dim-hud-row">
-                  <span className="dim-hud-icon">⬛</span>
-                  <span className="dim-hud-label">W</span>
-                  <span className="dim-hud-value">{currentPanelDimsInches.w.toFixed(2)}<span className="dim-hud-unit">"</span></span>
-                  <span className="dim-hud-sep">×</span>
-                  <span className="dim-hud-label">H</span>
-                  <span className="dim-hud-value">{currentPanelDimsInches.h.toFixed(2)}<span className="dim-hud-unit">"</span></span>
+              {currentView !== 'roster_previews' && (
+                <div className="dim-hud">
+                  <div className="dim-hud-row">
+                    <span className="dim-hud-icon">⬛</span>
+                    <span className="dim-hud-label">W</span>
+                    <span className="dim-hud-value">{currentPanelDimsInches.w.toFixed(2)}<span className="dim-hud-unit">"</span></span>
+                    <span className="dim-hud-sep">×</span>
+                    <span className="dim-hud-label">H</span>
+                    <span className="dim-hud-value">{currentPanelDimsInches.h.toFixed(2)}<span className="dim-hud-unit">"</span></span>
+                  </div>
+                  <div className="dim-hud-badges">
+                    <span className="dim-hud-badge dim-hud-badge--blue">300 DPI</span>
+                    <span className="dim-hud-badge dim-hud-badge--green">CMYK</span>
+                    <span className="dim-hud-badge dim-hud-badge--muted">{Math.round(zoom * 100)}% zoom</span>
+                  </div>
                 </div>
-                <div className="dim-hud-badges">
-                  <span className="dim-hud-badge dim-hud-badge--blue">300 DPI</span>
-                  <span className="dim-hud-badge dim-hud-badge--green">CMYK</span>
-                  <span className="dim-hud-badge dim-hud-badge--muted">{Math.round(zoom * 100)}% zoom</span>
-                </div>
-              </div>
+              )}
 
             </div>
           </div>
@@ -2759,5 +2805,427 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       </div>
 
     </div>
+  );
+};
+
+interface RosterPreviewsGridProps {
+  project: Project;
+  getSizeScaleFactor: (size: string) => number;
+}
+
+const RosterPreviewsGrid: React.FC<RosterPreviewsGridProps> = ({
+  project,
+  getSizeScaleFactor
+}) => {
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(project.activePlayerId || (project.roster[0]?.id || null));
+
+  // Sync selected player state if roster updates
+  useEffect(() => {
+    if (project.activePlayerId && project.roster.some(p => p.id === project.activePlayerId)) {
+      setSelectedPlayerId(project.activePlayerId);
+    } else if (project.roster.length > 0 && (!selectedPlayerId || !project.roster.some(p => p.id === selectedPlayerId))) {
+      setSelectedPlayerId(project.roster[0].id);
+    }
+  }, [project.activePlayerId, project.roster, selectedPlayerId]);
+
+  const activePlayer = project.roster.find(p => p.id === selectedPlayerId) || project.roster[0];
+
+  // Compile default states or fetch project canvasStates
+  const canvasStates = React.useMemo(() => {
+    return project.canvasStates || generateProductionCanvasStates(project);
+  }, [project]);
+
+  if (project.roster.length === 0) {
+    return (
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100%',
+        color: 'var(--text-disabled)',
+        gap: '8px'
+      }}>
+        <Users size={32} style={{ opacity: 0.6 }} />
+        <span style={{ fontSize: '12px' }}>Roster is empty. Add players to see previews.</span>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      height: '100%',
+      background: '#07070a',
+      color: '#fff',
+      padding: '16px',
+      boxSizing: 'border-box',
+      overflowY: 'auto'
+    }}>
+      {/* Roster list switcher at top */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexShrink: 0 }}>
+        <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Select Player Preview:</span>
+        <select
+          value={selectedPlayerId || ''}
+          onChange={(e) => setSelectedPlayerId(e.target.value)}
+          style={{
+            background: '#0f0f14',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: '4px',
+            padding: '4px 8px',
+            fontSize: '11px',
+            color: '#fff',
+            cursor: 'pointer',
+            minWidth: '200px'
+          }}
+        >
+          {project.roster.map(p => (
+            <option key={p.id} value={p.id}>
+              {p.name || 'UNNAMED'} (#{p.number || '0'}) - {p.size} ({p.variant || 'Variant A'})
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {activePlayer && (
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          background: '#0a0a0f',
+          border: '1px solid rgba(255,255,255,0.04)',
+          borderRadius: '8px',
+          padding: '16px',
+          boxSizing: 'border-box'
+        }}>
+          {/* Header Info */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px', marginBottom: '10px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: 'var(--accent-blue)' }}>#{activePlayer.number || '0'}</span>
+                <span>{activePlayer.name || 'UNNAMED'}</span>
+              </h3>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '11px', color: 'var(--text-disabled)' }}>
+                <span>Size: <strong style={{ color: '#fff' }}>{activePlayer.size}</strong></span>
+                <span>•</span>
+                <span>Variant: <strong style={{ color: '#fff' }}>{activePlayer.variant || 'Variant A'}</strong></span>
+                <span>•</span>
+                <span>Status: <strong style={{ color: activePlayer.status === 'Ready for Export' ? 'var(--color-success)' : 'var(--accent-blue)' }}>{activePlayer.status || 'Mapped'}</strong></span>
+              </div>
+            </div>
+            {/* Action buttons */}
+            <div style={{ display: 'flex', gap: '6px' }}>
+              <span style={{ fontSize: '9px', fontWeight: 'bold', background: 'rgba(59, 158, 255, 0.1)', color: '#3b9eff', padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(59, 158, 255, 0.2)' }}>
+                Vector Calibrated
+              </span>
+            </div>
+          </div>
+
+          {/* Side-by-side SVG Panel Previews */}
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+            gap: '20px',
+            alignItems: 'start'
+          }}>
+            {/* Front Panel Preview */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>FRONT PANEL</span>
+                <span style={{ fontFamily: 'monospace', opacity: 0.6 }}>1120 × 1360 (28" × 34")</span>
+              </div>
+              <div style={{ background: '#030305', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', padding: '8px' }}>
+                <PlayerSublimationPreview
+                  player={activePlayer}
+                  canvasState={canvasStates.front || '{"objects":[]}'}
+                  logos={project.logos}
+                  getSizeScaleFactor={getSizeScaleFactor}
+                  viewBoxW={1120}
+                  viewBoxH={1360}
+                />
+              </div>
+            </div>
+
+            {/* Back Panel Preview */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>BACK PANEL</span>
+                <span style={{ fontFamily: 'monospace', opacity: 0.6 }}>1120 × 1360 (28" × 34")</span>
+              </div>
+              <div style={{ background: '#030305', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', padding: '8px' }}>
+                <PlayerSublimationPreview
+                  player={activePlayer}
+                  canvasState={canvasStates.back || '{"objects":[]}'}
+                  logos={project.logos}
+                  getSizeScaleFactor={getSizeScaleFactor}
+                  viewBoxW={1120}
+                  viewBoxH={1360}
+                />
+              </div>
+            </div>
+
+            {/* Sleeves Preview */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
+                <span>SLEEVES PANEL</span>
+                <span style={{ fontFamily: 'monospace', opacity: 0.6 }}>960 × 640 (24" × 16")</span>
+              </div>
+              <div style={{ background: '#030305', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', padding: '8px' }}>
+                <PlayerSublimationPreview
+                  player={activePlayer}
+                  canvasState={canvasStates.sleeves || '{"objects":[]}'}
+                  logos={project.logos}
+                  getSizeScaleFactor={getSizeScaleFactor}
+                  viewBoxW={960}
+                  viewBoxH={640}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface PlayerSublimationPreviewProps {
+  player: RosterPlayer;
+  canvasState: string;
+  logos: SponsorLogo[];
+  getSizeScaleFactor: (size: string) => number;
+  viewBoxW: number;
+  viewBoxH: number;
+}
+
+const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
+  player,
+  canvasState,
+  logos,
+  getSizeScaleFactor,
+  viewBoxW,
+  viewBoxH,
+}) => {
+  const objects = React.useMemo(() => {
+    try {
+      if (!canvasState) return [];
+      const parsed = JSON.parse(canvasState);
+      return parsed.objects || [];
+    } catch (e) {
+      console.error('Failed to parse canvas state for preview:', e);
+      return [];
+    }
+  }, [canvasState]);
+
+  const sizeScale = getSizeScaleFactor(player.size);
+
+  const getPathD = (obj: any): string => {
+    if (typeof obj.path === 'string') return obj.path;
+    if (Array.isArray(obj.path)) {
+      return obj.path.map((cmd: any) => cmd.join(' ')).join(' ');
+    }
+    return obj.pathData || '';
+  };
+
+  return (
+    <svg
+      viewBox={`0 0 ${viewBoxW} ${viewBoxH}`}
+      style={{
+        width: '100%',
+        maxWidth: '320px',
+        height: 'auto',
+        aspectRatio: `${viewBoxW} / ${viewBoxH}`,
+        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+        background: '#14141a',
+        borderRadius: '4px'
+      }}
+    >
+      {objects.map((obj: any, idx: number) => {
+        let scaleX = obj.scaleX || 1;
+        let scaleY = obj.scaleY || 1;
+
+        if (obj.visible === false) return null;
+
+        // 1. Text Elements
+        if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+          const textVal = (obj.text || '').trim().toUpperCase();
+          const isName = obj.__isNameText || textVal === 'SURNAME' || textVal === 'PLAYER NAME' || textVal === 'NAME';
+          const isNumber = obj.__isNumberText || textVal === '00' || textVal === '0' || textVal === 'NUMBER';
+
+          let content = textVal;
+          let finalScaleX = scaleX;
+          let finalScaleY = scaleY;
+
+          if (isName) {
+            content = (player.name || 'UNNAMED').toUpperCase();
+            finalScaleX = scaleX * sizeScale * player.nameScale;
+            finalScaleY = scaleY * sizeScale * player.nameScale;
+          } else if (isNumber) {
+            content = player.number || '0';
+            finalScaleX = scaleX * sizeScale;
+            finalScaleY = scaleY * sizeScale;
+          }
+
+          let x = obj.left;
+          let y = obj.top;
+          const fontSize = obj.fontSize || 40;
+          const fill = obj.fill || '#ffffff';
+          const fontFamily = obj.fontFamily || 'Inter';
+          const fontWeight = obj.fontWeight || 'bold';
+          const textAnchor = obj.originX === 'center' ? 'middle' : obj.originX === 'right' ? 'end' : 'start';
+
+          let dy = '0.35em';
+          if (obj.originY === 'top') {
+            dy = '0.8em';
+          } else if (obj.originY === 'bottom') {
+            dy = '-0.2em';
+          }
+
+          const transform = obj.angle ? `rotate(${obj.angle}, ${x}, ${y})` : undefined;
+
+          return (
+            <text
+              key={obj.__id || `text-${idx}`}
+              x={x}
+              y={y}
+              fill={fill}
+              fontFamily={fontFamily}
+              fontWeight={fontWeight}
+              fontSize={fontSize}
+              textAnchor={textAnchor}
+              dy={dy}
+              transform={transform}
+              style={{
+                transform: `translate(${x}px, ${y}px) scale(${finalScaleX}, ${finalScaleY}) translate(${-x}px, ${-y}px)`,
+                transformOrigin: `${x}px ${y}px`,
+                whiteSpace: 'pre'
+              }}
+            >
+              {content}
+            </text>
+          );
+        }
+
+        // 2. Image Elements (Logos)
+        if (obj.type === 'image') {
+          const isPrimary = obj.__id === 'logo-primary';
+          const isSleeve = obj.__id === 'logo-sleeve';
+
+          let isVisible = true;
+          if (isPrimary && logos[0]) {
+            const logoId = logos[0].id;
+            isVisible = player.sponsorMapping ? player.sponsorMapping.includes(logoId) : true;
+          } else if (isSleeve && (logos[1] || logos[0])) {
+            const logoId = (logos[1] || logos[0]).id;
+            isVisible = player.sponsorMapping ? player.sponsorMapping.includes(logoId) : true;
+          }
+
+          if (!isVisible) return null;
+
+          const w = (obj.width || 200) * scaleX;
+          const h = (obj.height || 200) * scaleY;
+          let x = obj.left;
+          let y = obj.top;
+
+          if (obj.originX === 'center') x -= w / 2;
+          if (obj.originY === 'center') y -= h / 2;
+
+          const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
+
+          return (
+            <g key={obj.__id || `img-${idx}`} transform={transform}>
+              {obj.src ? (
+                <image
+                  href={obj.src}
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={h}
+                />
+              ) : (
+                <rect
+                  x={x}
+                  y={y}
+                  width={w}
+                  height={h}
+                  fill="rgba(59, 158, 255, 0.15)"
+                  stroke="#3b9eff"
+                  strokeWidth={1}
+                />
+              )}
+            </g>
+          );
+        }
+
+        // 3. Rect shapes
+        if (obj.type === 'rect') {
+          const w = (obj.width || 100) * scaleX;
+          const h = (obj.height || 100) * scaleY;
+          let x = obj.left;
+          let y = obj.top;
+
+          if (obj.originX === 'center') x -= w / 2;
+          if (obj.originY === 'center') y -= h / 2;
+
+          const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
+
+          const isBg = obj.__id && obj.__id.startsWith('bg-');
+
+          return (
+            <rect
+              key={obj.__id || `rect-${idx}`}
+              x={isBg ? 0 : x}
+              y={isBg ? 0 : y}
+              width={isBg ? viewBoxW : w}
+              height={isBg ? viewBoxH : h}
+              fill={obj.fill || 'transparent'}
+              transform={transform}
+            />
+          );
+        }
+
+        // 4. Polygon shapes
+        if (obj.type === 'polygon' && obj.points) {
+          const pointsStr = obj.points.map((p: any) => `${p.x * scaleX + obj.left},${p.y * scaleY + obj.top}`).join(' ');
+          const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
+          return (
+            <polygon
+              key={obj.__id || `poly-${idx}`}
+              points={pointsStr}
+              fill={obj.fill || 'transparent'}
+              transform={transform}
+            />
+          );
+        }
+
+        // 5. Path shapes (Garment outline or decorative curves)
+        if (obj.type === 'path') {
+          const pathD = getPathD(obj);
+          if (!pathD) return null;
+
+          const isOutline = obj.__id && obj.__id.startsWith('artboard-path-');
+          const fill = isOutline ? 'none' : (obj.fill || 'transparent');
+          const stroke = isOutline ? 'rgba(235, 87, 87, 0.8)' : (obj.stroke || 'none');
+          const strokeWidth = isOutline ? 2 : (obj.strokeWidth || 1);
+          const strokeDasharray = isOutline ? '4,4' : undefined;
+
+          const transform = `translate(${obj.left || 0}, ${obj.top || 0}) scale(${scaleX}, ${scaleY})`;
+
+          return (
+            <path
+              key={obj.__id || `path-${idx}`}
+              d={pathD}
+              fill={fill}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              strokeDasharray={strokeDasharray}
+              transform={transform}
+            />
+          );
+        }
+
+        return null;
+      })}
+    </svg>
   );
 };

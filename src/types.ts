@@ -40,6 +40,7 @@ export interface RosterPlayer {
   nameScale: number; // calculated scale factor to fit safe margin
   variant?: 'Variant A' | 'Variant B' | 'Variant C';
   status?: 'Mapped' | 'Ready for Export' | 'Pending';
+  sponsorMapping?: string[]; // IDs of mapped sponsor logos
 }
 
 export interface ProductionRule {
@@ -85,7 +86,7 @@ export interface Project {
   activePlayerId: string;
   
   // Canvas layout controls
-  activeCanvasView: 'front' | 'back' | 'sleeves' | 'collar' | 'full';
+  activeCanvasView: 'front' | 'back' | 'sleeves' | 'collar' | 'full' | 'roster_previews';
   hiddenLayers: string[];
   lockedLayers: string[];
   selectedLayerId: string;
