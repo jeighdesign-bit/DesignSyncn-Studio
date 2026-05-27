@@ -416,8 +416,25 @@ export default function App() {
     setLogMessages(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 15)]);
   };
 
+  const stageOrder = ['brief', 'design', 'studio', 'export'] as const;
+  const getStageIndex = (s: string) => stageOrder.indexOf(s as any);
+
   const handleUpdateProject = (updates: Partial<Project>) => {
-    setProject(prev => ({ ...prev, ...updates }));
+    setProject(prev => {
+      let maxUnlocked = prev.maxUnlockedStage || prev.stage || 'brief';
+      if (updates.stage) {
+        const prevMaxIdx = getStageIndex(maxUnlocked);
+        const newStageIdx = getStageIndex(updates.stage);
+        if (newStageIdx > prevMaxIdx) {
+          maxUnlocked = updates.stage;
+        }
+      }
+      return {
+        ...prev,
+        ...updates,
+        maxUnlockedStage: maxUnlocked
+      };
+    });
   };
 
   // Add dummy high-res logo
@@ -486,12 +503,19 @@ export default function App() {
   };
 
   const triggerAiGeneration = () => {
-    if (!project.prompt) return;
+    if (!project.prompt && !project.selectedPresetId) return;
+
+    const preset = presets.find(p => p.id === project.selectedPresetId);
+    const userPrompt = project.prompt || preset?.prompt || 'Style Preset';
+    const apparelName = project.apparelType === 'esports_jersey' ? 'Esports Raglan Jersey' : 'Crewneck Sweatshirt';
+    const colors = `Primary: ${project.baseColors.primary}, Secondary: ${project.baseColors.secondary}, Accent: ${project.baseColors.accent}, Highlight: ${project.baseColors.highlight}`;
+    const combinedPrompt = `${userPrompt}. Applied to a ${apparelName} with color palette [${colors}].`;
+
     setAiGenerating(true);
-    addLog(`Initiating AI texture generator: "${project.prompt}"`);
+    addLog(`Initiating AI texture generator with combined prompt: "${combinedPrompt}"`);
     setTimeout(() => {
       setAiGenerating(false);
-      setAiHistory(prev => [project.prompt, ...prev]);
+      setAiHistory(prev => [combinedPrompt, ...prev]);
       addLog('AI pattern synthesis complete. Sublimation design layer synchronized.');
     }, 1800);
   };
@@ -892,18 +916,26 @@ export default function App() {
 
             {/* Topbar Center: Segmented Workflow Steps */}
             <div className="topbar-center">
-              {(['brief', 'design', 'studio', 'export'] as const).map((stage) => (
-                <button
-                  key={stage}
-                  className={`stage-tab ${project.stage === stage ? 'active' : ''}`}
-                  onClick={() => handleUpdateProject({ stage })}
-                >
-                  {stage === 'brief' && 'Brief'}
-                  {stage === 'design' && 'AI Design'}
-                  {stage === 'studio' && 'Production Studio'}
-                  {stage === 'export' && 'Preflight & Export'}
-                </button>
-              ))}
+              {(['brief', 'design', 'studio', 'export'] as const).map((stage) => {
+                const stageIndex = getStageIndex(stage);
+                const maxUnlocked = project.maxUnlockedStage || project.stage || 'brief';
+                const maxUnlockedIndex = getStageIndex(maxUnlocked);
+                const isLocked = stageIndex > maxUnlockedIndex;
+                return (
+                  <button
+                    key={stage}
+                    className={`stage-tab ${project.stage === stage ? 'active' : ''} ${isLocked ? 'locked' : ''}`}
+                    onClick={() => !isLocked && handleUpdateProject({ stage })}
+                    disabled={isLocked}
+                    title={isLocked ? 'Complete the previous stages to unlock.' : ''}
+                  >
+                    {stage === 'brief' && 'Brief'}
+                    {stage === 'design' && 'AI Design'}
+                    {stage === 'studio' && 'Production Studio'}
+                    {stage === 'export' && 'Preflight & Export'}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Topbar Right: Zoom, Scale, Export button, Avatar */}
@@ -976,38 +1008,60 @@ export default function App() {
                   }}
                 >
                   <div className="sidebar-nav-group">
-                    <button 
-                      className={`sidebar-nav-item ${project.stage === 'brief' ? 'active' : ''}`}
-                      onClick={() => handleUpdateProject({ stage: 'brief' })}
-                      style={buttonStyle}
-                    >
-                      <FileText size={16} />
-                      {showLabels && <span className="sidebar-nav-label">1. Brief Specifications</span>}
-                    </button>
-                    <button 
-                      className={`sidebar-nav-item ${project.stage === 'design' ? 'active' : ''}`}
-                      onClick={() => handleUpdateProject({ stage: 'design' })}
-                      style={buttonStyle}
-                    >
-                      <Sparkles size={16} />
-                      {showLabels && <span className="sidebar-nav-label">2. AI Design & Mockup</span>}
-                    </button>
-                    <button 
-                      className={`sidebar-nav-item ${project.stage === 'studio' ? 'active' : ''}`}
-                      onClick={() => handleUpdateProject({ stage: 'studio' })}
-                      style={buttonStyle}
-                    >
-                      <Layers size={16} />
-                      {showLabels && <span className="sidebar-nav-label">3. Production Studio</span>}
-                    </button>
-                    <button 
-                      className={`sidebar-nav-item ${project.stage === 'export' ? 'active' : ''}`}
-                      onClick={() => handleUpdateProject({ stage: 'export' })}
-                      style={buttonStyle}
-                    >
-                      <Download size={16} />
-                      {showLabels && <span className="sidebar-nav-label">4. Pre-Flight Export</span>}
-                    </button>
+                    {(() => {
+                      const maxUnlocked = project.maxUnlockedStage || project.stage || 'brief';
+                      const maxUnlockedIndex = getStageIndex(maxUnlocked);
+
+                      const briefLocked = getStageIndex('brief') > maxUnlockedIndex;
+                      const designLocked = getStageIndex('design') > maxUnlockedIndex;
+                      const studioLocked = getStageIndex('studio') > maxUnlockedIndex;
+                      const exportLocked = getStageIndex('export') > maxUnlockedIndex;
+
+                      return (
+                        <>
+                          <button 
+                            className={`sidebar-nav-item ${project.stage === 'brief' ? 'active' : ''} ${briefLocked ? 'locked' : ''}`}
+                            onClick={() => !briefLocked && handleUpdateProject({ stage: 'brief' })}
+                            disabled={briefLocked}
+                            style={buttonStyle}
+                            title={briefLocked ? 'Complete the previous stages to unlock.' : ''}
+                          >
+                            <FileText size={16} />
+                            {showLabels && <span className="sidebar-nav-label">1. Brief Specifications</span>}
+                          </button>
+                          <button 
+                            className={`sidebar-nav-item ${project.stage === 'design' ? 'active' : ''} ${designLocked ? 'locked' : ''}`}
+                            onClick={() => !designLocked && handleUpdateProject({ stage: 'design' })}
+                            disabled={designLocked}
+                            style={buttonStyle}
+                            title={designLocked ? 'Complete the previous stages to unlock.' : ''}
+                          >
+                            <Sparkles size={16} />
+                            {showLabels && <span className="sidebar-nav-label">2. AI Design & Mockup</span>}
+                          </button>
+                          <button 
+                            className={`sidebar-nav-item ${project.stage === 'studio' ? 'active' : ''} ${studioLocked ? 'locked' : ''}`}
+                            onClick={() => !studioLocked && handleUpdateProject({ stage: 'studio' })}
+                            disabled={studioLocked}
+                            style={buttonStyle}
+                            title={studioLocked ? 'Complete the previous stages to unlock.' : ''}
+                          >
+                            <Layers size={16} />
+                            {showLabels && <span className="sidebar-nav-label">3. Production Studio</span>}
+                          </button>
+                          <button 
+                            className={`sidebar-nav-item ${project.stage === 'export' ? 'active' : ''} ${exportLocked ? 'locked' : ''}`}
+                            onClick={() => !exportLocked && handleUpdateProject({ stage: 'export' })}
+                            disabled={exportLocked}
+                            style={buttonStyle}
+                            title={exportLocked ? 'Complete the previous stages to unlock.' : ''}
+                          >
+                            <Download size={16} />
+                            {showLabels && <span className="sidebar-nav-label">4. Pre-Flight Export</span>}
+                          </button>
+                        </>
+                      );
+                    })()}
                   </div>
 
                   {/* Sidebar bottom toggle */}
@@ -1147,6 +1201,40 @@ export default function App() {
                         ))
                       )}
                     </div>
+                  </div>
+
+                  {/* Proceed Button */}
+                  <div style={{ gridColumn: 'span 2', display: 'flex', justifyContent: 'flex-end', marginTop: '16px' }}>
+                    <button 
+                      className="primary" 
+                      onClick={() => handleUpdateProject({ stage: 'design' })}
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px', 
+                        padding: '12px 24px', 
+                        fontSize: '13px', 
+                        fontWeight: '600',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, var(--accent-blue) 0%, #0055cc 100%)',
+                        boxShadow: '0 4px 12px rgba(0, 112, 243, 0.25)',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#fff',
+                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.transform = 'translateY(-1px)';
+                        e.currentTarget.style.boxShadow = '0 6px 16px rgba(0, 112, 243, 0.35)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = 'none';
+                        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 112, 243, 0.25)';
+                      }}
+                    >
+                      Proceed to AI Design
+                      <ArrowRight size={16} />
+                    </button>
                   </div>
 
                 </div>

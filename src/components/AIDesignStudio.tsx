@@ -154,11 +154,18 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     pushLog(`Generating: "${project.prompt || (presets.find(p => p.id === project.selectedPresetId)?.name ?? '')}"`);
 
     const preset = presets.find(p => p.id === project.selectedPresetId);
+    
+    // Construct the combined prompt behind the scenes
+    const userPrompt = project.prompt || preset?.prompt || 'Style Preset';
+    const apparelName = project.apparelType === 'esports_jersey' ? 'Esports Raglan Jersey' : 'Crewneck Sweatshirt';
+    const colors = `Primary: ${project.baseColors.primary}, Secondary: ${project.baseColors.secondary}, Accent: ${project.baseColors.accent}, Highlight: ${project.baseColors.highlight}`;
+    const combinedPrompt = `${userPrompt}. Applied to a ${apparelName} with color palette [${colors}].`;
+
     setTimeout(() => {
       const newVersion: AiVersion = {
         id: `v${Date.now()}`,
         label: (project.prompt || preset?.name) ?? 'Style Preset',
-        prompt: project.prompt || preset?.name || 'Style Preset',
+        prompt: combinedPrompt,
         presetId: project.selectedPresetId || '',
         accentColor: preset?.accentColor ?? project.baseColors.accent,
         primaryColor: preset?.primaryColor ?? project.baseColors.primary,
@@ -499,6 +506,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 key={version.id}
                 className={`ai-version-card ${activeVersionId === version.id ? 'active' : ''}`}
                 onClick={() => setActiveVersionId(version.id)}
+                title={`Behind-the-scenes Prompt:\n${version.prompt}`}
               >
                 <div
                   className="ai-version-thumb"

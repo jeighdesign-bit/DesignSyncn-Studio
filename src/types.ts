@@ -100,4 +100,5 @@ export interface Project {
     sleeves?: string;
     collar?: string;
   };
+  maxUnlockedStage?: Stage;
 }

@@ -809,6 +809,10 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     e.target.value = '';
   };
 
+  const handleAddLogoToCanvas = (url: string, name: string) => {
+    fabricRef.current?.addImageFromUrl(url, name.replace(/\.[^.]+$/, ''));
+  };
+
   // ── Inspector right panel determination ───────────────────────────────────
   const getInspectorMode = (): 'text' | 'shape' | 'calibration' => {
     if (toolMode === 'text') return 'text';
@@ -845,6 +849,9 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         onToggleLock={(id, cur) => fabricRef.current?.setObjectLocked(id, !cur)}
         onBringForward={(id) => fabricRef.current?.bringForward(id)}
         onSendBackward={(id) => fabricRef.current?.sendBackward(id)}
+        logos={project.logos}
+        onAddLogoToCanvas={handleAddLogoToCanvas}
+        onNavigateToBrief={() => onUpdateProject({ stage: 'brief' })}
         style={{
           width: `${studioLeftWidth}px`,
           minWidth: `${studioLeftWidth}px`,
