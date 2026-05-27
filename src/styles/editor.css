@@ -1308,3 +1308,58 @@
   color: #0055cc;
 }
 
+/* ── SIDEBAR TYPOGRAPHY OVERRIDES (Fix for huge global resets) ── */
+.layers-sidebar .assets-section-header span {
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-secondary);
+}
+
+.layers-sidebar .assets-count-badge {
+  font-size: 9px !important;
+  font-family: monospace;
+}
+
+.layers-sidebar .logo-asset-name {
+  font-size: 9px !important;
+  font-weight: 600 !important;
+}
+
+.layers-sidebar .logo-asset-resolution {
+  font-size: 8px !important;
+  font-family: monospace;
+}
+
+.layers-sidebar .logo-assets-empty {
+  font-size: 10px !important;
+}
+
+.layers-sidebar .logo-assets-link-btn {
+  font-size: 10px !important;
+}
+
+.layers-sidebar .layer-item-name {
+  font-size: 11px !important;
+}
+
+.layers-sidebar .layer-locked-badge {
+  font-size: 8px !important;
+  font-family: monospace;
+}
+
+.layers-sidebar .layers-count-bar {
+  font-size: 9px !important;
+  color: var(--text-disabled);
+}
+
+.layers-sidebar .layers-empty-title {
+  font-size: 11px !important;
+}
+
+.layers-sidebar .layers-empty-sub {
+  font-size: 10px !important;
+}
+
+

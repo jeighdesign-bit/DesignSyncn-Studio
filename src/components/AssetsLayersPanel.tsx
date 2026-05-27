@@ -53,13 +53,13 @@ export const AssetsLayersPanel: React.FC<AssetsLayersPanelProps> = ({
           onClick={() => setLogosExpanded(!logosExpanded)}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Image size={11} style={{ color: 'var(--accent-blue)' }} />
+            <Image size={13} style={{ color: 'var(--accent-blue)' }} />
             <span>Sponsor Graphics</span>
             {logos.length > 0 && (
               <span className="assets-count-badge">{logos.length}</span>
             )}
           </div>
-          {logosExpanded ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
+          {logosExpanded ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
         </div>
 
         {logosExpanded && (
@@ -108,13 +108,13 @@ export const AssetsLayersPanel: React.FC<AssetsLayersPanelProps> = ({
         style={{ borderBottom: '1px solid #15151f' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-          <Layers size={11} style={{ color: 'var(--accent-blue)' }} />
+          <Layers size={13} style={{ color: 'var(--accent-blue)' }} />
           <span>Layers</span>
           {layers.length > 0 && (
             <span className="assets-count-badge">{layers.length}</span>
           )}
         </div>
-        {layersExpanded ? <ChevronDown size={11} /> : <ChevronUp size={11} />}
+        {layersExpanded ? <ChevronDown size={13} /> : <ChevronUp size={13} />}
       </div>
 
       {layersExpanded && (
