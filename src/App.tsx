@@ -45,13 +45,9 @@ const initialProject: Project = {
     collisionPrevention: true,
     dynamicScaling: true,
   },
-  roster: [
-    { id: 'roster-1', name: 'JAY', number: '7', size: 'M', nameScale: 1.0, variant: 'Variant A', status: 'Mapped' },
-    { id: 'roster-2', name: 'MARK', number: '10', size: 'L', nameScale: 1.0, variant: 'Variant B', status: 'Ready for Export' },
-    { id: 'roster-3', name: 'LEX', number: '23', size: 'S', nameScale: 1.0, variant: 'Variant A', status: 'Mapped' }
-  ],
+  roster: [],
   measurementUnit: 'inches',
-  activePlayerId: 'roster-1',
+  activePlayerId: '',
   activeCanvasView: 'front',
   hiddenLayers: [],
   lockedLayers: [],

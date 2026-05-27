@@ -780,6 +780,7 @@ const ProductionProgressBar: React.FC<ProductionProgressBarProps> = ({ scale }) 
 
 interface RosterToolbarProps {
   sidebarWidth: number;
+  rosterEmpty: boolean;
   onGenerateAll: () => void;
   onImportCsv: () => void;
   onImportExcel: () => void;
@@ -789,6 +790,7 @@ interface RosterToolbarProps {
 
 const RosterToolbar: React.FC<RosterToolbarProps> = ({
   sidebarWidth,
+  rosterEmpty,
   onGenerateAll,
   onImportCsv,
   onImportExcel,
@@ -803,25 +805,26 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
       {/* Primary CTA */}
       <button
         onClick={onGenerateAll}
+        disabled={rosterEmpty}
         title={isMinimal ? "Generate All Variations" : undefined}
         style={{
           width: '100%',
-          background: 'rgba(0, 112, 243, 0.1)',
-          border: '1px solid rgba(0, 112, 243, 0.35)',
+          background: rosterEmpty ? 'rgba(255, 255, 255, 0.02)' : 'rgba(0, 112, 243, 0.1)',
+          border: rosterEmpty ? '1px solid rgba(255, 255, 255, 0.05)' : '1px solid rgba(0, 112, 243, 0.35)',
           borderRadius: '6px',
-          color: '#3b9eff',
+          color: rosterEmpty ? 'var(--text-disabled)' : '#3b9eff',
           fontSize: isMinimal ? '10px' : '11px',
           fontWeight: 'bold',
           padding: isMinimal ? '6px 0' : '8px 0',
-          cursor: 'pointer',
+          cursor: rosterEmpty ? 'not-allowed' : 'pointer',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           gap: '6px',
           transition: 'all 0.15s'
         }}
-        onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.18)'; }}
-        onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)'; }}
+        onMouseEnter={(e) => { if (!rosterEmpty) e.currentTarget.style.background = 'rgba(0, 112, 243, 0.18)'; }}
+        onMouseLeave={(e) => { if (!rosterEmpty) e.currentTarget.style.background = 'rgba(0, 112, 243, 0.1)'; }}
       >
         <Sparkles size={11} /> {isMinimal ? "Gen All" : "Generate All Variations"}
       </button>
@@ -882,47 +885,51 @@ const RosterToolbar: React.FC<RosterToolbarProps> = ({
         </button>
         <button
           onClick={onAutoMap}
+          disabled={rosterEmpty}
           title="Auto Map Layers"
           style={{
             background: 'transparent',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            border: rosterEmpty ? '1px solid rgba(255, 255, 255, 0.04)' : '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: '4px',
-            color: 'var(--text-secondary)',
+            color: rosterEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)',
             fontSize: '9.5px',
             fontWeight: 'bold',
             height: isMinimal ? '22px' : '24px',
-            cursor: 'pointer',
+            cursor: rosterEmpty ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '3px',
             padding: isMinimal ? '0' : '0 4px',
+            opacity: rosterEmpty ? 0.4 : 1
           }}
-          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
-          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+          onMouseEnter={(e) => { if (!rosterEmpty) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; }}
+          onMouseLeave={(e) => { if (!rosterEmpty) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; }}
         >
           <MapPin size={9} /> {!isMinimal && "Auto Map"}
         </button>
         <button
           onClick={onSync}
+          disabled={rosterEmpty}
           title="Sync Design"
           style={{
             background: 'transparent',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
+            border: rosterEmpty ? '1px solid rgba(255, 255, 255, 0.04)' : '1px solid rgba(255, 255, 255, 0.08)',
             borderRadius: '4px',
-            color: 'var(--text-secondary)',
+            color: rosterEmpty ? 'var(--text-disabled)' : 'var(--text-secondary)',
             fontSize: '9.5px',
             fontWeight: 'bold',
             height: isMinimal ? '22px' : '24px',
-            cursor: 'pointer',
+            cursor: rosterEmpty ? 'not-allowed' : 'pointer',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             gap: '3px',
             padding: isMinimal ? '0' : '0 4px',
+            opacity: rosterEmpty ? 0.4 : 1
           }}
-          onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'}
-          onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'}
+          onMouseEnter={(e) => { if (!rosterEmpty) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)'; }}
+          onMouseLeave={(e) => { if (!rosterEmpty) e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.08)'; }}
         >
           <RefreshCw size={9} /> {!isMinimal && "Sync"}
         </button>
@@ -1278,6 +1285,7 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
   rosterInputRef,
 }) => {
   const isMinimal = sidebarWidth < 240;
+  const hasPlayers = project.roster.length > 0;
 
   return (
     <aside
@@ -1322,6 +1330,7 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
         {/* Action Button Toolbar */}
         <RosterToolbar
           sidebarWidth={sidebarWidth}
+          rosterEmpty={!hasPlayers}
           onGenerateAll={onBulkGenerate}
           onImportCsv={() => {
             if (rosterInputRef.current) {
@@ -1342,14 +1351,100 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
         {/* Roster database list */}
         <div style={{ flex: 1, overflowY: 'auto', padding: isMinimal ? '6px' : '12px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
           
-          {/* Dash outlined add player card */}
-          <AddPlayerCard onAdd={onAddDefaultPlayer} isMinimal={isMinimal} />
+          {hasPlayers && <AddPlayerCard onAdd={onAddDefaultPlayer} isMinimal={isMinimal} />}
 
-          {project.roster.length === 0 ? (
-            <div style={{ textAlign: 'center', color: 'var(--text-disabled)', padding: '36px 0', fontSize: '11px', border: '1px dashed rgba(255, 255, 255, 0.06)', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
-              <Users size={16} style={{ opacity: 0.3 }} />
-              <span>No variations loaded.</span>
-              <span style={{ fontSize: '9px', opacity: 0.5 }}>Import a CSV/XLSX or Add Player above.</span>
+          {!hasPlayers ? (
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: isMinimal ? '16px 8px' : '24px 16px',
+              textAlign: 'center',
+              border: '1px dashed rgba(255, 255, 255, 0.05)',
+              borderRadius: '8px',
+              background: 'rgba(255,255,255,0.01)',
+              margin: '4px'
+            }}>
+              <Users size={isMinimal ? 24 : 32} style={{ color: 'var(--accent-blue)', opacity: 0.6, marginBottom: '12px' }} />
+              <h4 style={{ fontSize: isMinimal ? '11px' : '12px', fontWeight: 'bold', color: '#fff', margin: '0 0 6px 0' }}>No roster entries yet</h4>
+              <p style={{ fontSize: '9.5px', color: 'var(--text-disabled)', lineHeight: 1.4, margin: '0 0 16px 0', maxWidth: '180px' }}>
+                Import a CSV/Excel roster or manually add players.
+              </p>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxWidth: '160px' }}>
+                <button
+                  onClick={() => {
+                    if (rosterInputRef.current) {
+                      rosterInputRef.current.setAttribute('accept', '.csv');
+                      rosterInputRef.current.click();
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    padding: '6px 0',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    width: '100%'
+                  }}
+                >
+                  <Upload size={10} /> Import CSV
+                </button>
+                <button
+                  onClick={() => {
+                    if (rosterInputRef.current) {
+                      rosterInputRef.current.setAttribute('accept', '.xlsx');
+                      rosterInputRef.current.click();
+                    }
+                  }}
+                  style={{
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: '4px',
+                    color: 'var(--text-primary)',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    padding: '6px 0',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    width: '100%'
+                  }}
+                >
+                  <FileDown size={10} /> Import Excel
+                </button>
+                <button
+                  onClick={onAddDefaultPlayer}
+                  style={{
+                    background: 'rgba(0, 112, 243, 0.1)',
+                    border: '1px solid rgba(0, 112, 243, 0.35)',
+                    borderRadius: '4px',
+                    color: '#3b9eff',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    padding: '6px 0',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '4px',
+                    width: '100%'
+                  }}
+                >
+                  <Plus size={10} /> + Add First Player
+                </button>
+              </div>
             </div>
           ) : (
             project.roster.map((player) => {
