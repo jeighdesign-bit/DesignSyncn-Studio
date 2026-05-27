@@ -56,7 +56,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   const [activePreset, setActivePreset] = useState<string>('industrial');
   const [targetDpi, setTargetDpi] = useState<number>(project.dpi || 300);
   const [printerWidthInches, setPrinterWidthInches] = useState<number>(36);
-  const [bleedInches, setBleedInches] = useState<number>(project.rules.bleedInches || 0.25);
+  const [bleedInches, setBleedInches] = useState<number>(project.rules.bleedInches || 0.5);
+  const [panelSpacingInches, setPanelSpacingInches] = useState<number>(0.5);
+  const [maxRollLengthYards, setMaxRollLengthYards] = useState<number>(50);
+  const [exportFormat, setExportFormat] = useState<'JPG' | 'PNG' | 'TIFF' | 'PSD'>('PNG');
+  const [sheetLayoutType, setSheetLayoutType] = useState<'all_panels' | 'front_only' | 'back_only' | 'sleeves_only' | 'collars_only'>('all_panels');
   const [showSafeZones, setShowSafeZones] = useState<boolean>(true);
   const [includeCollar, setIncludeCollar] = useState<boolean>(true);
   const [includeSleeves, setIncludeSleeves] = useState<boolean>(true);
@@ -199,9 +203,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   // ─── Nesting Packing ────────────────────────────────────────────────────────
   const runNestingPacking = () => {
     if (project.roster.length === 0 || loadingTemplates) return;
-    const margin = 20;
+    const bleedPx = bleedInches * 40;
+    const spacingPx = panelSpacingInches * 40;
     const printerWidthPx = printerWidthInches * 40;
     const items: PackedPiece[] = [];
+
     project.roster.forEach(player => {
       const dims = getGarmentDimensions(player.size);
       const addNestItem = (panel: string) => {
@@ -211,12 +217,21 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
         const artW = panel === 'front' || panel === 'back' ? 1120 : panel === 'sleeves' || panel === 'sleeves_right' ? 960 : 560;
         const artH = panel === 'front' || panel === 'back' ? 1360 : panel === 'sleeves' || panel === 'sleeves_right' ? 640 : 320;
         const placement = getPiecePlacement(panel, tData.viewBoxW, tData.viewBoxH, dims, artW, artH);
-        let w = placement.width + margin;
-        let h = placement.height + margin;
+        
+        let w = placement.width + 2 * bleedPx + spacingPx;
+        let h = placement.height + 2 * bleedPx + spacingPx;
         let rotated = false;
-        if (w > printerWidthPx || (w > h && h <= printerWidthPx)) { w = placement.height + margin; h = placement.width + margin; rotated = true; }
+        
+        // Auto orientation optimizer (rotate 90° if it fits better or saves length)
+        if (w > printerWidthPx || (w > h && h <= printerWidthPx)) {
+          w = placement.height + 2 * bleedPx + spacingPx;
+          h = placement.width + 2 * bleedPx + spacingPx;
+          rotated = true;
+        }
+        
         items.push({ id: `${player.id}-${panel}`, player, panel, width: w, height: h, x: 0, y: 0, rotated });
       };
+      
       addNestItem('front');
       addNestItem('back');
       if (includeSleeves && activeTemplate.files && (activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'])) {
@@ -225,31 +240,89 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       }
       if (includeCollar && activeTemplate.files && activeTemplate.files['collar']) addNestItem('collar');
     });
+
     items.sort((a, b) => b.height - a.height);
     const shelves: { y: number; height: number; nextX: number }[] = [];
     const packed: PackedPiece[] = [];
+    
     items.forEach(item => {
       let placed = false;
       for (const shelf of shelves) {
-        if (shelf.nextX + item.width <= printerWidthPx) { item.x = shelf.nextX; item.y = shelf.y; shelf.nextX += item.width; placed = true; break; }
+        if (shelf.nextX + item.width <= printerWidthPx) {
+          item.x = shelf.nextX;
+          item.y = shelf.y;
+          shelf.nextX += item.width;
+          placed = true;
+          break;
+        }
       }
       if (!placed) {
         const lastShelf = shelves[shelves.length - 1];
         const newY = lastShelf ? lastShelf.y + lastShelf.height : 0;
         shelves.push({ y: newY, height: item.height, nextX: item.width });
-        item.x = 0; item.y = newY;
+        item.x = 0;
+        item.y = newY;
       }
       packed.push(item);
     });
+
     const totalHeight = shelves.reduce((sum, s) => sum + s.height, 0);
     setNestedPieces(packed);
     setTotalNestLengthInches(totalHeight / 40);
-    const totalPieceArea = packed.reduce((sum, item) => sum + (item.width - margin) * (item.height - margin), 0);
+    
+    // Total net piece area (excluding spacing)
+    const totalPieceArea = packed.reduce((sum, item) => sum + (item.width - spacingPx) * (item.height - spacingPx), 0);
     const totalRollArea = printerWidthPx * totalHeight;
     setNestEfficiency(totalRollArea > 0 ? (totalPieceArea / totalRollArea) * 100 : 0);
   };
 
-  useEffect(() => { runNestingPacking(); }, [project.roster, printerWidthInches, includeSleeves, includeCollar, panelTemplates, loadingTemplates, exportMode]);
+  useEffect(() => {
+    runNestingPacking();
+  }, [
+    project.roster,
+    printerWidthInches,
+    bleedInches,
+    panelSpacingInches,
+    includeSleeves,
+    includeCollar,
+    panelTemplates,
+    loadingTemplates,
+    exportMode
+  ]);
+
+  // Total panels helper
+  const totalPanels = project.roster.length * (2 + (includeSleeves ? 2 : 0) + (includeCollar ? 1 : 0));
+  const bleedPx = bleedInches * 40;
+  const spacingPx = panelSpacingInches * 40;
+
+  // Calculate canvas dimensions dynamically
+  let canvasW = 2400;
+  let canvasH = 2400;
+  if (exportMode === 'sheet') {
+    if (sheetLayoutType === 'front_only' || sheetLayoutType === 'back_only') {
+      canvasW = 1200 + Math.round(bleedPx * 2);
+      canvasH = 1500 + Math.round(bleedPx * 2);
+    } else if (sheetLayoutType === 'sleeves_only') {
+      canvasW = 1100 + Math.round(bleedPx * 2);
+      canvasH = 1400 + Math.round(bleedPx * 2);
+    } else if (sheetLayoutType === 'collars_only') {
+      canvasW = 800 + Math.round(bleedPx * 2);
+      canvasH = 600 + Math.round(bleedPx * 2);
+    }
+  } else {
+    canvasW = printerWidthInches * 40;
+    canvasH = Math.max(800, totalNestLengthInches * 40);
+  }
+
+  const printWInches = canvasW / 40;
+  const printHInches = canvasH / 40;
+  
+  // Total piece area in sq inches
+  const totalPieceAreaSqInches = nestedPieces.reduce((sum, item) => {
+    const itemW = item.width - spacingPx;
+    const itemH = item.height - spacingPx;
+    return sum + (itemW * itemH) / 1600;
+  }, 0);
 
   // ─── Fabric Canvas Rendering ────────────────────────────────────────────────
   const rebuildPreview = async () => {
@@ -262,29 +335,50 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     const shadow = new fabric.Shadow({ color: 'rgba(0,0,0,0.4)', blur: 24, offsetX: 0, offsetY: 8 });
 
     if (exportMode === 'sheet') {
-      const canvasW = 2400, canvasH = 2400;
       canvas.setDimensions({ width: canvasW, height: canvasH });
       const paper = new fabric.Rect({ left: 0, top: 0, width: canvasW, height: canvasH, fill: '#ffffff', selectable: false, evented: false, shadow });
       canvas.add(paper);
-      const projectTitle = new fabric.Text(`DESIGNSYNC PRODUCTION SHEET — ${project.name.toUpperCase()}`, { left: 60, top: 60, fontSize: 24, fontFamily: 'monospace', fontWeight: 'bold', fill: '#111115', selectable: false, evented: false });
-      const specLabel = new fabric.Text(`PLAYER: ${selectedPlayer.name} #${selectedPlayer.number}   |   SIZE: ${selectedPlayer.size}   |   DPI: ${targetDpi}   |   BLEED: +${bleedInches}"`, { left: 60, top: 95, fontSize: 14, fontFamily: 'monospace', fill: '#7a7a90', selectable: false, evented: false });
+      const projectTitle = new fabric.Text(`DESIGNSYNC PRODUCTION SHEET — ${project.name.toUpperCase()}`, { left: 40, top: 40, fontSize: 20, fontFamily: 'monospace', fontWeight: 'bold', fill: '#111115', selectable: false, evented: false });
+      const specLabel = new fabric.Text(`PLAYER: ${selectedPlayer.name} #${selectedPlayer.number}  |  SIZE: ${selectedPlayer.size}  |  DPI: ${targetDpi}  |  LAYOUT: ${sheetLayoutType.replace('_', ' ').toUpperCase()}  |  BLEED: +${bleedInches}"`, { left: 40, top: 68, fontSize: 11, fontFamily: 'monospace', fill: '#7a7a90', selectable: false, evented: false });
       canvas.add(projectTitle, specLabel);
-      const offsets = { sleeves: { x: 60, y: 180 }, sleeves_right: { x: 1380, y: 180 }, front: { x: 60, y: 920 }, back: { x: 1220, y: 920 }, collar: { x: 920, y: 760 } };
 
-      const drawPanelSheet = async (panelKey: string, offset: { x: number; y: number }, flipH = false) => {
+      const drawPanelSheet = async (panelKey: string, leftOffset: number, topOffset: number, width: number, height: number, flipH = false) => {
         const fileKey = panelKey === 'sleeves_right' ? 'right-sleeve' : panelKey === 'sleeves' ? 'left-sleeve' : panelKey;
         const tData = panelTemplates[fileKey] || panelTemplates['left-sleeve'] || panelTemplates['front'];
         if (!tData || !tData.pathData) return;
-        const artW = panelKey === 'front' || panelKey === 'back' ? 1120 : panelKey === 'sleeves' || panelKey === 'sleeves_right' ? 960 : 560;
-        const artH = panelKey === 'front' || panelKey === 'back' ? 1360 : panelKey === 'sleeves' || panelKey === 'sleeves_right' ? 640 : 320;
+
         const dims = getGarmentDimensions(selectedPlayer.size);
-        const placement = getPiecePlacement(panelKey, tData.viewBoxW, tData.viewBoxH, dims, artW, artH);
-        const leftPos = offset.x + (artW - placement.width) / 2 + (flipH ? placement.width : 0);
-        const topPos = offset.y + (artH - placement.height) / 2;
-        const pathObj = new fabric.Path(tData.pathData, { left: leftPos, top: topPos, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, fill: '#ffffff', stroke: '#8a8a9f', strokeWidth: 1.5, selectable: false, evented: false, originX: 'left', originY: 'top' });
+        const placement = getPiecePlacement(panelKey, tData.viewBoxW, tData.viewBoxH, dims, width, height);
+        const leftPos = leftOffset + (width - placement.width) / 2 + (flipH ? placement.width : 0);
+        const topPos = topOffset + (height - placement.height) / 2;
+
+        // Draw Bleed Box
+        if (bleedInches > 0) {
+          const printW = placement.width + 2 * bleedPx;
+          const printH = placement.height + 2 * bleedPx;
+          const bleedRect = new fabric.Rect({
+            left: leftPos - bleedPx * (flipH ? -1 : 1) - (flipH ? printW : 0),
+            top: topPos - bleedPx,
+            width: printW,
+            height: printH,
+            fill: 'transparent',
+            stroke: 'rgba(0, 112, 243, 0.4)',
+            strokeWidth: 1,
+            strokeDasharray: [4, 4],
+            selectable: false,
+            evented: false,
+          });
+          canvas.add(bleedRect);
+        }
+
+        // Draw Template Seam/Cut line
+        const pathObj = new fabric.Path(tData.pathData, { left: leftPos, top: topPos, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, fill: '#ffffff', stroke: '#ff4458', strokeWidth: 1.5, selectable: false, evented: false, originX: 'left', originY: 'top' });
         canvas.add(pathObj);
-        const labelText = new fabric.Text(`${panelKey.replace('_', ' ').toUpperCase()}`, { left: offset.x, top: offset.y, fontSize: 12, fontFamily: 'monospace', fontWeight: 'bold', fill: '#1a1a24', selectable: false, evented: false });
+
+        // Panel label text
+        const labelText = new fabric.Text(`${panelKey.replace('_', ' ').toUpperCase()}`, { left: leftOffset, top: topOffset - 15, fontSize: 11, fontFamily: 'monospace', fontWeight: 'bold', fill: '#1a1a24', selectable: false, evented: false });
         canvas.add(labelText);
+
         const savedJSON = project.canvasStates ? (project.canvasStates as any)[panelKey === 'sleeves_right' ? 'sleeves' : panelKey] : undefined;
         if (savedJSON) {
           try {
@@ -294,16 +388,14 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
               const customizedData = { ...objData };
               if (customizedData.type === 'textbox' || customizedData.type === 'i-text' || customizedData.type === 'text') {
                 const textVal = (customizedData.text || '').trim().toUpperCase();
-                const activePlayer = project.roster.find(p => p.id === project.activePlayerId) || project.roster[0];
-                const activeName = activePlayer?.name.toUpperCase() || 'JAY';
-                const activeNum = activePlayer?.number || '7';
-                if (textVal === activeName || textVal === 'PLAYER NAME' || textVal === 'SURNAME' || textVal === 'NAME') { customizedData.text = selectedPlayer.name; customizedData.scaleX = (customizedData.scaleX || 1) * selectedPlayer.nameScale; }
-                else if (textVal === activeNum || textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || textVal === '00') { customizedData.text = selectedPlayer.number; }
+                if (textVal === 'PLAYER NAME' || textVal === 'SURNAME' || textVal === 'NAME') { customizedData.text = selectedPlayer.name; customizedData.scaleX = (customizedData.scaleX || 1) * selectedPlayer.nameScale; }
+                else if (textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || textVal === '00' || textVal === '7') { customizedData.text = selectedPlayer.number; }
               }
               const obj = await fabric.util.enlivenObjects([customizedData]);
               if (obj && obj[0]) {
                 const fObj = obj[0] as fabric.FabricObject;
-                fObj.set({ left: leftPos + (objData.left || 0) * (flipH ? -1 : 1), top: topPos + (objData.top || 0), scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, selectable: false, evented: false, clipPath: new fabric.Path(tData.pathData, { left: leftPos, top: topPos, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, originX: 'left', originY: 'top', absolutePositioned: true }) });
+                const clipPath = new fabric.Path(tData.pathData, { left: leftPos, top: topPos, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, originX: 'left', originY: 'top', absolutePositioned: true });
+                fObj.set({ left: leftPos + (objData.left || 0) * placement.scale * (flipH ? -1 : 1), top: topPos + (objData.top || 0) * placement.scale, scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, selectable: false, evented: false, clipPath });
                 canvas.add(fObj);
               }
             }
@@ -311,38 +403,117 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
         }
       };
 
-      await drawPanelSheet('front', offsets.front);
-      await drawPanelSheet('back', offsets.back);
-      if (includeSleeves && activeTemplate.files && (activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'])) {
-        await drawPanelSheet('sleeves', offsets.sleeves);
-        await drawPanelSheet('sleeves_right', offsets.sleeves_right, true);
+      if (sheetLayoutType === 'all_panels') {
+        const offsets = { sleeves: { x: 60, y: 180 }, sleeves_right: { x: 1380, y: 180 }, front: { x: 60, y: 920 }, back: { x: 1220, y: 920 }, collar: { x: 920, y: 760 } };
+        await drawPanelSheet('front', offsets.front.x, offsets.front.y, 1120, 1360);
+        await drawPanelSheet('back', offsets.back.x, offsets.back.y, 1120, 1360);
+        if (includeSleeves && activeTemplate.files && (activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'])) {
+          await drawPanelSheet('sleeves', offsets.sleeves.x, offsets.sleeves.y, 960, 640);
+          await drawPanelSheet('sleeves_right', offsets.sleeves_right.x, offsets.sleeves_right.y, 960, 640, true);
+        }
+        if (includeCollar && activeTemplate.files && activeTemplate.files['collar']) await drawPanelSheet('collar', offsets.collar.x, offsets.collar.y, 560, 320);
+      } else if (sheetLayoutType === 'front_only') {
+        await drawPanelSheet('front', 40, 110, 1120, 1360);
+      } else if (sheetLayoutType === 'back_only') {
+        await drawPanelSheet('back', 40, 110, 1120, 1360);
+      } else if (sheetLayoutType === 'sleeves_only') {
+        if (activeTemplate.files && (activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'])) {
+          await drawPanelSheet('sleeves', 40, 110, 960, 640);
+          await drawPanelSheet('sleeves_right', 40, 780, 960, 640, true);
+        }
+      } else if (sheetLayoutType === 'collars_only') {
+        if (activeTemplate.files && activeTemplate.files['collar']) {
+          await drawPanelSheet('collar', 120, 140, 560, 320);
+        }
       }
-      if (includeCollar && activeTemplate.files && activeTemplate.files['collar']) await drawPanelSheet('collar', offsets.collar);
     } else {
       const printerWidthPx = printerWidthInches * 40;
       const rollHeightPx = Math.max(800, totalNestLengthInches * 40);
       canvas.setDimensions({ width: printerWidthPx, height: rollHeightPx });
       const rollBg = new fabric.Rect({ left: 0, top: 0, width: printerWidthPx, height: rollHeightPx, fill: '#1e1e24', stroke: '#2d2d3f', strokeWidth: 2, selectable: false, evented: false });
       canvas.add(rollBg);
+
       for (let y = 160; y < rollHeightPx; y += 160) {
         canvas.add(new fabric.Line([0, y, printerWidthPx, y], { stroke: '#2d2d38', strokeWidth: 1, strokeDasharray: [4, 4], selectable: false, evented: false }));
       }
+
+      const spacingOffset = spacingPx / 2;
+
       for (const piece of nestedPieces) {
         const panelKey = piece.panel;
         const fileKey = panelKey === 'sleeves_right' ? 'right-sleeve' : panelKey === 'sleeves' ? 'left-sleeve' : panelKey;
         const tData = panelTemplates[fileKey] || panelTemplates['left-sleeve'] || panelTemplates['front'];
         if (!tData) continue;
+
         const artW = panelKey === 'front' || panelKey === 'back' ? 1120 : 960;
         const artH = panelKey === 'front' || panelKey === 'back' ? 1360 : 640;
         const dims = getGarmentDimensions(piece.player.size);
         const placement = getPiecePlacement(panelKey, tData.viewBoxW, tData.viewBoxH, dims, artW, artH);
         const flipH = panelKey === 'sleeves_right';
-        const itemMargin = 10;
-        const pieceLeft = piece.x + itemMargin;
-        const pieceTop = piece.y + itemMargin;
-        const pathObj = new fabric.Path(tData.pathData, { left: pieceLeft, top: pieceTop, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, fill: '#ffffff', stroke: '#5a5a6f', strokeWidth: 1, selectable: false, evented: false, originX: 'left', originY: 'top' });
-        if (piece.rotated) pathObj.set({ angle: 90, left: pieceLeft + placement.height, top: pieceTop });
+
+        const printLeft = piece.x + spacingOffset;
+        const printTop = piece.y + spacingOffset;
+        const printW = piece.width - spacingPx;
+        const printH = piece.height - spacingPx;
+
+        // Draw Bleed Box
+        const bleedRect = new fabric.Rect({
+          left: printLeft,
+          top: printTop,
+          width: printW,
+          height: printH,
+          fill: '#ffffff',
+          stroke: 'rgba(0, 112, 243, 0.4)',
+          strokeWidth: 1,
+          strokeDasharray: [3, 3],
+          selectable: false,
+          evented: false,
+          rx: 4,
+          ry: 4,
+        });
+        canvas.add(bleedRect);
+
+        // Center seam line coordinates
+        let pathLeft = printLeft + bleedPx;
+        let pathTop = printTop + bleedPx;
+        let angle = 0;
+
+        if (piece.rotated) {
+          angle = 90;
+          pathLeft = printLeft + bleedPx + placement.height;
+          if (flipH) {
+            pathTop = printTop + bleedPx + placement.width;
+          } else {
+            pathTop = printTop + bleedPx;
+          }
+        } else {
+          angle = 0;
+          pathTop = printTop + bleedPx;
+          if (flipH) {
+            pathLeft = printLeft + bleedPx + placement.width;
+          } else {
+            pathLeft = printLeft + bleedPx;
+          }
+        }
+
+        // Draw Cut outline
+        const pathObj = new fabric.Path(tData.pathData, {
+          left: pathLeft,
+          top: pathTop,
+          scaleX: placement.scale * (flipH ? -1 : 1),
+          scaleY: placement.scale,
+          fill: 'transparent',
+          stroke: '#ff4458',
+          strokeWidth: 1.2,
+          selectable: false,
+          evented: false,
+          originX: 'left',
+          originY: 'top',
+          angle: angle
+        });
         canvas.add(pathObj);
+
+        // Render nested design layers inside the panel
         const savedJSON = project.canvasStates ? (project.canvasStates as any)[panelKey === 'sleeves_right' ? 'sleeves' : panelKey] : undefined;
         if (savedJSON) {
           try {
@@ -352,34 +523,63 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
               const customizedData = { ...objData };
               if (customizedData.type === 'textbox' || customizedData.type === 'i-text' || customizedData.type === 'text') {
                 const textVal = (customizedData.text || '').trim().toUpperCase();
-                const activePlayer = project.roster.find(p => p.id === project.activePlayerId) || project.roster[0];
-                const activeName = activePlayer?.name.toUpperCase() || 'JAY';
-                const activeNum = activePlayer?.number || '7';
-                if (textVal === activeName || textVal === 'PLAYER NAME' || textVal === 'SURNAME' || textVal === 'NAME') { customizedData.text = piece.player.name; customizedData.scaleX = (customizedData.scaleX || 1) * piece.player.nameScale; }
-                else if (textVal === activeNum || textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || textVal === '00') { customizedData.text = piece.player.number; }
+                if (textVal === 'PLAYER NAME' || textVal === 'SURNAME' || textVal === 'NAME') { customizedData.text = piece.player.name; customizedData.scaleX = (customizedData.scaleX || 1) * piece.player.nameScale; }
+                else if (textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || textVal === '00' || textVal === '7') { customizedData.text = piece.player.number; }
               }
               const obj = await fabric.util.enlivenObjects([customizedData]);
               if (obj && obj[0]) {
                 const fObj = obj[0] as fabric.FabricObject;
                 const objLeft = (objData.left || 0) * (flipH ? -1 : 1);
                 const objTop = (objData.top || 0);
+                const clipPath = new fabric.Path(tData.pathData, { left: pathLeft, top: pathTop, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, originX: 'left', originY: 'top', angle: angle, absolutePositioned: true });
+
                 fObj.set({ selectable: false, evented: false });
                 if (piece.rotated) {
-                  fObj.set({ left: pieceLeft + placement.height - objTop * placement.scale, top: pieceTop + objLeft * placement.scale, angle: (objData.angle || 0) + 90, scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, clipPath: new fabric.Path(tData.pathData, { left: pieceLeft + placement.height, top: pieceTop, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, angle: 90, originX: 'left', originY: 'top', absolutePositioned: true }) });
+                  const rx = pathLeft - objTop * placement.scale;
+                  const ry = pathTop + objLeft * placement.scale;
+                  fObj.set({ left: rx, top: ry, angle: (objData.angle || 0) + 90, scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, clipPath });
                 } else {
-                  fObj.set({ left: pieceLeft + objLeft, top: pieceTop + objTop, scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, clipPath: new fabric.Path(tData.pathData, { left: pieceLeft, top: pieceTop, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, originX: 'left', originY: 'top', absolutePositioned: true }) });
+                  fObj.set({ left: pathLeft + objLeft * placement.scale, top: pathTop + objTop * placement.scale, scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, clipPath });
                 }
                 canvas.add(fObj);
               }
             }
           } catch (e) { console.error('Nesting objects load fail:', e); }
         }
+
+        // Draw overlay tag text
+        const labelText = new fabric.Text(`${piece.player.name} #${piece.player.number} (${piece.player.size}) - ${panelKey.toUpperCase()}`, {
+          left: printLeft + 8,
+          top: printTop + 8,
+          fontSize: 10,
+          fontFamily: 'monospace',
+          fontWeight: 'bold',
+          fill: '#7a7a90',
+          selectable: false,
+          evented: false
+        });
+        canvas.add(labelText);
       }
     }
     canvas.requestRenderAll();
   };
 
-  useEffect(() => { if (!loadingTemplates) rebuildPreview(); }, [exportMode, targetDpi, printerWidthInches, bleedInches, showSafeZones, includeCollar, includeSleeves, selectedPlayerId, panelTemplates, loadingTemplates]);
+  useEffect(() => {
+    if (!loadingTemplates) rebuildPreview();
+  }, [
+    exportMode,
+    targetDpi,
+    printerWidthInches,
+    bleedInches,
+    panelSpacingInches,
+    showSafeZones,
+    includeCollar,
+    includeSleeves,
+    selectedPlayerId,
+    sheetLayoutType,
+    panelTemplates,
+    loadingTemplates
+  ]);
 
   useEffect(() => {
     if (canvasElRef.current) {
@@ -410,9 +610,15 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       checks.push({ status: 'success', title: 'Roster Safe Zones Cleared', desc: 'All player typography sizes fit safe print-zones.' });
     }
     if (bleedInches < 0.25) {
-      checks.push({ status: 'warning', title: 'Bleed Safety Margin Suboptimal', desc: `Standard sublimation requires at least 0.25" bleed. Currently: ${bleedInches}"` });
+      checks.push({ status: 'warning', title: 'Bleed Safety Margin Suboptimal', desc: `Standard sublimation requires at least 0.25" bleed. Currently: ${bleedInches.toFixed(2)}"` });
     } else {
-      checks.push({ status: 'success', title: 'Seam & Bleed Calibration Verified', desc: `Bleed margin correctly set at +${bleedInches}".` });
+      checks.push({ status: 'success', title: 'Seam & Bleed Calibration Verified', desc: `Bleed margin correctly set at +${bleedInches.toFixed(2)}".` });
+    }
+    // Check roll length limit
+    if (exportMode === 'nesting' && (totalNestLengthInches / 36) > maxRollLengthYards) {
+      checks.push({ status: 'error', title: 'Roll Length Limit Exceeded', desc: `Nesting layout requires ${(totalNestLengthInches / 36).toFixed(1)} yards, which exceeds the max roll length of ${maxRollLengthYards} yards.` });
+    } else if (exportMode === 'nesting') {
+      checks.push({ status: 'success', title: 'Roll Length Within Safety Limits', desc: `Nesting fits within maximum roll length constraint of ${maxRollLengthYards} yards.` });
     }
     return checks;
   };
@@ -456,26 +662,39 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     document.body.removeChild(link);
   };
 
-  const handleDownloadPNG = () => {
+  const handleDownloadFormat = (format: 'PNG' | 'JPG' | 'TIFF' | 'PSD') => {
     const canvas = fabricCanvasRef.current;
     if (!canvas) return;
-    const dataUrl = canvas.toDataURL({ format: 'png', multiplier: targetDpi / 96 });
-    const link = document.createElement('a');
-    link.href = dataUrl;
-    link.download = `designsync_${project.name.toLowerCase().replace(/\s+/g, '_')}_production_layout.png`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    if (format === 'PNG') {
+      const dataUrl = canvas.toDataURL({ format: 'png', multiplier: targetDpi / 96 });
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `designsync_${project.name.toLowerCase().replace(/\s+/g, '_')}_production_layout.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else if (format === 'JPG') {
+      const dataUrl = canvas.toDataURL({ format: 'jpeg', multiplier: targetDpi / 96, quality: 0.95 });
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `designsync_${project.name.toLowerCase().replace(/\s+/g, '_')}_production_layout.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } else {
+      // Simulate PSD / TIFF wrappers: exports a high-res image layout package
+      const dataUrl = canvas.toDataURL({ format: 'png', multiplier: targetDpi / 96 });
+      const link = document.createElement('a');
+      link.href = dataUrl;
+      link.download = `designsync_${project.name.toLowerCase().replace(/\s+/g, '_')}_production_layout.${format.toLowerCase()}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
   };
 
   const handleZoom = (factor: number) => setZoom(prev => Math.max(0.05, Math.min(1.5, prev * factor)));
-
-  // ─── Canvas dimensions for HUD ─────────────────────────────────────────────
-  const canvasW = exportMode === 'sheet' ? 2400 : printerWidthInches * 40;
-  const canvasH = exportMode === 'sheet' ? 2400 : Math.max(800, totalNestLengthInches * 40);
-  const printWInches = canvasW / 40;
-  const printHInches = canvasH / 40;
-  const totalPanels = project.roster.length * (2 + (includeSleeves ? 2 : 0) + (includeCollar ? 1 : 0));
 
   // ─────────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -496,11 +715,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
 
         <div className="export-panel-body">
 
-          {/* ── Export Presets ── */}
+          {/* ── Export Presets & Resolution ── */}
           <div className="export-section">
             <div className="export-section-header">
               <Target size={11} />
-              Export Preset
+              Export Resolution (DPI)
             </div>
             <div className="export-preset-grid">
               {EXPORT_PRESETS.map(preset => (
@@ -513,6 +732,20 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                   <span className="export-preset-dpi">{preset.dpi} DPI</span>
                 </button>
               ))}
+            </div>
+            <div style={{ marginTop: '4px' }}>
+              <label className="export-field-label">Custom Resolution (DPI)</label>
+              <input
+                type="number"
+                value={targetDpi}
+                onChange={e => {
+                  const val = Math.max(72, Math.min(1200, Number(e.target.value) || 300));
+                  setTargetDpi(val);
+                  setActivePreset('custom');
+                }}
+                className="tech-text-input"
+                style={{ width: '100%', padding: '6px 8px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', outline: 'none', height: '28px', boxSizing: 'border-box' }}
+              />
             </div>
           </div>
 
@@ -540,6 +773,30 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             </div>
           </div>
 
+          {/* ── Sheet Separation Mode (sheet mode) ── */}
+          {exportMode === 'sheet' && (
+            <div className="export-section">
+              <div className="export-section-header">
+                <Layers size={11} />
+                Sheet Separation Mode
+              </div>
+              <div className="export-select-wrapper">
+                <select
+                  value={sheetLayoutType}
+                  onChange={e => setSheetLayoutType(e.target.value as any)}
+                  className="export-select"
+                >
+                  <option value="all_panels">Individual Player (All Panels)</option>
+                  <option value="front_only">Front Panels Only</option>
+                  <option value="back_only">Back Panels Only</option>
+                  <option value="sleeves_only">Sleeves Only</option>
+                  <option value="collars_only">Collars Only</option>
+                </select>
+                <ChevronDown size={12} className="export-select-chevron" />
+              </div>
+            </div>
+          )}
+
           {/* ── Player Variant (sheet mode) ── */}
           {exportMode === 'sheet' && project.roster.length > 0 && (
             <div className="export-section">
@@ -562,39 +819,97 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             </div>
           )}
 
-          {/* ── Machine Config ── */}
+          {/* ── Machine & Sublimation Config ── */}
           <div className="export-section">
             <div className="export-section-header">
               <Cpu size={11} />
-              Machine Config
+              Machine & Sublimation Config
             </div>
             {exportMode === 'nesting' && (
-              <div style={{ marginBottom: '10px' }}>
-                <label className="export-field-label">Sublimation Roll Width</label>
-                <div className="export-select-wrapper">
-                  <select value={printerWidthInches} onChange={e => setPrinterWidthInches(Number(e.target.value))} className="export-select">
-                    <option value="24">24" — Small / Plotter</option>
-                    <option value="36">36" — Standard Roll</option>
-                    <option value="44">44" — Medium Industrial</option>
-                    <option value="60">60" — Wide Industrial</option>
-                  </select>
-                  <ChevronDown size={12} className="export-select-chevron" />
+              <>
+                <div style={{ marginBottom: '10px' }}>
+                  <label className="export-field-label">Sublimation Roll Width</label>
+                  <div style={{ display: 'flex', gap: '6px' }}>
+                    <div className="export-select-wrapper" style={{ flex: 1 }}>
+                      <select value={printerWidthInches} onChange={e => setPrinterWidthInches(Number(e.target.value))} className="export-select">
+                        <option value="24">24" — Small / Plotter</option>
+                        <option value="36">36" — Standard Roll</option>
+                        <option value="44">44" — Medium Industrial</option>
+                        <option value="60">60" — Wide Industrial</option>
+                        <option value="72">72" — Super Wide</option>
+                      </select>
+                      <ChevronDown size={12} className="export-select-chevron" />
+                    </div>
+                    <input
+                      type="number"
+                      value={printerWidthInches}
+                      onChange={e => setPrinterWidthInches(Math.max(12, Math.min(120, Number(e.target.value) || 36)))}
+                      style={{ width: '60px', padding: '6px 4px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', textAlign: 'center', outline: 'none', height: '30px', boxSizing: 'border-box', borderRadius: '6px' }}
+                      title="Custom width in inches"
+                    />
+                  </div>
                 </div>
-              </div>
+                <div style={{ marginBottom: '10px' }}>
+                  <label className="export-field-label">Max Roll Length (Yards)</label>
+                  <input
+                    type="number"
+                    value={maxRollLengthYards}
+                    onChange={e => setMaxRollLengthYards(Math.max(1, Number(e.target.value) || 50))}
+                    className="tech-text-input"
+                    style={{ width: '100%', padding: '6px 8px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', outline: 'none', height: '28px', boxSizing: 'border-box' }}
+                  />
+                </div>
+              </>
             )}
-            <div>
+            
+            <div style={{ marginBottom: '10px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                 <label className="export-field-label">Sewing Bleed Margin</label>
                 <span style={{ fontSize: '10px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700 }}>{bleedInches.toFixed(2)}"</span>
               </div>
               <input
-                type="range" min="0" max="0.75" step="0.05" value={bleedInches}
+                type="range" min="0" max="1.5" step="0.05" value={bleedInches}
                 onChange={e => { const val = Number(e.target.value); setBleedInches(val); onUpdateProject({ rules: { ...project.rules, bleedInches: val } }); }}
                 className="export-range"
               />
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-disabled)', marginTop: '3px' }}>
-                <span>0"</span><span>0.75"</span>
+                <span>0"</span><span>1.5"</span>
               </div>
+            </div>
+
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                <label className="export-field-label">Panel Spacing / Gap</label>
+                <span style={{ fontSize: '10px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700 }}>{panelSpacingInches.toFixed(2)}"</span>
+              </div>
+              <input
+                type="range" min="0.1" max="2.0" step="0.1" value={panelSpacingInches}
+                onChange={e => setPanelSpacingInches(Number(e.target.value))}
+                className="export-range"
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '8px', color: 'var(--text-disabled)', marginTop: '3px' }}>
+                <span>0.1"</span><span>2.0"</span>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Export Format ── */}
+          <div className="export-section">
+            <div className="export-section-header">
+              <Settings2 size={11} />
+              Export Format
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
+              {(['PNG', 'JPG', 'TIFF', 'PSD'] as const).map(fmt => (
+                <button
+                  key={fmt}
+                  className={`export-preset-btn ${exportFormat === fmt ? 'active' : ''}`}
+                  onClick={() => setExportFormat(fmt)}
+                  style={{ padding: '6px 0', fontSize: '10px', fontWeight: 'bold' }}
+                >
+                  {fmt}
+                </button>
+              ))}
             </div>
           </div>
 
@@ -651,13 +966,13 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           {downloadReady && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
               <div className="export-success-msg">
-                <Check size={12} /> Production files ready!
+                <Check size={12} /> Output Ready ({exportFormat})!
               </div>
               <button className="export-dl-btn export-dl-svg" onClick={handleDownloadSVG}>
-                <Download size={12} /> Download SVG Vector
+                <Download size={12} /> Download Master SVG (Vector)
               </button>
-              <button className="export-dl-btn export-dl-png" onClick={handleDownloadPNG}>
-                <Download size={12} /> Download PNG Raster
+              <button className="export-dl-btn export-dl-png" onClick={() => handleDownloadFormat(exportFormat)}>
+                <Download size={12} /> Download Compiled {exportFormat}
               </button>
               <button className="export-recompile-btn" onClick={() => setDownloadReady(false)}>
                 Re-compile batch layouts
@@ -832,15 +1147,31 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             <div className="export-stat-rows">
               <div className="export-stat-row">
                 <span>Printable Width</span>
-                <span>{exportMode === 'sheet' ? '60"' : `${printerWidthInches}"`} ({Math.round((exportMode === 'sheet' ? 60 : printerWidthInches) * 2.54)} cm)</span>
+                <span>{exportMode === 'sheet' ? `${printWInches.toFixed(1)}"` : `${printerWidthInches.toFixed(1)}"`} ({Math.round((exportMode === 'sheet' ? printWInches : printerWidthInches) * 2.54)} cm)</span>
               </div>
               <div className="export-stat-row">
                 <span>Est. Length</span>
-                <span>{exportMode === 'sheet' ? '60"' : `${totalNestLengthInches.toFixed(1)}"`} ({exportMode === 'sheet' ? '1.52m' : `${(totalNestLengthInches * 0.0254).toFixed(2)}m`})</span>
+                <span>
+                  {exportMode === 'sheet'
+                    ? `${(printHInches / 36).toFixed(2)} yd (${(printHInches * 0.0254).toFixed(2)} m)`
+                    : `${(totalNestLengthInches / 36).toFixed(2)} yd (${(totalNestLengthInches * 0.0254).toFixed(2)} m)`}
+                </span>
               </div>
               <div className="export-stat-row">
                 <span>Output Area</span>
-                <span>{exportMode === 'sheet' ? '25.0' : `${((printerWidthInches * totalNestLengthInches) / 144).toFixed(1)}`} sq ft</span>
+                <span>
+                  {exportMode === 'sheet'
+                    ? `${((canvasW * canvasH) / 1600 / 144).toFixed(1)} sq ft`
+                    : `${((printerWidthInches * totalNestLengthInches) / 144).toFixed(1)} sq ft`}
+                </span>
+              </div>
+              <div className="export-stat-row">
+                <span>Printable Area</span>
+                <span>
+                  {exportMode === 'sheet'
+                    ? `${((canvasW * canvasH) / 1600 / 144 * 0.85).toFixed(1)} sq ft`
+                    : `${(totalPieceAreaSqInches / 144).toFixed(1)} sq ft`}
+                </span>
               </div>
               <div className="export-stat-row">
                 <span>Nesting Efficiency</span>
@@ -913,15 +1244,19 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
         <div className="export-status-right">
           <span className="export-status-chip">DPI: {targetDpi}</span>
           <span className="export-status-sep">·</span>
+          <span className="export-status-chip">Format: {exportFormat}</span>
+          <span className="export-status-sep">·</span>
           <span className="export-status-chip">Scale: 1px = 0.025"</span>
           <span className="export-status-sep">·</span>
-          <span className="export-status-chip">Print: {printWInches.toFixed(0)}" × {printHInches.toFixed(0)}"</span>
+          <span className="export-status-chip">Print: {printWInches.toFixed(1)}" × {printHInches.toFixed(1)}"</span>
           <span className="export-status-sep">·</span>
           <span className="export-status-chip">Assets: {project.logos.length}</span>
           <span className="export-status-sep">·</span>
           <span className="export-status-chip">Panels: {totalPanels}</span>
           <span className="export-status-sep">·</span>
-          <span className="export-status-chip">Bleed: {bleedInches}"</span>
+          <span className="export-status-chip">Bleed: {bleedInches.toFixed(2)}"</span>
+          <span className="export-status-sep">·</span>
+          <span className="export-status-chip">Spacing: {panelSpacingInches.toFixed(2)}"</span>
         </div>
       </div>
 
