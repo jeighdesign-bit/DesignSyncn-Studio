@@ -5,6 +5,9 @@ import {
   type SafeZoneRects, type GarmentTemplate, getAnchorCoords,
   calcSafeZones, unitLabel
 } from '../lib/measurements';
+import {
+  getArtworkScaleFactor, getTypographyScale,
+} from '../lib/garment-size-engine';
 import type { Project } from '../types';
 import * as fabric from 'fabric';
 import { ToolManager } from '../editor-engine/tools/manager';
@@ -15,6 +18,13 @@ import { MoveTool } from '../editor-engine/tools/move';
 import { PanTool } from '../editor-engine/tools/pan';
 import { RectangleTool } from '../editor-engine/tools/rectangle';
 import { TextTool } from '../editor-engine/tools/text';
+import {
+  performSnappingAndClamping,
+  type SnapGuideLine,
+  setCenterPosition,
+  clampObjectToLimits,
+  clampObjectToSafeZone
+} from '../editor-engine/transform/constraints';
 
 // Register custom properties for serialization in Fabric.js v7
 (fabric.FabricObject as any).customProperties = [
@@ -218,18 +228,12 @@ const applyBg = (canvas: fabric.Canvas, bg: string) => {
 };
 
 
-export const getSizeScaleFactor = (size: string): number => {
-  switch (size) {
-    case 'XS': return 0.8;
-    case 'S': return 0.87;
-    case 'M': return 0.93;
-    case 'L': return 1.0;
-    case 'XL': return 1.07;
-    case 'XXL': return 1.13;
-    case '3XL': return 1.2;
-    default: return 1.0;
-  }
-};
+/**
+ * @deprecated Use getArtworkScaleFactor from garment-size-engine instead.
+ * Kept for backward compat — now delegates to the production engine.
+ */
+export const getSizeScaleFactor = (size: string): number =>
+  getArtworkScaleFactor(size);
 
 export function alignObjectsToProductionAnchors(
   canvas: fabric.Canvas,
@@ -244,8 +248,8 @@ export function alignObjectsToProductionAnchors(
   const activePlayer = roster.find(p => p.id === project.activePlayerId);
   const activeSize = activePlayer?.size ?? 'M';
 
-  // Get scale compensation factor
-  const sizeScaleFactor = rules.dynamicScaling ? getSizeScaleFactor(activeSize) : 1.0;
+  // Get artwork scale factor from the production grading engine
+  const artworkScaleFactor = rules.dynamicScaling ? getArtworkScaleFactor(activeSize) : 1.0;
 
   const isFull = panel === 'full';
   const offs = offsets || {
@@ -360,23 +364,41 @@ export function alignObjectsToProductionAnchors(
       obj.__offsetYInches = Number(oy.toFixed(3));
     }
 
-    // Dynamic Sizing (Scale Compensation)
+    // Dynamic Sizing — uses GarmentSizeEngine (artwork scale ≠ garment scale)
     if (rules.dynamicScaling) {
       if (obj.type === 'i-text' || obj.type === 'textbox' || obj.type === 'text') {
-        const baseFontSize = obj.__isNameText 
-          ? rules.playerNameHeightInches * 40 
-          : obj.__isNumberText 
+        const baseFontSize = obj.__isNameText
+          ? rules.playerNameHeightInches * 40
+          : obj.__isNumberText
             ? rules.playerNumberHeightInches * 40
             : (obj.__baseFontSize || obj.fontSize || 32);
 
         if (!obj.__baseFontSize) obj.__baseFontSize = baseFontSize;
-        obj.set({ fontSize: obj.__baseFontSize * sizeScaleFactor });
+
+        let textScale = artworkScaleFactor;
+
+        // For player names: also apply auto-fit scale to prevent safe-zone overflow
+        if (obj.__isNameText && obj.text) {
+          const safeWidthInches = rules.maxTextWidthInches > 0
+            ? rules.maxTextWidthInches
+            : (panelW / 40) * 0.78; // fallback: 78% of panel width
+          const typoScale = getTypographyScale(
+            obj.text,
+            safeWidthInches,
+            rules.playerNameHeightInches,
+          );
+          textScale = artworkScaleFactor * typoScale;
+        }
+
+        obj.set({ fontSize: obj.__baseFontSize * textScale });
       } else if (obj.type === 'image') {
+        // Logos stay at their defined physical size — they are not sewn to the fabric.
+        // Only initialise base scale if not already stored.
         if (!obj.__baseScaleX) obj.__baseScaleX = obj.scaleX || 1.0;
         if (!obj.__baseScaleY) obj.__baseScaleY = obj.scaleY || 1.0;
         obj.set({
-          scaleX: obj.__baseScaleX * sizeScaleFactor,
-          scaleY: obj.__baseScaleY * sizeScaleFactor
+          scaleX: obj.__baseScaleX,
+          scaleY: obj.__baseScaleY,
         });
       }
     }
@@ -390,70 +412,7 @@ export function alignObjectsToProductionAnchors(
   });
 }
 
-export function setCenterPosition(obj: fabric.FabricObject, cx: number, cy: number) {
-  const center = obj.getCenterPoint();
-  const dx = cx - center.x;
-  const dy = cy - center.y;
-  obj.set({
-    left: (obj.left ?? 0) + dx,
-    top: (obj.top ?? 0) + dy
-  });
-  obj.setCoords();
-}
-
-export function clampObjectToLimits(obj: fabric.FabricObject, width: number, height: number, safeZones: SafeZoneRects) {
-  const bleed = safeZones.bleed || { x: -10, y: -10, w: width + 20, h: height + 20 };
-  const minX = bleed.x;
-  const maxX = bleed.x + bleed.w;
-  const minY = bleed.y;
-  const maxY = bleed.y + bleed.h;
-
-  const rect = obj.getBoundingRect();
-  let nextLeft = obj.left ?? 0;
-  let nextTop = obj.top ?? 0;
-
-  if (rect.left < minX) {
-    nextLeft += (minX - rect.left);
-  } else if (rect.left + rect.width > maxX) {
-    nextLeft -= (rect.left + rect.width - maxX);
-  }
-
-  if (rect.top < minY) {
-    nextTop += (minY - rect.top);
-  } else if (rect.top + rect.height > maxY) {
-    nextTop -= (rect.top + rect.height - maxY);
-  }
-
-  obj.set({ left: nextLeft, top: nextTop });
-  obj.setCoords();
-}
-
-export function clampObjectToSafeZone(obj: fabric.FabricObject, width: number, height: number, safeZones: SafeZoneRects) {
-  const safe = safeZones.safe || { x: 20, y: 20, w: width - 40, h: height - 40 };
-  const minX = safe.x;
-  const maxX = safe.x + safe.w;
-  const minY = safe.y;
-  const maxY = safe.y + safe.h;
-
-  const rect = obj.getBoundingRect();
-  let nextLeft = obj.left ?? 0;
-  let nextTop = obj.top ?? 0;
-
-  if (rect.left < minX) {
-    nextLeft += (minX - rect.left);
-  } else if (rect.left + rect.width > maxX) {
-    nextLeft -= (rect.left + rect.width - maxX);
-  }
-
-  if (rect.top < minY) {
-    nextTop += (minY - rect.top);
-  } else if (rect.top + rect.height > maxY) {
-    nextTop -= (rect.top + rect.height - maxY);
-  }
-
-  obj.set({ left: nextLeft, top: nextTop });
-  obj.setCoords();
-}
+export { setCenterPosition, clampObjectToLimits, clampObjectToSafeZone };
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
@@ -519,7 +478,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       collarWidth: 14,
       collarHeight: 8
     },
-    sizeStep: 2,
+    sizeStep: 1, // 1" per step — grading table supersedes this for standard sizes
     supportedSizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
     files: {
       front: "/templates/tshirt/front.svg",
@@ -616,7 +575,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const redoStackRef = useRef<string[]>(initialRedoStack ?? []);
   const isProcessingHistoryRef = useRef(false);
   const lastLoadedStateRef = useRef<string | null>(null);
-  const activeGuideLinesRef = useRef<{ x?: number; y?: number; label?: string }[]>([]);
+  const activeGuideLinesRef = useRef<SnapGuideLine[]>([]);
   const onCreationCompleteRef = useRef(onCreationComplete);
 
   // Sync callbacks and values to refs to prevent stale closures in Fabric events
@@ -1300,10 +1259,23 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     const w = parent?.clientWidth ?? 800;
     const h = parent?.clientHeight ?? 600;
 
+    // Configure ActiveSelection controls globally so multi-selections match selection outlines
+    fabric.ActiveSelection.prototype.borderColor = '#0070f3';
+    fabric.ActiveSelection.prototype.cornerColor = '#ffffff';
+    fabric.ActiveSelection.prototype.cornerStrokeColor = '#0070f3';
+    fabric.ActiveSelection.prototype.cornerSize = 8;
+    fabric.ActiveSelection.prototype.cornerStyle = 'circle';
+    fabric.ActiveSelection.prototype.transparentCorners = false;
+    fabric.ActiveSelection.prototype.borderScaleFactor = 1.5;
+    fabric.ActiveSelection.prototype.padding = 6;
+
     const canvas = new fabric.Canvas(canvasElRef.current, {
       width: w,
       height: h,
       selection: true,
+      selectionColor: 'rgba(0, 112, 243, 0.08)',
+      selectionBorderColor: '#0070f3',
+      selectionLineWidth: 1,
       preserveObjectStacking: true,
       backgroundColor: 'transparent',
       stopContextMenu: true,
@@ -1686,102 +1658,17 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         return;
       }
 
-      // Clear previous snaps
-      activeGuideLinesRef.current = [];
-
-      let cx = obj.getCenterPoint().x;
-      let cy = obj.getCenterPoint().y;
-
-      let snappedX = cx;
-      let snappedY = cy;
-
-      // Smart Snapping
-      if (rules?.smartSnapping) {
-        const snapThreshold = 12; // pixels
-
-        // Vertical Center Snap (relative to panel)
-        const centerX = panelOffsetX + panelW / 2;
-        if (Math.abs(cx - centerX) < snapThreshold) {
-          snappedX = centerX;
-          activeGuideLinesRef.current.push({ x: centerX, label: `${panel.toUpperCase()} Center` });
-        }
-
-        // Horizontal Panel Snaps (relative to panel)
-        const normalizedPanel = panel === 'sleeves_right' ? 'sleeves' : panel;
-        if (normalizedPanel === 'front' || normalizedPanel === 'back') {
-          const cby = panelOffsetY + (normalizedPanel === 'front' ? Math.round(panelH * 0.176) : Math.round(panelH * 0.132));
-          if (Math.abs(cy - cby) < snapThreshold) {
-            snappedY = cby;
-            activeGuideLinesRef.current.push({ y: cby, label: 'Collar Reference' });
-          }
-
-          if (normalizedPanel === 'front') {
-            const chestY = panelOffsetY + Math.round(panelH * 0.35);
-            if (Math.abs(cy - chestY) < snapThreshold) {
-              snappedY = chestY;
-              activeGuideLinesRef.current.push({ y: chestY, label: 'Chest Alignment' });
-            }
-          } else if (normalizedPanel === 'back') {
-            const midY = panelOffsetY + Math.round(panelH * 0.45);
-            if (Math.abs(cy - midY) < snapThreshold) {
-              snappedY = midY;
-              activeGuideLinesRef.current.push({ y: midY, label: 'Player Number Zone' });
-            }
-          }
-        } else if (normalizedPanel === 'sleeves') {
-          const capY = panelOffsetY + 40;
-          const centY = panelOffsetY + panelH / 2;
-          const cuffY = panelOffsetY + panelH - 40;
-
-          if (Math.abs(cy - capY) < snapThreshold) {
-            snappedY = capY;
-            activeGuideLinesRef.current.push({ y: capY, label: 'Sleeve Cap Seam' });
-          } else if (Math.abs(cy - centY) < snapThreshold) {
-            snappedY = centY;
-            activeGuideLinesRef.current.push({ y: centY, label: 'Sleeve Center' });
-          } else if (Math.abs(cy - cuffY) < snapThreshold) {
-            snappedY = cuffY;
-            activeGuideLinesRef.current.push({ y: cuffY, label: 'Sleeve Cuff Seam' });
-          }
-        }
-      } else {
-        // Fallback to standard grid snapping (10px) if smart snap is off
-        const gridSnap = 10;
-        snappedX = Math.round(cx / gridSnap) * gridSnap;
-        snappedY = Math.round(cy / gridSnap) * gridSnap;
-      }
-
-      // Apply snap coordinate change to center
-      setCenterPosition(obj, snappedX, snappedY);
-
-      // 2. Safe and Bleed Boundaries Clamp
-      const bInches = rules?.bleedInches ?? 0.25;
-      const sInches = rules?.safeMarginInches ?? 0.5;
-      const seamInches = rules?.seamAllowanceInches ?? 0.5;
-
-      const sz = calcSafeZones(panelW, panelH, bInches, sInches, seamInches);
-
-      // Shift object temporarily to local panel space for clamping
-      const originalLeft = obj.left ?? 0;
-      const originalTop = obj.top ?? 0;
-      obj.set({
-        left: originalLeft - panelOffsetX,
-        top: originalTop - panelOffsetY
-      });
-      obj.setCoords();
-
-      if (obj.__restrictToSafe && sz.safe) {
-        clampObjectToSafeZone(obj, panelW, panelH, sz);
-      } else {
-        clampObjectToLimits(obj, panelW, panelH, sz);
-      }
-
-      // Shift back to master canvas coordinates
-      obj.set({
-        left: (obj.left ?? 0) + panelOffsetX,
-        top: (obj.top ?? 0) + panelOffsetY
-      });
-      obj.setCoords();
+      // Perform snapping and boundaries clamping (including object-to-object alignment guides)
+      performSnappingAndClamping(
+        obj,
+        canvas,
+        currentViewRef.current,
+        rules,
+        offsetsRef.current,
+        width,
+        height,
+        activeGuideLinesRef.current
+      );
 
       // 3. Dynamic Offset Recalculation
       if (obj.__anchor) {
@@ -1874,7 +1761,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       const h = canvas.height;
 
       // 2. Draw Snapping Guidelines (screen coordinates)
-      if (showRulersAndGridRef.current && activeGuideLinesRef.current.length > 0) {
+      const activeObj = canvas.getActiveObject();
+      if (activeGuideLinesRef.current.length > 0) {
         activeGuideLinesRef.current.forEach(guide => {
           ctx.save();
           ctx.strokeStyle = '#ff007f'; // neon pink guide line
@@ -1885,8 +1773,15 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
             const gx = guide.x * currentZoom + panX;
             if (gx >= 22) {
               ctx.beginPath();
-              ctx.moveTo(gx, 22);
-              ctx.lineTo(gx, h);
+              if (guide.targetY !== undefined) {
+                const gty = (guide as any).targetY * currentZoom + panY;
+                const activeY = activeObj ? activeObj.getCenterPoint().y * currentZoom + panY : gty;
+                ctx.moveTo(gx, activeY);
+                ctx.lineTo(gx, gty);
+              } else {
+                ctx.moveTo(gx, 22);
+                ctx.lineTo(gx, h);
+              }
               ctx.stroke();
 
               ctx.fillStyle = '#ff007f';
@@ -1900,8 +1795,15 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
             const gy = guide.y * currentZoom + panY;
             if (gy >= 22) {
               ctx.beginPath();
-              ctx.moveTo(22, gy);
-              ctx.lineTo(w, gy);
+              if (guide.targetX !== undefined) {
+                const gtx = (guide as any).targetX * currentZoom + panX;
+                const activeX = activeObj ? activeObj.getCenterPoint().x * currentZoom + panX : gtx;
+                ctx.moveTo(activeX, gy);
+                ctx.lineTo(gtx, gy);
+              } else {
+                ctx.moveTo(22, gy);
+                ctx.lineTo(w, gy);
+              }
               ctx.stroke();
 
               ctx.fillStyle = '#ff007f';
@@ -1915,7 +1817,6 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       }
 
       // 3. Draw Laser Anchor Guidelines for Selected Object
-      const activeObj = canvas.getActiveObject();
       if (activeObj && !(activeObj as any).__isArtboard && (activeObj as any).__anchor) {
         const anchorType = (activeObj as any).__anchor;
         const { panel, panelOffsetX, panelOffsetY, panelW, panelH } = getActivePanelCoords(activeObj);
@@ -2069,17 +1970,30 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
 
     // Notify measurement during live transform
     canvas.on('object:moving',  (e: any) => { if (e.target) notifyMeasure(e.target); });
-    canvas.on('object:scaling', (e: any) => { if (e.target) notifyMeasure(e.target); });
+    canvas.on('object:scaling', (opt: any) => {
+      if (opt.target) notifyMeasure(opt.target);
+      const transform = opt.transform;
+      if (transform) {
+        const nativeEvt = opt.e as MouseEvent;
+        const isShift = nativeEvt?.shiftKey;
+        const isImage = opt.target.type === 'image';
+        if (isImage) {
+          transform.uniform = !isShift;
+        } else {
+          transform.uniform = !!isShift;
+        }
+      }
+    });
     canvas.on('object:rotating',(e: any) => { if (e.target) notifyMeasure(e.target); });
 
     // ── Interaction Context Helper ──────────────────────────────────────────
     const getContext = (opt: any): InteractionContext => {
-      const pointer = canvas.getScenePoint(opt.e as any);
+      const pointer = opt && opt.e ? canvas.getScenePoint(opt.e as any) : { x: 0, y: 0 };
       return {
         canvas,
         pointer,
-        nativeEvent: opt.e as MouseEvent,
-        target: opt.target,
+        nativeEvent: opt && opt.e ? opt.e as MouseEvent : new MouseEvent('mousedown'),
+        target: opt?.target,
         zoom: zoomRef.current,
         pan: panRef.current,
         onPanChange: onPanChangeRef.current,
@@ -2092,10 +2006,73 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     };
 
     // Initialize the active tool inside toolManager initially
-    toolManager.setTool(toolModeRef.current, getContext({ e: new MouseEvent('mousedown') }));
+    toolManager.setTool(toolModeRef.current, {
+      canvas,
+      pointer: { x: 0, y: 0 },
+      nativeEvent: new MouseEvent('mousedown'),
+      zoom: zoomRef.current,
+      pan: panRef.current,
+      onPanChange: onPanChangeRef.current,
+      onZoomChange: onZoomChangeRef.current,
+      onCreationComplete: onCreationCompleteRef.current,
+      saveHistory: saveHistoryRef.current,
+      notifyLayers,
+      configureDesignObject: configureDesignObjectRef.current
+    });
 
     // ── Mouse events for tool modes (decoupled via ToolManager) ──────────────
     canvas.on('mouse:down', (opt) => {
+      const nativeEvt = opt.e as MouseEvent;
+      const targetObj = opt.target;
+      const isAlt = nativeEvt.altKey;
+
+      if (isAlt && targetObj && !(targetObj as any).__isArtboard && toolModeRef.current === 'select') {
+        const originalLeft = targetObj.left;
+        const originalTop = targetObj.top;
+
+        targetObj.clone([
+          '__id',
+          '__layerName',
+          '__panel',
+          '__anchor',
+          '__restrictToSafe',
+          '__productionLocked',
+          '__offsetXInches',
+          '__offsetYInches'
+        ]).then((cloned: fabric.FabricObject) => {
+          // Restore custom properties explicitly to be absolutely safe
+          (cloned as any).__panel = (targetObj as any).__panel;
+          (cloned as any).__anchor = (targetObj as any).__anchor;
+          (cloned as any).__restrictToSafe = (targetObj as any).__restrictToSafe;
+          (cloned as any).__productionLocked = (targetObj as any).__productionLocked;
+          (cloned as any).__offsetXInches = (targetObj as any).__offsetXInches;
+          (cloned as any).__offsetYInches = (targetObj as any).__offsetYInches;
+
+          cloned.set({
+            __id: `${targetObj.type}-${Date.now()}`,
+            __layerName: `${(targetObj as any).__layerName || 'Layer'} (Copy)`
+          });
+
+          // Reset the original target position in case it shifted during clone promise delay
+          targetObj.set({
+            left: originalLeft,
+            top: originalTop
+          });
+          targetObj.setCoords();
+
+          canvas.add(cloned);
+          canvas.setActiveObject(cloned);
+
+          const transform = (canvas as any)._currentTransform;
+          if (transform) {
+            transform.target = cloned;
+          }
+          canvas.requestRenderAll();
+          saveHistoryRef.current();
+          notifyLayers();
+        });
+      }
+
       toolManager.onPointerDown(getContext(opt));
     });
 
@@ -2105,6 +2082,10 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
 
     canvas.on('mouse:up', (opt) => {
       toolManager.onPointerUp(getContext(opt));
+      if (activeGuideLinesRef.current.length > 0) {
+        activeGuideLinesRef.current.length = 0;
+        canvas.requestRenderAll();
+      }
     });
 
     // ── Wheel zoom ───────────────────────────────────────────────────────────

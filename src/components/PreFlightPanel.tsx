@@ -87,7 +87,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       sleeveWidth: 10, sleeveHeight: 15,
       collarWidth: 14, collarHeight: 8
     },
-    sizeStep: 2,
+    sizeStep: 1, // 1" per step — grading table supersedes this for standard sizes
     supportedSizes: ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'],
     files: {
       front: '/templates/tshirt/front.svg',
@@ -156,26 +156,26 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   }, [project.apparelType]);
 
   // ─── Garment Dimension Helper ──────────────────────────────────────────────
+  // Uses the production grading table (1" per step, XS=19"→3XL=25").
+  // Width and height scale proportionally (linked, user confirmed).
   const getGarmentDimensions = (size: string) => {
-    const sizes = activeTemplate.supportedSizes || ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
-    const baseSizeIndex = sizes.indexOf(activeTemplate.baseSize || 'M');
+    const GRADING_WIDTHS: Record<string, number> = {
+      XS: 19, S: 20, M: 21, L: 22, XL: 23, '2XL': 24, XXL: 24, '3XL': 25,
+    };
     const normalizedSize = size === 'XXL' ? '2XL' : size;
-    const currentSizeIndex = sizes.indexOf(normalizedSize);
-    const sizeDiff = currentSizeIndex !== -1 ? currentSizeIndex - baseSizeIndex : 0;
-    const step = activeTemplate.sizeStep || 2;
-    const frontBaseWidth = activeTemplate.baseMeasurements.frontWidth;
-    const frontWidth = frontBaseWidth + sizeDiff * step;
-    const scaleFactor = frontWidth / frontBaseWidth;
-    const getDim = (baseW: number, baseH: number) => ({
-      w: Number((baseW * scaleFactor).toFixed(3)),
-      h: Number((baseH * scaleFactor).toFixed(3))
-    });
     const bm = activeTemplate.baseMeasurements;
+    const baseWidth = bm.frontWidth; // 21" for M
+    const targetWidth = GRADING_WIDTHS[normalizedSize] ?? baseWidth;
+    const scaleFactor = targetWidth / baseWidth;
+    const dim = (baseW: number, baseH: number) => ({
+      w: Number((baseW * scaleFactor).toFixed(3)),
+      h: Number((baseH * scaleFactor).toFixed(3)),
+    });
     return {
-      front: getDim(bm.frontWidth, bm.frontHeight),
-      back: getDim(bm.backWidth, bm.backHeight),
-      sleeves: getDim(bm.sleeveWidth, bm.sleeveHeight),
-      collar: getDim(bm.collarWidth || 14, bm.collarHeight || 8),
+      front:   dim(bm.frontWidth,         bm.frontHeight),
+      back:    dim(bm.backWidth,          bm.backHeight),
+      sleeves: dim(bm.sleeveWidth,        bm.sleeveHeight),
+      collar:  dim(bm.collarWidth || 14,  bm.collarHeight || 8),
     };
   };
 

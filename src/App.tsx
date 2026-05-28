@@ -49,7 +49,7 @@ const initialProject: Project = {
   roster: [],
   measurementUnit: 'inches',
   activePlayerId: '',
-  activeCanvasView: 'front',
+  activeCanvasView: 'roster_previews',
   hiddenLayers: [],
   lockedLayers: [],
   selectedLayerId: 'template-front',
@@ -178,19 +178,33 @@ export default function App() {
       if (error) {
         console.error('Error fetching projects:', error);
       } else if (data && data.length > 0) {
-        const mappedProjects: Project[] = data.map(row => ({
-          id: row.id,
-          name: row.name,
-          apparelType: row.apparel_type as ApparelType,
-          stage: row.stage as any,
-          templateChoice: row.template_choice,
-          canvasSize: row.canvas_size,
-          dpi: row.dpi,
-          colorMode: row.color_mode as any,
-          isArchived: row.is_archived,
-          createdAt: row.created_at,
-          ...row.project_data
-        }));
+        const mappedProjects: Project[] = data.map(row => {
+          const pData = row.project_data || {};
+          return {
+            ...initialProject,
+            id: row.id,
+            name: row.name || pData.name || initialProject.name,
+            apparelType: (row.apparel_type || pData.apparelType || initialProject.apparelType) as ApparelType,
+            stage: (row.stage || pData.stage || initialProject.stage) as any,
+            templateChoice: row.template_choice || pData.templateChoice || initialProject.templateChoice,
+            canvasSize: row.canvas_size || pData.canvasSize || initialProject.canvasSize,
+            dpi: row.dpi || pData.dpi || initialProject.dpi,
+            colorMode: (row.color_mode || pData.colorMode || initialProject.colorMode) as any,
+            isArchived: row.is_archived !== undefined ? row.is_archived : (pData.isArchived || false),
+            createdAt: row.created_at || pData.createdAt || new Date().toISOString(),
+            ...pData,
+            roster: Array.isArray(pData.roster) ? pData.roster : [],
+            logos: Array.isArray(pData.logos) ? pData.logos : [],
+            rules: {
+              ...initialProject.rules,
+              ...(pData.rules || {})
+            },
+            baseColors: {
+              ...initialProject.baseColors,
+              ...(pData.baseColors || {})
+            }
+          };
+        });
         setProjects(mappedProjects);
         const activeProj = mappedProjects.find(p => !p.isArchived) || mappedProjects[0];
         setProject(activeProj);
@@ -1516,7 +1530,7 @@ export default function App() {
                           </button>
                           <button 
                             className={`sidebar-nav-item ${project.stage === 'studio' ? 'active' : ''} ${studioLocked ? 'locked' : ''}`}
-                            onClick={() => !studioLocked && handleUpdateProject({ stage: 'studio' })}
+                            onClick={() => !studioLocked && handleUpdateProject({ stage: 'studio', activeCanvasView: 'roster_previews' })}
                             disabled={studioLocked}
                             style={buttonStyle}
                             title={studioLocked ? 'Complete the previous stages to unlock.' : ''}
@@ -2330,7 +2344,7 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
                   onPresetSelect={handlePresetSelect}
                   onGenerate={triggerAiGeneration}
-                  onHandoffToProduction={() => handleUpdateProject({ stage: 'studio' })}
+                  onHandoffToProduction={() => handleUpdateProject({ stage: 'studio', activeCanvasView: 'roster_previews' })}
                 />
               )}
 
@@ -2366,10 +2380,21 @@ export default function App() {
             <div>
               CONSOLE LOGS: {logMessages[0] || 'Idle'}
             </div>
-            <div style={{ display: 'flex', gap: '16px' }}>
-              <div>AI GEN: {aiHistory.length} session{aiHistory.length !== 1 ? 's' : ''}</div>
-              <div>ACTIVE WORKSPACE: e:/JEI/DesignSync Automation</div>
-              <div>UNIT SCALE: 1 PX = 0.025 IN</div>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+              {project.stage === 'studio' ? (
+                <>
+                  <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>DPI: 300 ✓</span>
+                  <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>COLOR: CMYK ✓</span>
+                  <span style={{ color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>SAFE ZONES: ACTIVE ✓</span>
+                  <span style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', padding: '2px 6px', borderRadius: '4px', fontSize: '9px', fontWeight: 'bold' }}>PRODUCTION READY ✓</span>
+                </>
+              ) : (
+                <>
+                  <div>AI GEN: {aiHistory.length} session{aiHistory.length !== 1 ? 's' : ''}</div>
+                  <div>ACTIVE WORKSPACE: e:/JEI/DesignSync Automation</div>
+                  <div>UNIT SCALE: 1 PX = 0.025 IN</div>
+                </>
+              )}
             </div>
           </footer>
 

@@ -54,30 +54,42 @@ export function getGarmentDimensions(
   template: GarmentTemplate,
   size: string
 ): Record<string, { w: number; h: number }> {
-  const sizes = template.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"];
-  const baseSizeIndex = sizes.indexOf(template.baseSize || "M");
+  // ── Production grading table: 1-inch chest-width step per size ──────────────
+  // Replaces the old sizeStep approach (which used 2" steps — incorrect for
+  // standard athletic apparel). Width and height scale by the same factor.
+  const GRADING_WIDTHS: Record<string, number> = {
+    XS: 19, S: 20, M: 21, L: 22, XL: 23, '2XL': 24, XXL: 24, '3XL': 25,
+  };
+
   const normalizedSize = size === 'XXL' ? '2XL' : size;
-  const currentSizeIndex = sizes.indexOf(normalizedSize);
-  
-  const sizeDiff = currentSizeIndex !== -1 ? currentSizeIndex - baseSizeIndex : 0;
-  
-  const frontBaseWidth = template.baseMeasurements.frontWidth;
-  const frontWidth = frontBaseWidth + sizeDiff * template.sizeStep;
-  const scaleFactor = frontWidth / frontBaseWidth;
+  const frontBaseWidth = template.baseMeasurements.frontWidth; // typically 21 for M
+
+  // Use grading table for standard sizes; fall back to sizeStep for custom templates
+  let scaleFactor: number;
+  if (GRADING_WIDTHS[normalizedSize] !== undefined) {
+    scaleFactor = GRADING_WIDTHS[normalizedSize] / frontBaseWidth;
+  } else {
+    const sizes = template.supportedSizes || ['XS', 'S', 'M', 'L', 'XL', '2XL', '3XL'];
+    const baseSizeIndex = sizes.indexOf(template.baseSize || 'M');
+    const currentSizeIndex = sizes.indexOf(normalizedSize);
+    const sizeDiff = currentSizeIndex !== -1 ? currentSizeIndex - baseSizeIndex : 0;
+    const frontWidth = frontBaseWidth + sizeDiff * template.sizeStep;
+    scaleFactor = frontWidth / frontBaseWidth;
+  }
 
   const getDim = (baseW: number, baseH: number) => ({
     w: Number((baseW * scaleFactor).toFixed(3)),
-    h: Number((baseH * scaleFactor).toFixed(3))
+    h: Number((baseH * scaleFactor).toFixed(3)),
   });
 
   const bm = template.baseMeasurements;
   return {
-    front: getDim(bm.frontWidth, bm.frontHeight),
-    back: getDim(bm.backWidth, bm.backHeight),
-    sleeves: getDim(bm.sleeveWidth, bm.sleeveHeight),
-    'left-sleeve': getDim(bm.sleeveWidth, bm.sleeveHeight),
-    'right-sleeve': getDim(bm.sleeveWidth, bm.sleeveHeight),
-    collar: getDim(bm.collarWidth ?? 14, bm.collarHeight ?? 8),
+    front:          getDim(bm.frontWidth,         bm.frontHeight),
+    back:           getDim(bm.backWidth,          bm.backHeight),
+    sleeves:        getDim(bm.sleeveWidth,        bm.sleeveHeight),
+    'left-sleeve':  getDim(bm.sleeveWidth,        bm.sleeveHeight),
+    'right-sleeve': getDim(bm.sleeveWidth,        bm.sleeveHeight),
+    collar:         getDim(bm.collarWidth ?? 14,  bm.collarHeight ?? 8),
   };
 }
 
@@ -310,11 +322,15 @@ export function exportDimensions(
  * project colors, Style presets (Style DNA), brand logos, and customizable production rules.
  */
 export function generateProductionCanvasStates(project: Project): Record<string, string> {
-  const { baseColors, rules, logos } = project;
-  const prim = baseColors?.primary || '#09090b';
-  const sec = baseColors?.secondary || '#111115';
-  const acc = baseColors?.accent || '#0070f3';
-  const hig = baseColors?.highlight || '#ffffff';
+  const activeProj = project || {};
+  const baseColors = activeProj.baseColors || {};
+  const rules = activeProj.rules || {};
+  const logos = activeProj.logos || [];
+
+  const prim = baseColors.primary || '#09090b';
+  const sec = baseColors.secondary || '#111115';
+  const acc = baseColors.accent || '#0070f3';
+  const hig = baseColors.highlight || '#ffffff';
 
   // Identify logos
   const primaryLogo = logos && logos.length > 0 ? logos[0] : null;

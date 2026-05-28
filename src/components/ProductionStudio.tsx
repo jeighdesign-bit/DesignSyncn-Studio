@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Project, RosterPlayer, SponsorLogo } from '../types';
 import {
   MousePointer2, Type, Square, Hand, Move, Shirt,
-  AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
+  AlignLeft, AlignCenter, AlignRight,
   Shield, Ruler, Users,
-  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin
+  Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin,
+  Search, CheckCircle
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode, setCenterPosition, clampObjectToLimits, clampObjectToSafeZone } from './FabricCanvas';
@@ -16,6 +17,14 @@ import {
   getGarmentDimensions, PX_PER_INCH, type MeasurementUnit, type ObjectBounds,
   type GarmentTemplate, generateProductionCanvasStates
 } from '../lib/measurements';
+import {
+  getArtworkScaleFactor, getTypographyScale, getGarmentScaleFactor,
+} from '../lib/garment-size-engine';
+import {
+  resolvePlayerPanelLayout,
+  batchResolveRoster,
+  resolvePlayerLayout
+} from '../lib/production-engine';
 import * as fabric from 'fabric';
 
 // ─── Dynamic SVG Jersey Thumbnail Component ──────────────────────────────────
@@ -181,7 +190,7 @@ const defaultTemplate: GarmentTemplate = {
     collarWidth: 14,
     collarHeight: 8
   },
-  sizeStep: 2,
+  sizeStep: 1, // 1" per step — grading table in garment-size-engine supersedes this
   supportedSizes: ["XS", "S", "M", "L", "XL", "2XL", "3XL"],
   files: {
     front: "/templates/tshirt/front.svg",
@@ -1793,9 +1802,9 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
               margin: '4px'
             }}>
               <Users size={isMinimal ? 24 : 32} style={{ color: 'var(--accent-blue)', opacity: 0.6, marginBottom: '12px' }} />
-              <h4 style={{ fontSize: isMinimal ? '11px' : '12px', fontWeight: 'bold', color: '#fff', margin: '0 0 6px 0' }}>No roster entries yet</h4>
+              <h4 style={{ fontSize: isMinimal ? '11px' : '12px', fontWeight: 'bold', color: '#fff', margin: '0 0 6px 0' }}>Previewing Master Production Template</h4>
               <p style={{ fontSize: '9.5px', color: 'var(--text-disabled)', lineHeight: 1.4, margin: '0 0 16px 0', maxWidth: '180px' }}>
-                Import a CSV/Excel roster or manually add players.
+                Import roster entries to generate player variations.
               </p>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%', maxWidth: '160px' }}>
@@ -1901,18 +1910,12 @@ const RosterSidebar: React.FC<RosterSidebarProps> = ({
   );
 };
 
-const getSizeScaleFactor = (size: string): number => {
-  switch (size) {
-    case 'XS': return 0.8;
-    case 'S': return 0.87;
-    case 'M': return 0.93;
-    case 'L': return 1.0;
-    case 'XL': return 1.07;
-    case 'XXL': return 1.13;
-    case '3XL': return 1.2;
-    default: return 1.0;
-  }
-};
+/**
+ * Artwork scale factor per size — delegates to GarmentSizeEngine.
+ * Uses 1" chest-width grading table with 50% dampening for artwork elements.
+ */
+const getSizeScaleFactor = (size: string): number =>
+  getArtworkScaleFactor(size);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Main ProductionStudio Component
@@ -1935,6 +1938,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
   const [configTab, setConfigTab] = useState<'workspace' | 'rules'>('workspace');
   const [showExportHUD, setShowExportHUD] = useState(false);
+  const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
+  const [bulkGenerateProgress, setBulkGenerateProgress] = useState(0);
 
 
 
@@ -1986,12 +1991,17 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   // ── Roster Studio States & File Refs ─────────────────────────────────────────
   const rosterInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper scale function
-  const calculateScale = (name: string): number => {
+  // Typography auto-fit: shrinks names that would overflow the safe zone
+  const calculateScale = (name: string, size?: string): number => {
     if (!name) return 1.0;
-    const len = name.trim().length;
-    if (len <= 8) return 1.0;
-    return Math.max(0.4, Math.min(1.0, 8 / len));
+    const safeWidthInches = project.rules.maxTextWidthInches > 0
+      ? project.rules.maxTextWidthInches
+      : 14.0; // fallback: 14" (conservative safe zone for M)
+    const fontHeightInches = project.rules.playerNameHeightInches || 2.0;
+    // Apply artwork scale for the player's size (smaller sizes get slightly smaller text)
+    const artScale = getSizeScaleFactor(size || 'M');
+    const typoScale = getTypographyScale(name, safeWidthInches, fontHeightInches);
+    return artScale * typoScale;
   };
 
   // Field change handler for inline editing
@@ -2001,7 +2011,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         const updatedPlayer = { ...p, [field]: value };
         if (field === 'name') {
           updatedPlayer.name = value.toUpperCase();
-          updatedPlayer.nameScale = calculateScale(value);
+          updatedPlayer.nameScale = calculateScale(value, p.size);
         }
         return updatedPlayer;
       }
@@ -2122,7 +2132,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         name,
         number,
         size,
-        nameScale: calculateScale(name),
+        nameScale: calculateScale(name, size),
         variant: varValue,
         status: 'Mapped'
       };
@@ -2140,23 +2150,75 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 
   // Bulk actions triggers
   const handleBulkGenerate = () => {
-    const updated = project.roster.map(p => ({
-      ...p,
-      status: 'Ready for Export' as const
-    }));
-    onUpdateProject({ 
-      roster: updated,
-      activeCanvasView: 'roster_previews'
-    });
-    alert(`Successfully generated variations for all ${project.roster.length} players! Switch to Roster Previews tab to review.`);
+    if (project.roster.length === 0) {
+      alert('Roster is empty. Please add players first.');
+      return;
+    }
+    setIsGeneratingBulk(true);
+    setBulkGenerateProgress(0);
+
+    let progress = 0;
+    const total = project.roster.length;
+    const interval = Math.max(80, Math.min(300, 1200 / total));
+
+    const step = () => {
+      progress += 1;
+      const pct = Math.round((progress / total) * 100);
+      setBulkGenerateProgress(pct);
+
+      if (progress < total) {
+        setTimeout(step, interval);
+      } else {
+        // Complete generation!
+        const canvasStates = project.canvasStates || generateProductionCanvasStates(project);
+        const resolvedRosterMap = batchResolveRoster(
+          project.roster,
+          project.rules,
+          canvasStates,
+          project.logos,
+          project.name || 'TEAM'
+        );
+
+        // Update nameScale and status for all players from the engine results
+        const updatedRoster = project.roster.map(p => {
+          const resolved = resolvedRosterMap.get(p.id);
+          return {
+            ...p,
+            nameScale: resolved ? resolved.nameScale : p.nameScale,
+            status: 'Ready for Export' as const
+          };
+        });
+
+        onUpdateProject({
+          roster: updatedRoster,
+          activeCanvasView: 'roster_previews'
+        });
+
+        setIsGeneratingBulk(false);
+      }
+    };
+
+    setTimeout(step, interval);
   };
 
 
   const handleBulkSync = () => {
-    const updated = project.roster.map(p => ({
-      ...p,
-      nameScale: calculateScale(p.name)
-    }));
+    const canvasStates = project.canvasStates || generateProductionCanvasStates(project);
+    const resolvedRosterMap = batchResolveRoster(
+      project.roster,
+      project.rules,
+      canvasStates,
+      project.logos,
+      project.name || 'TEAM'
+    );
+
+    const updated = project.roster.map(p => {
+      const resolved = resolvedRosterMap.get(p.id);
+      return {
+        ...p,
+        nameScale: resolved ? resolved.nameScale : p.nameScale
+      };
+    });
     onUpdateProject({ roster: updated });
     
     const canvas = fabricRef.current?.getCanvas();
@@ -2318,106 +2380,64 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   };
 
   // Canvas Synchronizer & Auto Scaling
-  const syncPlayerOnCanvas = useCallback((canvas: fabric.Canvas, player: RosterPlayer, previousPlayer?: RosterPlayer) => {
+  const syncPlayerOnCanvas = useCallback((canvas: fabric.Canvas, player: RosterPlayer, _previousPlayer?: RosterPlayer) => {
     if (!canvas || !player) return;
-    const nameToSet = player.name.toUpperCase();
-    const numberToSet = player.number;
+
+    const activeView = project.activeCanvasView === 'full' ? 'front' : project.activeCanvasView;
+    const canvasObjects = canvas.getObjects().filter(o => !(o as any).__isArtboard);
+
+    // Run the production engine to resolve panel objects!
+    const resolvedObjects = resolvePlayerPanelLayout(
+      player,
+      project.rules,
+      canvasObjects,
+      activeView,
+      project.logos,
+      project.name || 'TEAM'
+    );
 
     let canvasChanged = false;
-
     canvas.getObjects().forEach((obj: any) => {
       if (obj.__isArtboard) return;
-      if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
-        // Cache master template placeholder text
-        if (obj.__originalText === undefined) {
-          obj.__originalText = obj.text || '';
-        }
 
-        const templateText = obj.__originalText || '';
-        const textVal = templateText.trim().toUpperCase();
-
-        const isName = obj.__isNameText ||
-          textVal === 'SURNAME' ||
-          textVal === 'PLAYER NAME' ||
-          textVal === 'NAME' ||
-          textVal.includes('{{PLAYER_NAME}}') ||
-          (previousPlayer && textVal === previousPlayer.name.toUpperCase()) ||
-          project.roster.some(p => p.name.toUpperCase() === textVal);
-
-        const isNumber = obj.__isNumberText ||
-          textVal === '00' ||
-          textVal === 'PLAYER NUMBER' ||
-          textVal === 'NUMBER' ||
-          textVal.includes('{{PLAYER_NUMBER}}') ||
-          (previousPlayer && textVal === previousPlayer.number) ||
-          project.roster.some(p => p.number === textVal);
-
-        let newText = templateText;
-
-        if (isName) {
-          obj.__isNameText = true;
-          if (newText.includes('{{PLAYER_NAME}}')) {
-            newText = newText.replace(/\{\{PLAYER_NAME\}\}/gi, nameToSet);
-          } else {
-            newText = nameToSet;
-          }
-          canvasChanged = true;
-
-          // Typography auto-scaling & Safe zones
-          const maxTextWidthInches = project.rules.maxTextWidthInches || 18;
-          const maxTextWidthPx = maxTextWidthInches * 40;
-          
-          // Use temporary text width for scaling before setting
-          const oldText = obj.text;
-          obj.text = newText;
-          const currentWidth = obj.width;
-          obj.text = oldText; // Restore temporarily
-
-          if (currentWidth > 0) {
-            const fittedScale = Math.min(1.0, maxTextWidthPx / currentWidth);
-            const finalScale = fittedScale * player.nameScale;
-            obj.set({ scaleX: finalScale });
-          }
-
-          if (project.rules.autoCenter) {
-            if (obj.originX === 'center') {
-              obj.set({ left: canvas.width / 2 });
-            } else {
-              obj.set({ left: (canvas.width - obj.width * obj.scaleX) / 2 });
-            }
-          }
-        } else if (isNumber) {
-          obj.__isNumberText = true;
-          if (newText.includes('{{PLAYER_NUMBER}}')) {
-            newText = newText.replace(/\{\{PLAYER_NUMBER\}\}/gi, numberToSet);
-          } else {
-            newText = numberToSet;
-          }
-          canvasChanged = true;
-
-          if (project.rules.autoCenter) {
-            if (obj.originX === 'center') {
-              obj.set({ left: canvas.width / 2 });
-            } else {
-              obj.set({ left: (canvas.width - obj.width * obj.scaleX) / 2 });
-            }
-          }
-        }
-
-        // Replace other general placeholders
-        if (newText.includes('{{TEAM_NAME}}')) {
-          newText = newText.replace(/\{\{TEAM_NAME\}\}/gi, (project.name || 'TEAM').toUpperCase());
+      const resolved = resolvedObjects.find(r => r.__id === obj.__id || (r.type === obj.type && r.__layerName === obj.__layerName));
+      if (resolved) {
+        if (resolved.text !== undefined && obj.text !== resolved.text) {
+          obj.set({ text: resolved.text });
           canvasChanged = true;
         }
-        if (newText.includes('{{PLAYER_SIZE}}')) {
-          newText = newText.replace(/\{\{PLAYER_SIZE\}\}/gi, player.size || 'M');
+        if (resolved.fontSize !== undefined && obj.fontSize !== resolved.fontSize) {
+          obj.set({ fontSize: resolved.fontSize });
+          canvasChanged = true;
+        }
+        if (resolved.scaleX !== undefined && obj.scaleX !== resolved.scaleX) {
+          obj.set({ scaleX: resolved.scaleX });
+          canvasChanged = true;
+        }
+        if (resolved.scaleY !== undefined && obj.scaleY !== resolved.scaleY) {
+          obj.set({ scaleY: resolved.scaleY });
+          canvasChanged = true;
+        }
+        if (resolved.left !== undefined && obj.left !== resolved.left) {
+          obj.set({ left: resolved.left });
+          canvasChanged = true;
+        }
+        if (resolved.top !== undefined && obj.top !== resolved.top) {
+          obj.set({ top: resolved.top });
+          canvasChanged = true;
+        }
+        if (resolved.visible !== undefined && obj.visible !== resolved.visible) {
+          obj.set({ visible: resolved.visible });
           canvasChanged = true;
         }
 
-        if (obj.text !== newText) {
-          obj.set({ text: newText });
-          canvasChanged = true;
-        }
+        // Keep internal references
+        obj.__anchor = resolved.__anchor;
+        obj.__offsetXInches = resolved.__offsetXInches;
+        obj.__offsetYInches = resolved.__offsetYInches;
+        obj.__isNameText = resolved.__isNameText;
+        obj.__isNumberText = resolved.__isNumberText;
+
         obj.setCoords();
       }
     });
@@ -2426,7 +2446,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       canvas.requestRenderAll();
       fabricRef.current?.saveHistory();
     }
-  }, [project.roster, project.rules.maxTextWidthInches, project.rules.autoCenter]);
+  }, [project.activeCanvasView, project.rules, project.logos, project.name]);
 
   const prevPlayerRef = useRef<RosterPlayer | undefined>(undefined);
 
@@ -2677,12 +2697,17 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         }
         setToolMode('select');
         setPanelSelectorOpen(false);
+        
+        // Escape FOCUS EDITOR to return to previews grid!
+        if (project.activeCanvasView !== 'roster_previews') {
+          onUpdateProject({ activeCanvasView: 'roster_previews' });
+        }
       }
     };
 
     window.addEventListener('keydown', handleEscapeKey);
     return () => window.removeEventListener('keydown', handleEscapeKey);
-  }, []);
+  }, [project.activeCanvasView]);
 
   const handleSizeChange = (newSize: string) => {
     if (activePlayer) {
@@ -2803,8 +2828,9 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   // ─────────────────────────────────────────────────────────────────────────
   const getGarmentPanels = () => {
     const type = project.apparelType || 'tshirt';
+    let panels = [];
     if (type === 'hoodie') {
-      return [
+      panels = [
         { id: 'front', label: 'Front Panel' },
         { id: 'back', label: 'Back Panel' },
         { id: 'sleeves', label: 'Sleeves' },
@@ -2812,14 +2838,14 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         { id: 'pocket', label: 'Pocket' }
       ];
     } else if (type === 'jersey') {
-      return [
+      panels = [
         { id: 'front', label: 'Front Panel' },
         { id: 'back', label: 'Back Panel' },
         { id: 'collar', label: 'Collar' },
         { id: 'side-panels', label: 'Side Panels' }
       ];
     } else if (type === 'compression') {
-      return [
+      panels = [
         { id: 'front', label: 'Front Panel' },
         { id: 'back', label: 'Back Panel' },
         { id: 'arm-panels', label: 'Arm Panels' },
@@ -2827,13 +2853,17 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       ];
     } else {
       // Default / T-shirt
-      return [
+      panels = [
         { id: 'front', label: 'Front Panel' },
         { id: 'back', label: 'Back Panel' },
         { id: 'sleeves', label: 'Sleeves' },
         ...(activeTemplate.files['collar'] ? [{ id: 'collar', label: 'Collar / Neckline' }] : [])
       ];
     }
+    return [
+      { id: 'roster_previews', label: 'All Previews Grid 🌟' },
+      ...panels
+    ];
   };
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -2866,6 +2896,52 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         {/* Top Bar: View Tabs + Canvas Controls */}
         <div className="studio-topbar">
 
+          {/* View mode toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '2px', marginLeft: '12px' }}>
+            <button
+              onClick={() => onUpdateProject({ activeCanvasView: 'roster_previews' })}
+              style={{
+                background: currentView === 'roster_previews' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                border: 'none',
+                color: currentView === 'roster_previews' ? '#fff' : 'rgba(255,255,255,0.5)',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s',
+              }}
+            >
+              <Users size={11} />
+              <span>Overview</span>
+            </button>
+            <button
+              onClick={() => {
+                onUpdateProject({ activeCanvasView: 'front' });
+              }}
+              style={{
+                background: currentView !== 'roster_previews' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                border: 'none',
+                color: currentView !== 'roster_previews' ? '#fff' : 'rgba(255,255,255,0.5)',
+                fontSize: '10px',
+                fontWeight: 'bold',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                transition: 'all 0.15s',
+              }}
+            >
+              <Shirt size={11} />
+              <span>Focus Editor</span>
+            </button>
+          </div>
+
           <div style={{ flex: 1 }} />
 
           {/* Zoom Level Display */}
@@ -2895,11 +2971,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
             </span>
           </div>
 
-          {/* History (Undo/Redo) controls */}
-          <div className="studio-ctrl-group">
-            <button className="studio-ctrl-icon-btn" onClick={() => fabricRef.current?.undo()} title="Undo (Ctrl+Z)"><Undo2 size={13} /></button>
-            <button className="studio-ctrl-icon-btn" onClick={() => fabricRef.current?.redo()} title="Redo (Ctrl+Shift+Z)"><Redo2 size={13} /></button>
-          </div>
+
 
           {/* Export Queue trigger */}
           <div className="studio-ctrl-group" style={{ paddingLeft: '4px' }}>
@@ -3287,7 +3359,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               {currentView === 'roster_previews' ? (
                 <RosterPreviewsGrid
                   project={project}
-                  getSizeScaleFactor={getSizeScaleFactor}
+                  onUpdateProject={onUpdateProject}
+                  activeTemplate={activeTemplate}
                 />
               ) : (
                 <FabricCanvas
@@ -3635,18 +3708,101 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         </div>
       )}
 
+      {/* ── Batch Generation progress bar overlay ── */}
+      {isGeneratingBulk && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(5, 5, 10, 0.85)',
+          backdropFilter: 'blur(12px)',
+          zIndex: 99999,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '40px',
+        }}>
+          <style>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
+          <div style={{
+            background: '#0d0d15',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+            borderRadius: '16px',
+            padding: '32px',
+            maxWidth: '480px',
+            width: '100%',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.8)',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '24px'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <div style={{
+                width: '64px',
+                height: '64px',
+                borderRadius: '50%',
+                border: '3px solid rgba(59, 158, 255, 0.1)',
+                borderTopColor: '#3b9eff',
+                animation: 'spin 1s linear infinite'
+              }} />
+            </div>
+            
+            <div>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 'bold', color: '#fff' }}>
+                Master-Template Production Engine
+              </h3>
+              <p style={{ margin: '8px 0 0', fontSize: '13px', color: 'var(--text-secondary)' }}>
+                Resolving player layouts, aligning typography constraints, and baking logo mappings...
+              </p>
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', fontFamily: 'monospace' }}>
+                <span style={{ color: '#3b9eff', fontWeight: 'bold' }}>{bulkGenerateProgress}% COMPLETE</span>
+                <span style={{ color: 'var(--text-disabled)' }}>
+                  {Math.round((bulkGenerateProgress / 100) * project.roster.length)} / {project.roster.length} PLAYERS
+                </span>
+              </div>
+              <div style={{
+                height: '8px',
+                background: 'rgba(255,255,255,0.05)',
+                borderRadius: '4px',
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.02)'
+              }}>
+                <div style={{
+                  height: '100%',
+                  width: `${bulkGenerateProgress}%`,
+                  background: 'linear-gradient(90deg, #0070f3, #3b9eff)',
+                  boxShadow: '0 0 12px rgba(59, 158, 255, 0.5)',
+                  borderRadius: '4px',
+                  transition: 'width 0.1s ease-out'
+                }} />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
 
 interface RosterPreviewsGridProps {
   project: Project;
-  getSizeScaleFactor: (size: string) => number;
+  onUpdateProject: (patch: Partial<Project>) => void;
+  activeTemplate: GarmentTemplate;
 }
 
 const RosterPreviewsGrid: React.FC<RosterPreviewsGridProps> = ({
   project,
-  getSizeScaleFactor
+  onUpdateProject,
+  activeTemplate
 }) => {
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(project.activePlayerId || (project.roster[0]?.id || null));
 
@@ -3659,166 +3815,465 @@ const RosterPreviewsGrid: React.FC<RosterPreviewsGridProps> = ({
     }
   }, [project.activePlayerId, project.roster, selectedPlayerId]);
 
-  const activePlayer = project.roster.find(p => p.id === selectedPlayerId) || project.roster[0];
+  const activePlayer = project.roster.find(p => p.id === selectedPlayerId) || project.roster[0] || {
+    id: 'placeholder',
+    name: 'SURNAME',
+    number: '00',
+    size: 'M',
+    nameScale: 1.0,
+    variant: 'Variant A',
+    status: 'Mapped'
+  };
 
-  // Compile default states or fetch project canvasStates
   const canvasStates = React.useMemo(() => {
     return project.canvasStates || generateProductionCanvasStates(project);
   }, [project]);
-
-  if (project.roster.length === 0) {
-    return (
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        height: '100%',
-        color: 'var(--text-disabled)',
-        gap: '8px'
-      }}>
-        <Users size={32} style={{ opacity: 0.6 }} />
-        <span style={{ fontSize: '12px' }}>Roster is empty. Add players to see previews.</span>
-      </div>
-    );
-  }
 
   return (
     <div style={{
       display: 'flex',
       flexDirection: 'column',
       height: '100%',
-      background: '#07070a',
+      background: '#050508',
       color: '#fff',
-      padding: '16px',
+      padding: '24px',
       boxSizing: 'border-box',
-      overflowY: 'auto'
+      overflowY: 'auto',
+      gap: '24px'
     }}>
-      {/* Roster list switcher at top */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexShrink: 0 }}>
-        <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Select Player Preview:</span>
-        <select
-          value={selectedPlayerId || ''}
-          onChange={(e) => setSelectedPlayerId(e.target.value)}
-          style={{
-            background: '#0f0f14',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: '4px',
-            padding: '4px 8px',
-            fontSize: '11px',
-            color: '#fff',
-            cursor: 'pointer',
-            minWidth: '200px'
-          }}
-        >
-          {project.roster.map(p => (
-            <option key={p.id} value={p.id}>
-              {p.name || 'UNNAMED'} (#{p.number || '0'}) - {p.size} ({p.variant || 'Variant A'})
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {activePlayer && (
-        <div style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          background: '#0a0a0f',
-          border: '1px solid rgba(255,255,255,0.04)',
-          borderRadius: '8px',
-          padding: '16px',
-          boxSizing: 'border-box'
-        }}>
-          {/* Header Info */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '10px', marginBottom: '10px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: 'var(--accent-blue)' }}>#{activePlayer.number || '0'}</span>
-                <span>{activePlayer.name || 'UNNAMED'}</span>
-              </h3>
-              <div style={{ display: 'flex', gap: '8px', marginTop: '4px', fontSize: '11px', color: 'var(--text-disabled)' }}>
-                <span>Size: <strong style={{ color: '#fff' }}>{activePlayer.size}</strong></span>
-                <span>•</span>
-                <span>Variant: <strong style={{ color: '#fff' }}>{activePlayer.variant || 'Variant A'}</strong></span>
-                <span>•</span>
-                <span>Status: <strong style={{ color: activePlayer.status === 'Ready for Export' ? 'var(--color-success)' : 'var(--accent-blue)' }}>{activePlayer.status || 'Mapped'}</strong></span>
-              </div>
-            </div>
-            {/* Action buttons */}
-            <div style={{ display: 'flex', gap: '6px' }}>
-              <span style={{ fontSize: '9px', fontWeight: 'bold', background: 'rgba(59, 158, 255, 0.1)', color: '#3b9eff', padding: '3px 8px', borderRadius: '4px', border: '1px solid rgba(59, 158, 255, 0.2)' }}>
-                Vector Calibrated
-              </span>
-            </div>
-          </div>
-
-          {/* Side-by-side SVG Panel Previews */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: '20px',
-            alignItems: 'start'
-          }}>
-            {/* Front Panel Preview */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                <span>FRONT PANEL</span>
-                <span style={{ fontFamily: 'monospace', opacity: 0.6 }}>1120 × 1360 (28" × 34")</span>
-              </div>
-              <div style={{ background: '#030305', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', padding: '8px' }}>
-                <PlayerSublimationPreview
-                  player={activePlayer}
-                  canvasState={canvasStates.front || '{"objects":[]}'}
-                  logos={project.logos}
-                  getSizeScaleFactor={getSizeScaleFactor}
-                  viewBoxW={1120}
-                  viewBoxH={1360}
-                  teamName={project.name}
-                />
-              </div>
-            </div>
-
-            {/* Back Panel Preview */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                <span>BACK PANEL</span>
-                <span style={{ fontFamily: 'monospace', opacity: 0.6 }}>1120 × 1360 (28" × 34")</span>
-              </div>
-              <div style={{ background: '#030305', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', padding: '8px' }}>
-                <PlayerSublimationPreview
-                  player={activePlayer}
-                  canvasState={canvasStates.back || '{"objects":[]}'}
-                  logos={project.logos}
-                  getSizeScaleFactor={getSizeScaleFactor}
-                  viewBoxW={1120}
-                  viewBoxH={1360}
-                  teamName={project.name}
-                />
-              </div>
-            </div>
-
-            {/* Sleeves Preview */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              <div style={{ fontSize: '12px', fontWeight: 'bold', color: 'var(--text-secondary)', display: 'flex', justifyContent: 'space-between' }}>
-                <span>SLEEVES PANEL</span>
-                <span style={{ fontFamily: 'monospace', opacity: 0.6 }}>960 × 640 (24" × 16")</span>
-              </div>
-              <div style={{ background: '#030305', borderRadius: '6px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', justifyContent: 'center', padding: '8px' }}>
-                <PlayerSublimationPreview
-                  player={activePlayer}
-                  canvasState={canvasStates.sleeves || '{"objects":[]}'}
-                  logos={project.logos}
-                  getSizeScaleFactor={getSizeScaleFactor}
-                  viewBoxW={960}
-                  viewBoxH={640}
-                  teamName={project.name}
-                />
-              </div>
-            </div>
-          </div>
+      {/* Selector dropdown (only if roster has players) */}
+      {project.roster.length > 0 && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+          <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Select Player Preview:</span>
+          <select
+            value={selectedPlayerId || ''}
+            onChange={(e) => setSelectedPlayerId(e.target.value)}
+            style={{
+              background: '#0f0f14',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: '4px',
+              padding: '6px 12px',
+              fontSize: '11px',
+              color: '#fff',
+              cursor: 'pointer',
+              minWidth: '200px'
+            }}
+          >
+            {project.roster.map(p => (
+              <option key={p.id} value={p.id}>
+                {p.name || 'UNNAMED'} (#{p.number || '0'}) - {p.size} ({p.variant || 'Variant A'})
+              </option>
+            ))}
+          </select>
         </div>
       )}
+
+      {/* Title / Summary block */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.06)', paddingBottom: '16px' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ color: 'var(--accent-blue)', fontFamily: 'monospace' }}>#{activePlayer.number || '0'}</span>
+            <span>{activePlayer.name || 'UNNAMED'}</span>
+          </h2>
+          <div style={{ display: 'flex', gap: '12px', marginTop: '6px', fontSize: '12px', color: 'var(--text-disabled)' }}>
+            <span>Garment Sizing: <strong style={{ color: '#fff' }}>{activePlayer.size}</strong></span>
+            <span>•</span>
+            <span>Production Block: <strong style={{ color: '#fff' }}>{activePlayer.variant || 'Variant A'}</strong></span>
+            <span>•</span>
+            <span>Text Fit: <strong style={{ color: activePlayer.nameScale < 0.7 ? '#ef4444' : '#10b981' }}>{Math.round(activePlayer.nameScale * 100)}% scale</strong></span>
+          </div>
+        </div>
+
+        <div>
+          {project.roster.length > 0 ? (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 'bold',
+              background: 'rgba(16, 185, 129, 0.1)',
+              color: '#10b981',
+              padding: '5px 12px',
+              borderRadius: '6px',
+              border: '1px solid rgba(16, 185, 129, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              <CheckCircle size={12} /> Stamped Pattern Ready
+            </span>
+          ) : (
+            <span style={{
+              fontSize: '11px',
+              fontWeight: 'bold',
+              background: 'rgba(0, 112, 243, 0.1)',
+              color: '#3b9eff',
+              padding: '5px 12px',
+              borderRadius: '6px',
+              border: '1px solid rgba(0, 112, 243, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}>
+              Template Pattern Preview
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Overview Grid Layout */}
+      {(() => {
+        const [hoveredPanel, setHoveredPanel] = useState<string | null>(null);
+
+        return (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '32px',
+            width: '100%',
+            maxWidth: '1280px',
+            margin: '0 auto',
+          }}>
+            {/* TOP: Primary Panels (Front + Back) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(460px, 1fr))',
+              gap: '32px',
+              width: '100%'
+            }}>
+              {/* Front Panel */}
+              <div 
+                onDoubleClick={() => onUpdateProject({ activeCanvasView: 'front' })}
+                onMouseEnter={() => setHoveredPanel('front')}
+                onMouseLeave={() => setHoveredPanel(null)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  cursor: 'zoom-in',
+                  background: '#08080c',
+                  border: hoveredPanel === 'front' ? '1px solid rgba(59, 158, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  boxShadow: hoveredPanel === 'front' ? '0 16px 48px rgba(0, 0, 0, 0.6)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                  transform: hoveredPanel === 'front' ? 'translateY(-4px)' : 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '8.5px', fontWeight: '900', background: 'rgba(59, 158, 255, 0.12)', color: '#3b9eff', border: '1px solid rgba(59, 158, 255, 0.2)', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.05em' }}>PRIMARY</span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#fff', letterSpacing: '0.05em' }}>Front Panel Pattern</span>
+                  </div>
+                  {(() => {
+                    const gradedDims = getGarmentDimensions(activeTemplate, activePlayer.size);
+                    const d = gradedDims.front || { w: 21, h: 30 };
+                    return (
+                      <span style={{ fontSize: '11px', fontFamily: 'monospace', background: 'rgba(59, 158, 255, 0.08)', border: '1px solid rgba(59, 158, 255, 0.15)', padding: '3px 8px', borderRadius: '4px', color: '#3b9eff', fontWeight: 'bold' }}>
+                        {d.w}" × {d.h}" ({activePlayer.size})
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div style={{
+                  position: 'relative',
+                  background: '#030305',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.02)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '24px',
+                  boxShadow: 'inset 0 0 30px rgba(0, 0, 0, 0.8)',
+                  overflow: 'hidden'
+                }}>
+                  <PlayerSublimationPreview
+                    player={activePlayer}
+                    canvasState={canvasStates.front || '{"objects":[]}'}
+                    logos={project.logos}
+                    viewBoxW={1120}
+                    viewBoxH={1360}
+                    teamName={project.name}
+                    projectRules={project.rules}
+                    activeTemplate={activeTemplate}
+                  />
+                  {hoveredPanel === 'front' && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(4, 4, 6, 0.75)',
+                      backdropFilter: 'blur(8px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      border: '1px dashed rgba(59, 158, 255, 0.3)',
+                      borderRadius: '12px',
+                      pointerEvents: 'none',
+                    }}>
+                      Double-click to expand in Focus Mode 🔍
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Back Panel */}
+              <div 
+                onDoubleClick={() => onUpdateProject({ activeCanvasView: 'back' })}
+                onMouseEnter={() => setHoveredPanel('back')}
+                onMouseLeave={() => setHoveredPanel(null)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  cursor: 'zoom-in',
+                  background: '#08080c',
+                  border: hoveredPanel === 'back' ? '1px solid rgba(59, 158, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
+                  borderRadius: '16px',
+                  padding: '20px',
+                  boxShadow: hoveredPanel === 'back' ? '0 16px 48px rgba(0, 0, 0, 0.6)' : '0 8px 32px rgba(0, 0, 0, 0.4)',
+                  transform: hoveredPanel === 'back' ? 'translateY(-4px)' : 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '8.5px', fontWeight: '900', background: 'rgba(59, 158, 255, 0.12)', color: '#3b9eff', border: '1px solid rgba(59, 158, 255, 0.2)', padding: '2px 6px', borderRadius: '4px', letterSpacing: '0.05em' }}>PRIMARY</span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', textTransform: 'uppercase', color: '#fff', letterSpacing: '0.05em' }}>Back Panel Template</span>
+                  </div>
+                  {(() => {
+                    const gradedDims = getGarmentDimensions(activeTemplate, activePlayer.size);
+                    const d = gradedDims.back || { w: 21, h: 30 };
+                    return (
+                      <span style={{ fontSize: '11px', fontFamily: 'monospace', background: 'rgba(59, 158, 255, 0.08)', border: '1px solid rgba(59, 158, 255, 0.15)', padding: '3px 8px', borderRadius: '4px', color: '#3b9eff', fontWeight: 'bold' }}>
+                        {d.w}" × {d.h}" ({activePlayer.size})
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div style={{
+                  position: 'relative',
+                  background: '#030305',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255, 255, 255, 0.02)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '24px',
+                  boxShadow: 'inset 0 0 30px rgba(0, 0, 0, 0.8)',
+                  overflow: 'hidden'
+                }}>
+                  <PlayerSublimationPreview
+                    player={activePlayer}
+                    canvasState={canvasStates.back || '{"objects":[]}'}
+                    logos={project.logos}
+                    viewBoxW={1120}
+                    viewBoxH={1360}
+                    teamName={project.name}
+                    projectRules={project.rules}
+                    activeTemplate={activeTemplate}
+                  />
+                  {hoveredPanel === 'back' && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(4, 4, 6, 0.75)',
+                      backdropFilter: 'blur(8px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      border: '1px dashed rgba(59, 158, 255, 0.3)',
+                      borderRadius: '12px',
+                      pointerEvents: 'none',
+                    }}>
+                      Double-click to expand in Focus Mode 🔍
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* BOTTOM: Secondary Panels (Sleeves, Collar) */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gap: '24px',
+              width: '100%',
+              borderTop: '1px solid rgba(255, 255, 255, 0.05)',
+              paddingTop: '24px'
+            }}>
+              {/* Sleeves Panel */}
+              <div 
+                onDoubleClick={() => onUpdateProject({ activeCanvasView: 'sleeves' })}
+                onMouseEnter={() => setHoveredPanel('sleeves')}
+                onMouseLeave={() => setHoveredPanel(null)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '10px',
+                  cursor: 'zoom-in',
+                  background: '#08080c',
+                  border: hoveredPanel === 'sleeves' ? '1px solid rgba(59, 158, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
+                  borderRadius: '16px',
+                  padding: '16px',
+                  boxShadow: hoveredPanel === 'sleeves' ? '0 12px 36px rgba(0, 0, 0, 0.5)' : '0 6px 24px rgba(0, 0, 0, 0.35)',
+                  transform: hoveredPanel === 'sleeves' ? 'translateY(-2px)' : 'none',
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '8px', fontWeight: '900', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', padding: '1.5px 5px', borderRadius: '3px', letterSpacing: '0.05em' }}>SECONDARY</span>
+                    <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Sleeves Panel Pattern</span>
+                  </div>
+                  {(() => {
+                    const gradedDims = getGarmentDimensions(activeTemplate, activePlayer.size);
+                    const d = gradedDims.sleeves || { w: 24, h: 16 };
+                    return (
+                      <span style={{ fontSize: '11px', fontFamily: 'monospace', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
+                        {d.w}" × {d.h}" ({activePlayer.size})
+                      </span>
+                    );
+                  })()}
+                </div>
+                <div style={{
+                  position: 'relative',
+                  background: '#030305',
+                  borderRadius: '10px',
+                  border: '1px solid rgba(255, 255, 255, 0.02)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '16px',
+                  boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.8)',
+                  overflow: 'hidden'
+                }}>
+                  <PlayerSublimationPreview
+                    player={activePlayer}
+                    canvasState={canvasStates.sleeves || '{"objects":[]}'}
+                    logos={project.logos}
+                    viewBoxW={960}
+                    viewBoxH={640}
+                    teamName={project.name}
+                    projectRules={project.rules}
+                    activeTemplate={activeTemplate}
+                  />
+                  {hoveredPanel === 'sleeves' && (
+                    <div style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'rgba(4, 4, 6, 0.75)',
+                      backdropFilter: 'blur(4px)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      letterSpacing: '0.05em',
+                      textTransform: 'uppercase',
+                      border: '1px dashed rgba(59, 158, 255, 0.3)',
+                      borderRadius: '10px',
+                      pointerEvents: 'none',
+                    }}>
+                      Double-click to expand in Focus Mode 🔍
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Optional Collar Panel */}
+              {activeTemplate.files['collar'] && (
+                <div 
+                  onDoubleClick={() => onUpdateProject({ activeCanvasView: 'collar' })}
+                  onMouseEnter={() => setHoveredPanel('collar')}
+                  onMouseLeave={() => setHoveredPanel(null)}
+                  style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    cursor: 'zoom-in',
+                    background: '#08080c',
+                    border: hoveredPanel === 'collar' ? '1px solid rgba(59, 158, 255, 0.25)' : '1px solid rgba(255, 255, 255, 0.04)',
+                    borderRadius: '16px',
+                    padding: '16px',
+                    boxShadow: hoveredPanel === 'collar' ? '0 12px 36px rgba(0, 0, 0, 0.5)' : '0 6px 24px rgba(0, 0, 0, 0.35)',
+                    transform: hoveredPanel === 'collar' ? 'translateY(-2px)' : 'none',
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  }}
+                >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '8px', fontWeight: '900', background: 'rgba(255,255,255,0.04)', color: 'var(--text-secondary)', border: '1px solid rgba(255,255,255,0.08)', padding: '1.5px 5px', borderRadius: '3px', letterSpacing: '0.05em' }}>SECONDARY</span>
+                      <span style={{ fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Collar Panel Pattern</span>
+                    </div>
+                    {(() => {
+                      const gradedDims = getGarmentDimensions(activeTemplate, activePlayer.size);
+                      const d = gradedDims.collar || { w: 14, h: 8 };
+                      return (
+                        <span style={{ fontSize: '11px', fontFamily: 'monospace', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.05)', padding: '2px 8px', borderRadius: '4px', color: 'var(--text-secondary)' }}>
+                          {d.w}" × {d.h}" ({activePlayer.size})
+                        </span>
+                      );
+                    })()}
+                  </div>
+                  <div style={{
+                    position: 'relative',
+                    background: '#030305',
+                    borderRadius: '10px',
+                    border: '1px solid rgba(255, 255, 255, 0.02)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '16px',
+                    boxShadow: 'inset 0 0 20px rgba(0, 0, 0, 0.8)',
+                    overflow: 'hidden'
+                  }}>
+                    <PlayerSublimationPreview
+                      player={activePlayer}
+                      canvasState={canvasStates.collar || '{"objects":[]}'}
+                      logos={project.logos}
+                      viewBoxW={560}
+                      viewBoxH={320}
+                      teamName={project.name}
+                      projectRules={project.rules}
+                      activeTemplate={activeTemplate}
+                    />
+                    {hoveredPanel === 'collar' && (
+                      <div style={{
+                        position: 'absolute',
+                        inset: 0,
+                        background: 'rgba(4, 4, 6, 0.75)',
+                        backdropFilter: 'blur(4px)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: '#fff',
+                        fontSize: '10px',
+                        fontWeight: 'bold',
+                        letterSpacing: '0.05em',
+                        textTransform: 'uppercase',
+                        border: '1px dashed rgba(59, 158, 255, 0.3)',
+                        borderRadius: '10px',
+                        pointerEvents: 'none',
+                      }}>
+                        Double-click to expand in Focus Mode 🔍
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };
@@ -3827,21 +4282,25 @@ interface PlayerSublimationPreviewProps {
   player: RosterPlayer;
   canvasState: string;
   logos: SponsorLogo[];
-  getSizeScaleFactor: (size: string) => number;
   viewBoxW: number;
   viewBoxH: number;
   teamName?: string;
+  projectRules: any;
+  activeTemplate: GarmentTemplate;
 }
 
 const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
   player,
   canvasState,
   logos,
-  getSizeScaleFactor,
   viewBoxW,
   viewBoxH,
   teamName = 'TEAM',
+  projectRules,
+  activeTemplate
 }) => {
+  const [fallbackPathData, setFallbackPathData] = useState<string | null>(null);
+
   const objects = React.useMemo(() => {
     try {
       if (!canvasState) return [];
@@ -3853,7 +4312,68 @@ const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
     }
   }, [canvasState]);
 
-  const sizeScale = getSizeScaleFactor(player.size);
+  const panelKey = viewBoxW === 1120 ? (objects.some((o: any) => o.__id && o.__id.startsWith('bg-back')) ? 'back' : 'front') : viewBoxW === 960 ? 'sleeves' : 'collar';
+
+  useEffect(() => {
+    // Check if outline is in objects
+    const outlineExists = objects.some((obj: any) => obj.__id && obj.__id.startsWith('artboard-path-'));
+    if (outlineExists) return;
+
+    // Load dynamic path data fallback
+    const fileKey = panelKey === 'sleeves' ? (activeTemplate.files['left-sleeve'] ? 'left-sleeve' : 'sleeves') : panelKey;
+    const url = activeTemplate.files[fileKey as keyof typeof activeTemplate.files];
+    if (!url) return;
+
+    fetch(url)
+      .then(res => res.text())
+      .then(text => {
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(text, 'image/svg+xml');
+        const paths = doc.querySelectorAll('path');
+        let selectedPath = paths[0];
+        for (let i = 0; i < paths.length; i++) {
+          const cls = paths[i].getAttribute('class');
+          if (cls === 'cls-1' || paths[i].getAttribute('fill') === '#fff' || paths[i].getAttribute('fill') === '#ffffff') {
+            selectedPath = paths[i];
+            break;
+          }
+        }
+        if (selectedPath === paths[0] && paths.length > 1) {
+          selectedPath = paths[1];
+        }
+        const pathData = selectedPath?.getAttribute('d') || '';
+        setFallbackPathData(pathData);
+      })
+      .catch(err => console.error('Failed to load fallback outline path:', err));
+  }, [activeTemplate, panelKey, objects]);
+
+  const resolvedObjects = React.useMemo(() => {
+    return resolvePlayerPanelLayout(
+      player,
+      projectRules,
+      objects,
+      panelKey,
+      logos,
+      teamName
+    );
+  }, [player, projectRules, objects, panelKey, logos, teamName]);
+
+  const outlineObj = React.useMemo(() => {
+    const found = resolvedObjects.find((obj: any) => obj.__id && obj.__id.startsWith('artboard-path-'));
+    if (found) return found;
+
+    if (fallbackPathData) {
+      const sizeScale = getGarmentScaleFactor(player.size);
+      return {
+        path: fallbackPathData,
+        left: 0,
+        top: 0,
+        scaleX: sizeScale,
+        scaleY: sizeScale
+      };
+    }
+    return undefined;
+  }, [resolvedObjects, fallbackPathData, player.size]);
 
   const getPathD = (obj: any): string => {
     if (typeof obj.path === 'string') return obj.path;
@@ -3863,6 +4383,9 @@ const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
     return obj.pathData || '';
   };
 
+  const clipId = `garment-clip-${player.id}-${panelKey}-${viewBoxW}-${viewBoxH}`;
+  const hasClip = outlineObj && getPathD(outlineObj);
+
   return (
     <svg
       viewBox={`0 0 ${viewBoxW} ${viewBoxH}`}
@@ -3871,216 +4394,210 @@ const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
         maxWidth: '320px',
         height: 'auto',
         aspectRatio: `${viewBoxW} / ${viewBoxH}`,
-        boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
-        background: '#14141a',
-        borderRadius: '4px'
+        boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
+        background: '#040406',
+        borderRadius: '8px',
+        border: '1px solid rgba(255,255,255,0.06)'
       }}
     >
-      {objects.map((obj: any, idx: number) => {
-        let scaleX = obj.scaleX || 1;
-        let scaleY = obj.scaleY || 1;
-
-        if (obj.visible === false) return null;
-
-        // 1. Text Elements
-        if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
-          const templateText = obj.__originalText || obj.text || '';
-          const textVal = templateText.trim().toUpperCase();
-          const isName = obj.__isNameText || textVal === 'SURNAME' || textVal === 'PLAYER NAME' || textVal === 'NAME' || textVal.includes('{{PLAYER_NAME}}');
-          const isNumber = obj.__isNumberText || textVal === '00' || textVal === '0' || textVal === 'NUMBER' || textVal.includes('{{PLAYER_NUMBER}}');
-
-          let content = templateText;
-          let finalScaleX = scaleX;
-          let finalScaleY = scaleY;
-
-          if (isName) {
-            const rawName = (player.name || 'UNNAMED').toUpperCase();
-            if (content.includes('{{PLAYER_NAME}}')) {
-              content = content.replace(/\{\{PLAYER_NAME\}\}/gi, rawName);
-            } else {
-              content = rawName;
-            }
-            finalScaleX = scaleX * sizeScale * player.nameScale;
-            finalScaleY = scaleY * sizeScale * player.nameScale;
-          } else if (isNumber) {
-            const rawNum = player.number || '0';
-            if (content.includes('{{PLAYER_NUMBER}}')) {
-              content = content.replace(/\{\{PLAYER_NUMBER\}\}/gi, rawNum);
-            } else {
-              content = rawNum;
-            }
-            finalScaleX = scaleX * sizeScale;
-            finalScaleY = scaleY * sizeScale;
-          }
-
-          // Parse other placeholders
-          if (content.includes('{{TEAM_NAME}}')) {
-            content = content.replace(/\{\{TEAM_NAME\}\}/gi, teamName.toUpperCase());
-          }
-          if (content.includes('{{PLAYER_SIZE}}')) {
-            content = content.replace(/\{\{PLAYER_SIZE\}\}/gi, player.size || 'M');
-          }
-
-          let x = obj.left;
-          let y = obj.top;
-          const fontSize = obj.fontSize || 40;
-          const fill = obj.fill || '#ffffff';
-          const fontFamily = obj.fontFamily || 'Inter';
-          const fontWeight = obj.fontWeight || 'bold';
-          const textAnchor = obj.originX === 'center' ? 'middle' : obj.originX === 'right' ? 'end' : 'start';
-
-          let dy = '0.35em';
-          if (obj.originY === 'top') {
-            dy = '0.8em';
-          } else if (obj.originY === 'bottom') {
-            dy = '-0.2em';
-          }
-
-          const transform = obj.angle ? `rotate(${obj.angle}, ${x}, ${y})` : undefined;
-
-          return (
-            <text
-              key={obj.__id || `text-${idx}`}
-              x={x}
-              y={y}
-              fill={fill}
-              fontFamily={fontFamily}
-              fontWeight={fontWeight}
-              fontSize={fontSize}
-              textAnchor={textAnchor}
-              dy={dy}
-              transform={transform}
-              style={{
-                transform: `translate(${x}px, ${y}px) scale(${finalScaleX}, ${finalScaleY}) translate(${-x}px, ${-y}px)`,
-                transformOrigin: `${x}px ${y}px`,
-                whiteSpace: 'pre'
-              }}
-            >
-              {content}
-            </text>
-          );
-        }
-
-        // 2. Image Elements (Logos)
-        if (obj.type === 'image') {
-          const isPrimary = obj.__id === 'logo-primary';
-          const isSleeve = obj.__id === 'logo-sleeve';
-
-          let isVisible = true;
-          if (isPrimary && logos[0]) {
-            const logoId = logos[0].id;
-            isVisible = player.sponsorMapping ? player.sponsorMapping.includes(logoId) : true;
-          } else if (isSleeve && (logos[1] || logos[0])) {
-            const logoId = (logos[1] || logos[0]).id;
-            isVisible = player.sponsorMapping ? player.sponsorMapping.includes(logoId) : true;
-          }
-
-          if (!isVisible) return null;
-
-          const w = (obj.width || 200) * scaleX;
-          const h = (obj.height || 200) * scaleY;
-          let x = obj.left;
-          let y = obj.top;
-
-          if (obj.originX === 'center') x -= w / 2;
-          if (obj.originY === 'center') y -= h / 2;
-
-          const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
-
-          return (
-            <g key={obj.__id || `img-${idx}`} transform={transform}>
-              {obj.src ? (
-                <image
-                  href={obj.src}
-                  x={x}
-                  y={y}
-                  width={w}
-                  height={h}
-                />
-              ) : (
-                <rect
-                  x={x}
-                  y={y}
-                  width={w}
-                  height={h}
-                  fill="rgba(59, 158, 255, 0.15)"
-                  stroke="#3b9eff"
-                  strokeWidth={1}
-                />
-              )}
-            </g>
-          );
-        }
-
-        // 3. Rect shapes
-        if (obj.type === 'rect') {
-          const w = (obj.width || 100) * scaleX;
-          const h = (obj.height || 100) * scaleY;
-          let x = obj.left;
-          let y = obj.top;
-
-          if (obj.originX === 'center') x -= w / 2;
-          if (obj.originY === 'center') y -= h / 2;
-
-          const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
-
-          const isBg = obj.__id && obj.__id.startsWith('bg-');
-
-          return (
-            <rect
-              key={obj.__id || `rect-${idx}`}
-              x={isBg ? 0 : x}
-              y={isBg ? 0 : y}
-              width={isBg ? viewBoxW : w}
-              height={isBg ? viewBoxH : h}
-              fill={obj.fill || 'transparent'}
-              transform={transform}
-            />
-          );
-        }
-
-        // 4. Polygon shapes
-        if (obj.type === 'polygon' && obj.points) {
-          const pointsStr = obj.points.map((p: any) => `${p.x * scaleX + obj.left},${p.y * scaleY + obj.top}`).join(' ');
-          const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
-          return (
-            <polygon
-              key={obj.__id || `poly-${idx}`}
-              points={pointsStr}
-              fill={obj.fill || 'transparent'}
-              transform={transform}
-            />
-          );
-        }
-
-        // 5. Path shapes (Garment outline or decorative curves)
-        if (obj.type === 'path') {
-          const pathD = getPathD(obj);
-          if (!pathD) return null;
-
-          const isOutline = obj.__id && obj.__id.startsWith('artboard-path-');
-          const fill = isOutline ? 'none' : (obj.fill || 'transparent');
-          const stroke = isOutline ? 'rgba(235, 87, 87, 0.8)' : (obj.stroke || 'none');
-          const strokeWidth = isOutline ? 2 : (obj.strokeWidth || 1);
-          const strokeDasharray = isOutline ? '4,4' : undefined;
-
-          const transform = `translate(${obj.left || 0}, ${obj.top || 0}) scale(${scaleX}, ${scaleY})`;
-
-          return (
+      {hasClip && (
+        <defs>
+          <clipPath id={clipId}>
             <path
-              key={obj.__id || `path-${idx}`}
-              d={pathD}
-              fill={fill}
-              stroke={stroke}
-              strokeWidth={strokeWidth}
-              strokeDasharray={strokeDasharray}
-              transform={transform}
+              d={getPathD(outlineObj)}
+              transform={`translate(${outlineObj.left || 0}, ${outlineObj.top || 0}) scale(${outlineObj.scaleX || 1}, ${outlineObj.scaleY || 1})`}
             />
-          );
-        }
+          </clipPath>
+        </defs>
+      )}
 
-        return null;
-      })}
+      <g clipPath={hasClip ? `url(#${clipId})` : undefined}>
+        {/* Pattern white backplate */}
+        {hasClip && (
+          <path
+            d={getPathD(outlineObj)}
+            fill="#ffffff"
+            transform={`translate(${outlineObj.left || 0}, ${outlineObj.top || 0}) scale(${outlineObj.scaleX || 1}, ${outlineObj.scaleY || 1})`}
+          />
+        )}
+
+        {resolvedObjects.map((obj: any, idx: number) => {
+          let scaleX = obj.scaleX || 1;
+          let scaleY = obj.scaleY || 1;
+
+          if (obj.visible === false) return null;
+          if (obj.__isArtboard && obj.__id && obj.__id.startsWith('artboard-rect-')) return null;
+          if (obj.__id && obj.__id.startsWith('artboard-path-')) return null;
+
+          // 1. Text Elements
+          if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
+            let x = obj.left;
+            let y = obj.top;
+            const fontSize = obj.fontSize || 40;
+            const fill = obj.fill || '#ffffff';
+            const fontFamily = obj.fontFamily || 'Inter';
+            const fontWeight = obj.fontWeight || 'bold';
+            const textAnchor = obj.originX === 'center' ? 'middle' : obj.originX === 'right' ? 'end' : 'start';
+
+            let dy = '0.35em';
+            if (obj.originY === 'top') {
+              dy = '0.8em';
+            } else if (obj.originY === 'bottom') {
+              dy = '-0.2em';
+            }
+
+            const transform = obj.angle ? `rotate(${obj.angle}, ${x}, ${y})` : undefined;
+
+            return (
+              <text
+                key={obj.__id || `text-${idx}`}
+                x={x}
+                y={y}
+                fill={fill}
+                fontFamily={fontFamily}
+                fontWeight={fontWeight}
+                fontSize={fontSize}
+                textAnchor={textAnchor}
+                dy={dy}
+                transform={transform}
+                style={{
+                  whiteSpace: 'pre'
+                }}
+              >
+                {obj.text}
+              </text>
+            );
+          }
+
+          // 2. Image Elements (Logos)
+          if (obj.type === 'image') {
+            const w = (obj.width || 200) * scaleX;
+            const h = (obj.height || 200) * scaleY;
+            let x = obj.left;
+            let y = obj.top;
+
+            if (obj.originX === 'center') x -= w / 2;
+            if (obj.originY === 'center') y -= h / 2;
+
+            const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
+
+            return (
+              <g key={obj.__id || `img-${idx}`} transform={transform}>
+                {obj.src ? (
+                  <image
+                    href={obj.src}
+                    x={x}
+                    y={y}
+                    width={w}
+                    height={h}
+                  />
+                ) : (
+                  <rect
+                    x={x}
+                    y={y}
+                    width={w}
+                    height={h}
+                    fill="rgba(59, 158, 255, 0.15)"
+                    stroke="#3b9eff"
+                    strokeWidth={1}
+                  />
+                )}
+              </g>
+            );
+          }
+
+          // 3. Rect shapes
+          if (obj.type === 'rect') {
+            const w = (obj.width || 100) * scaleX;
+            const h = (obj.height || 100) * scaleY;
+            let x = obj.left;
+            let y = obj.top;
+
+            if (obj.originX === 'center') x -= w / 2;
+            if (obj.originY === 'center') y -= h / 2;
+
+            const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
+
+            const isBg = obj.__id && obj.__id.startsWith('bg-');
+
+            return (
+              <rect
+                key={obj.__id || `rect-${idx}`}
+                x={isBg ? 0 : x}
+                y={isBg ? 0 : y}
+                width={isBg ? viewBoxW : w}
+                height={isBg ? viewBoxH : h}
+                fill={obj.fill || 'transparent'}
+                transform={transform}
+              />
+            );
+          }
+
+          // 4. Polygon shapes
+          if (obj.type === 'polygon' && obj.points) {
+            const pointsStr = obj.points.map((p: any) => `${p.x * scaleX + obj.left},${p.y * scaleY + obj.top}`).join(' ');
+            const transform = obj.angle ? `rotate(${obj.angle}, ${obj.left}, ${obj.top})` : undefined;
+            return (
+              <polygon
+                key={obj.__id || `poly-${idx}`}
+                points={pointsStr}
+                fill={obj.fill || 'transparent'}
+                transform={transform}
+              />
+            );
+          }
+
+          // 5. Path shapes
+          if (obj.type === 'path') {
+            const pathD = getPathD(obj);
+            if (!pathD) return null;
+
+            const fill = obj.fill || 'transparent';
+            const stroke = obj.stroke || 'none';
+            const strokeWidth = obj.strokeWidth || 1;
+
+            const transform = `translate(${obj.left || 0}, ${obj.top || 0}) scale(${scaleX}, ${scaleY})`;
+
+            return (
+              <path
+                key={obj.__id || `path-${idx}`}
+                d={pathD}
+                fill={fill}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                transform={transform}
+              />
+            );
+          }
+
+          return null;
+        })}
+      </g>
+
+      {/* Draw the Garment Outline ON TOP of the clipped group as a border stroke */}
+      {outlineObj && (
+        <path
+          d={getPathD(outlineObj)}
+          fill="none"
+          stroke="#4a4a5a"
+          strokeWidth={1.5}
+          transform={`translate(${outlineObj.left || 0}, ${outlineObj.top || 0}) scale(${outlineObj.scaleX || 1}, ${outlineObj.scaleY || 1})`}
+        />
+      )}
+
+      {/* Safe print zone boundaries dashes */}
+      {projectRules?.safeMarginInches > 0 && (
+        <rect
+          x={(projectRules.safeMarginInches) * 40}
+          y={(projectRules.safeMarginInches) * 40}
+          width={viewBoxW - (projectRules.safeMarginInches) * 80}
+          height={viewBoxH - (projectRules.safeMarginInches) * 80}
+          fill="none"
+          stroke="rgba(239, 68, 68, 0.25)"
+          strokeWidth={1}
+          strokeDasharray="4,4"
+        />
+      )}
     </svg>
   );
 };

@@ -7,6 +7,7 @@ export class SelectTool implements CanvasTool {
     ctx.canvas.selection = true;
     ctx.canvas.defaultCursor = 'default';
     ctx.canvas.hoverCursor = 'move';
+    ctx.canvas.setCursor('default');
     ctx.canvas.getObjects().forEach(o => {
       if (!(o as any).__isArtboard) {
         o.selectable = !((o as any).__locked);
