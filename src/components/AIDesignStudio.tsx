@@ -661,7 +661,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             className="ap-topbar-toggle"
             title="Toggle Settings Panel"
           >
-            <PanelRight size={14} style={{ color: rightPanelExpanded ? 'var(--accent-blue)' : '#555' }} />
+            <PanelRight size={14} style={{ color: rightPanelExpanded ? 'var(--accent-blue)' : 'rgba(255,255,255,0.5)' }} />
           </button>
         </div>
 
