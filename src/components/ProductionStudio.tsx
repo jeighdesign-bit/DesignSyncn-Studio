@@ -2845,23 +2845,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
 
         {/* Top Bar: View Tabs + Canvas Controls */}
         <div className="studio-topbar">
-          {/* Panel view tabs */}
-          <div style={{ display: 'flex', gap: '4px', paddingLeft: '8px' }}>
-            {[
-              { id: 'front' as const, label: 'Front Panel' },
-              { id: 'back' as const, label: 'Back Panel' },
-              ...(activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'] ? [{ id: 'sleeves' as const, label: 'Sleeves' }] : []),
-              ...(activeTemplate.files['collar'] ? [{ id: 'collar' as const, label: 'Collar / Neckline' }] : [])
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => onUpdateProject({ activeCanvasView: tab.id })}
-                className={`studio-view-tab ${currentView === tab.id ? 'active' : ''}`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
 
           <div style={{ flex: 1 }} />
 
