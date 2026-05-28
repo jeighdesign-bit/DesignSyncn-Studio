@@ -884,65 +884,555 @@
   background: linear-gradient(90deg, transparent, rgba(121,40,202,0.3), transparent);
 }
 
-/* ── How It Works ──────────────────────────────────────────── */
-.lp-how-section { background: rgba(17,17,21,0.5); }
+/* ── How It Works (n8n-inspired layout) ─────────────────────── */
+.lp-how-section { 
+  background: rgba(10, 10, 12, 0.4); 
+  border-top: 1px solid rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+}
 
-.lp-steps {
+.lp-workflow-container {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 48px;
+  align-items: stretch;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding-top: 20px;
+}
+
+.lp-workflow-steps {
   display: flex;
-  gap: 0;
+  flex-direction: column;
+  gap: 0px;
+}
+
+.lp-workflow-step {
+  display: flex;
+  gap: 20px;
+  cursor: pointer;
+  padding: 16px 20px;
+  border-radius: 16px;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
   position: relative;
 }
 
-.lp-step {
-  flex: 1;
+.lp-workflow-step:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.lp-workflow-step.active {
+  background: rgba(255, 78, 48, 0.04);
+  box-shadow: 
+    inset 0 0 0 1px rgba(255, 78, 48, 0.15),
+    0 10px 30px rgba(0, 0, 0, 0.2);
+}
+
+/* Indicators and Connectors */
+.lp-step-indicator-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
-  text-align: center;
-  padding: 32px 20px;
-  background: #111115;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 24px;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, transform 0.2s;
   position: relative;
-  gap: 14px;
-  margin-right: 16px;
 }
 
-.lp-step:last-child { margin-right: 0; }
-
-.lp-step.active {
-  border-color: rgba(0,112,243,0.4);
-  background: rgba(0,112,243,0.06);
-  transform: translateY(-4px);
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5), 0 0 0 1px rgba(0,112,243,0.1);
+.lp-step-line-top, .lp-step-line-bottom {
+  width: 2px;
+  background: rgba(255, 255, 255, 0.06);
+  flex-grow: 1;
 }
 
-.lp-step:hover:not(.active) {
-  border-color: rgba(255,255,255,0.12);
-  transform: translateY(-2px);
+.lp-workflow-step:first-child .lp-step-line-top {
+  visibility: hidden;
 }
 
-.lp-step-num {
+.lp-workflow-step:last-child .lp-step-line-bottom {
+  visibility: hidden;
+}
+
+.lp-step-bullet {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #111115;
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+.step-bullet-num {
   font-size: 11px;
+  font-weight: 700;
+  color: #8e8e9f;
+}
+
+.step-bullet-icon {
+  display: none;
+  color: #fff;
+}
+
+/* Stepper Active State */
+.lp-workflow-step.active .lp-step-bullet {
+  background: #ff4e30;
+  border-color: #ff4e30;
+  box-shadow: 0 0 16px rgba(255, 78, 48, 0.4);
+}
+
+.lp-workflow-step.active .step-bullet-num {
+  display: none;
+}
+
+.lp-workflow-step.active .step-bullet-icon {
+  display: block;
+}
+
+.lp-workflow-step.active .lp-step-line-top,
+.lp-workflow-step.active .lp-step-line-bottom {
+  background: rgba(255, 78, 48, 0.3);
+}
+
+/* Step content styling */
+.lp-step-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-bottom: 8px;
+}
+
+.lp-step-meta-tag {
+  font-size: 9px;
   font-weight: 800;
   letter-spacing: 0.1em;
-  color: #0070f3;
+  color: #8e8e9f;
+  text-transform: uppercase;
+  transition: color 0.3s ease;
+}
+
+.lp-workflow-step.active .lp-step-meta-tag {
+  color: #ff4e30;
+}
+
+.lp-step-heading {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f4f4f7;
+  margin: 0;
+}
+
+.lp-step-caption {
+  font-size: 13px;
+  color: #8e8e9f;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* Right side preview panel */
+.lp-workflow-preview {
+  background: #0d0d11;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 
+    0 25px 50px -12px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  min-height: 380px;
+  position: sticky;
+  top: 100px;
+}
+
+.lp-preview-top-controls {
+  height: 40px;
+  background: #121217;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  gap: 8px;
+}
+
+.preview-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+.preview-dot.red { background: rgba(255, 78, 48, 0.6); }
+.preview-dot.yellow { background: rgba(245, 166, 35, 0.6); }
+.preview-dot.green { background: rgba(0, 230, 118, 0.6); }
+
+.preview-title-bar {
+  font-size: 10px;
+  font-family: monospace;
+  color: #4c4c5a;
+  margin-left: 8px;
+  letter-spacing: 0.05em;
+}
+
+.lp-preview-screen-body {
+  flex-grow: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  position: relative;
+}
+
+/* ── Interactive Visuals inside Stepper Preview ── */
+.lp-interactive-visual {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: lp-fade-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+/* Step 1 Visual */
+.visual-step-1 {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.workflow-node {
+  background: #161620;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.node-icon {
+  color: #ff4e30;
+}
+
+.node-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.node-desc {
+  font-size: 10px;
+  color: #8e8e9f;
+}
+
+.workflow-connection-line {
+  width: 1px;
+  height: 32px;
+  background: linear-gradient(180deg, #ff4e30, rgba(255,255,255,0.06));
+}
+
+.workflow-settings-card {
+  background: #121217;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  width: 240px;
+  overflow: hidden;
+}
+
+.settings-header {
+  background: rgba(255, 255, 255, 0.02);
+  padding: 6px 12px;
+  font-size: 9px;
+  font-weight: 800;
+  color: #4c4c5a;
+  text-transform: uppercase;
+}
+
+.settings-body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.settings-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8e8e9f;
+}
+
+.settings-item .value {
+  color: #ff4e30;
   font-family: monospace;
 }
 
-.lp-step-title {
-  font-size: 14px;
-  font-weight: 700;
-  color: #f4f4f7;
+/* Step 2 Visual */
+.visual-step-2 {
+  flex-direction: column;
+  gap: 16px;
 }
 
-.lp-step-desc {
-  font-size: 12px;
-  color: #8e8e9f;
-  line-height: 1.5;
+.prompt-bubble {
+  background: rgba(255, 78, 48, 0.1);
+  border: 1px solid rgba(255, 78, 48, 0.2);
+  border-radius: 99px;
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #ff4e30;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
+
+.workflow-connection-line.vertical.animated {
+  background: linear-gradient(180deg, rgba(255,78,48,0.5), rgba(255,78,48,0.1));
+  height: 24px;
+}
+
+.preview-canvas-card {
+  width: 260px;
+  background: #121217;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+}
+
+.canvas-header {
+  height: 28px;
+  padding: 0 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 9px;
+  color: #8e8e9f;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.canvas-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ff4e30;
+  animation: lp-glow-pulse 1.5s infinite;
+}
+
+.canvas-status {
+  color: #ff4e30;
+}
+
+.canvas-preview-grid {
+  height: 120px;
+  position: relative;
+  background: radial-gradient(circle at center, #181824 0%, #0d0d11 100%);
+  overflow: hidden;
+}
+
+.canvas-hex-pattern {
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background-image: 
+    radial-gradient(rgba(255, 78, 48, 0.15) 1px, transparent 0),
+    radial-gradient(rgba(255, 78, 48, 0.15) 1px, transparent 0);
+  background-size: 16px 16px;
+  background-position: 0 0, 8px 8px;
+}
+
+.mesh-layer {
+  position: absolute;
+  top: 0; left: -100%; right: 0; bottom: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,78,48,0.1), transparent);
+  animation: lp-progress-shimmer 2s infinite linear;
+}
+
+/* Step 3 Visual */
+.visual-step-3 {
+  gap: 20px;
+}
+
+.editor-layout-panel {
+  flex: 1.2;
+  background: #121217;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.panel-outline-header {
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 9px;
+  font-weight: 800;
+  color: #4c4c5a;
+  text-transform: uppercase;
+}
+
+.layer-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.layer-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+  font-size: 10px;
+  color: #8e8e9f;
+}
+
+.layer-item.active {
+  background: rgba(255, 78, 48, 0.05);
+  color: #fff;
+}
+
+.layer-lock {
+  margin-left: auto;
+  font-size: 8px;
+  color: #4c4c5a;
+}
+
+.layer-item.active .layer-lock {
+  color: #ff4e30;
+}
+
+.garment-layout-preview {
+  flex: 0.8;
+  height: 120px;
+  background: #111115;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+}
+
+.vector-outline {
+  width: 80px;
+  height: 90px;
+}
+
+/* Step 4 Visual */
+.visual-step-4 {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.csv-uploader-mock {
+  background: #121217;
+  border: 1px dashed rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: #8e8e9f;
+}
+
+.csv-size {
+  font-size: 9px;
+  color: #00e676;
+}
+
+.workflow-connection-line.horizontal.animated {
+  width: 32px;
+  height: 2px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.06), #00e676);
+}
+
+.roster-grid-visualization {
+  display: flex;
+  gap: 12px;
+}
+
+.roster-node {
+  background: #121217;
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 6px;
+  padding: 8px 12px;
+  text-align: center;
+}
+
+.roster-node.active {
+  border-color: #00e676;
+  background: rgba(0, 230, 118, 0.05);
+}
+
+.r-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.r-details {
+  font-size: 8px;
+  color: #4c4c5a;
+  margin-top: 2px;
+}
+
+/* Step 5 Visual */
+.visual-step-5 {
+  flex-direction: column;
+  gap: 16px;
+}
+
+.flight-checker-mock {
+  width: 260px;
+  background: #121217;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.checker-title {
+  font-size: 10px;
+  font-weight: 800;
+  color: #ff4e30;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  text-transform: uppercase;
+}
+
+.check-item {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #8e8e9f;
+  padding: 4px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.03);
+}
+
+.check-item .badge {
+  color: #00e676;
+  font-weight: 700;
+}
+
+.export-download-btn {
+  background: #ff4e30;
+  color: #fff;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(255, 78, 48, 0.25);
+  transition: transform 0.2s;
+}
+
+.export-download-btn:hover {
+  transform: translateY(-1px);
+}
+
 
 /* ── Templates ─────────────────────────────────────────────── */
 .lp-garment-grid {

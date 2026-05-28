@@ -2,7 +2,8 @@ import { useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   ArrowRight, Play, Sparkles, Layers, Sliders, Download,
-  FileText, Zap, CheckCircle, ChevronDown, Star, Users, Cpu, Globe
+  FileText, Zap, CheckCircle, ChevronDown, Star, Users, Cpu, Globe,
+  PlusCircle, Wand2, Palette, UserPlus, ShieldAlert
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -59,11 +60,41 @@ const features = [
 ];
 
 const steps = [
-  { num: '01', title: 'Create Project', desc: 'Name your garment, pick the apparel type, set canvas size & DPI.' },
-  { num: '02', title: 'Generate Design', desc: 'Describe your pattern. AI synthesizes textures and maps them to panels.' },
-  { num: '03', title: 'Customize Layout', desc: 'Fine-tune layers, place logos, adjust production rules and measurements.' },
-  { num: '04', title: 'Prepare Production', desc: 'Upload your roster CSV. Names and numbers auto-scale and align.' },
-  { num: '05', title: 'Export Print-Ready Files', desc: 'Run pre-flight checks and download CMYK-ready SVG / PDF blueprints.' },
+  { 
+    num: '01', 
+    title: 'Create Project', 
+    desc: 'Configure garment presets, templates, color profiles, canvas settings, and target output resolutions.',
+    icon: <PlusCircle size={16} />,
+    tag: 'SETUP'
+  },
+  { 
+    num: '02', 
+    title: 'Synthesize AI Textures', 
+    desc: 'Translate design concepts into production-mapped patterns using high-fidelity spatial presets.',
+    icon: <Wand2 size={16} />,
+    tag: 'INTELLIGENT GENERATION'
+  },
+  { 
+    num: '03', 
+    title: 'Customize Layout Layers', 
+    desc: 'Fine-tune placement parameters, scale graphics, lock essential layout templates, and edit vectors.',
+    icon: <Palette size={16} />,
+    tag: 'LAYER BUILDER'
+  },
+  { 
+    num: '04', 
+    title: 'Automate Garment Roster', 
+    desc: 'Auto-scale roster profiles, check collision margins, and map sponsor logos sequentially.',
+    icon: <UserPlus size={16} />,
+    tag: 'MASS PRODUCTION'
+  },
+  { 
+    num: '05', 
+    title: 'Pre-Flight & Export SVG/PDF', 
+    desc: 'Conduct automatic DPI inspections, verify color profiles, and compile vector blueprints in one-click.',
+    icon: <Download size={16} />,
+    tag: 'PRE-FLIGHT COMPLIANCE'
+  },
 ];
 
 const garments = [
@@ -174,6 +205,119 @@ function FeaturePreview({ type }: { type: string }) {
       <div className="lp-check-row"><CheckCircle size={10} color="#00e676" />Bleed: 0.25" — Ready</div>
     </div>
   );
+  return null;
+}
+
+// ─── Step Preview Panels (n8n Style) ───────────────────────────────────────────
+
+function WorkflowInteractivePreview({ stepIndex }: { stepIndex: number }) {
+  if (stepIndex === 0) {
+    return (
+      <div className="lp-interactive-visual visual-step-1">
+        <div className="workflow-node node-start">
+          <div className="node-icon"><PlusCircle size={16} /></div>
+          <div className="node-content">
+            <div className="node-title">New Project</div>
+            <div className="node-desc">Crewneck Sweatshirt</div>
+          </div>
+        </div>
+        <div className="workflow-connection-line" />
+        <div className="workflow-settings-card">
+          <div className="settings-header"> Garment Dimensions</div>
+          <div className="settings-body">
+            <div className="settings-item"><span>Target DPI</span><span className="value">300 DPI</span></div>
+            <div className="settings-item"><span>Color Profile</span><span className="value">Coated GRACoL CMYK</span></div>
+            <div className="settings-item"><span>Canvas Bounds</span><span className="value">3000 x 3000 px</span></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (stepIndex === 1) {
+    return (
+      <div className="lp-interactive-visual visual-step-2">
+        <div className="prompt-bubble">
+          <Wand2 size={12} className="ai-icon" />
+          <span>&quot;cyberpunk synthwave lines with grid pattern&quot;</span>
+        </div>
+        <div className="workflow-connection-line vertical animated" />
+        <div className="preview-canvas-card">
+          <div className="canvas-header">
+            <div className="canvas-dot" />
+            <span>AI Pattern Engine</span>
+            <span className="canvas-status">Synthesizing...</span>
+          </div>
+          <div className="canvas-preview-grid">
+            <div className="canvas-hex-pattern" />
+            <div className="mesh-layer" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (stepIndex === 2) {
+    return (
+      <div className="lp-interactive-visual visual-step-3">
+        <div className="editor-layout-panel">
+          <div className="panel-outline-header">Layout Layers</div>
+          <div className="layer-list">
+            <div className="layer-item active"><Layers size={11} /><span>Collar Ribbing (Vector)</span><span className="layer-lock">✓</span></div>
+            <div className="layer-item"><Sliders size={11} /><span>Sublimation Texture Layer</span><span className="layer-lock">✓</span></div>
+            <div className="layer-item"><Palette size={11} /><span>Front Logo (Cybercrest_HD)</span><span className="layer-lock">Locked</span></div>
+          </div>
+        </div>
+        <div className="garment-layout-preview">
+          <svg viewBox="0 0 100 100" className="vector-outline">
+            <path d="M 20,20 C 35,12 65,12 80,20 L 90,45 L 80,48 L 78,92 L 22,92 L 20,48 L 10,45 Z" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+            <path d="M 20,20 Q 50,28 80,20" fill="none" stroke="#ff4e30" strokeWidth="1.5" />
+            <circle cx="50" cy="50" r="12" fill="none" stroke="#0070f3" strokeWidth="1" strokeDasharray="3 2" />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+  if (stepIndex === 3) {
+    return (
+      <div className="lp-interactive-visual visual-step-4">
+        <div className="csv-uploader-mock">
+          <UserPlus size={16} />
+          <span>roster_names_sizes.csv</span>
+          <span className="csv-size">48 entries matched</span>
+        </div>
+        <div className="workflow-connection-line horizontal animated" />
+        <div className="roster-grid-visualization">
+          <div className="roster-node active">
+            <div className="r-name">D. GOMEZ</div>
+            <div className="r-details">#10 | XL</div>
+          </div>
+          <div className="roster-node">
+            <div className="r-name">R. SILVA</div>
+            <div className="r-details">#07 | M</div>
+          </div>
+          <div className="roster-node">
+            <div className="r-name">K. TAN</div>
+            <div className="r-details">#22 | L</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (stepIndex === 4) {
+    return (
+      <div className="lp-interactive-visual visual-step-5">
+        <div className="flight-checker-mock">
+          <div className="checker-title"><ShieldAlert size={14} /> Production Pre-Flight</div>
+          <div className="check-item passed"><span>Resolution Check (300+ DPI)</span><span className="badge">PASSED</span></div>
+          <div className="check-item passed"><span>Vector Color Boundaries</span><span className="badge">PASSED</span></div>
+          <div className="check-item passed"><span>Garment Panel Bleed Size</span><span className="badge">PASSED</span></div>
+        </div>
+        <div className="export-download-btn">
+          <Download size={14} />
+          <span>Download Print-Ready ZIP</span>
+        </div>
+      </div>
+    );
+  }
   return null;
 }
 
@@ -329,24 +473,47 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
         <div className="lp-glow-divider" />
         <div className="lp-section-header">
           <div className="lp-section-tag"><Zap size={12} /> Workflow</div>
-          <h2 className="lp-section-h2">From Idea to Print-Ready in 5 Steps</h2>
-          <p className="lp-section-sub">A streamlined production workflow that your entire team can follow.</p>
+          <h2 className="lp-section-h2">A Highly Structured Vector Assembly</h2>
+          <p className="lp-section-sub">A streamlined production pipeline designed to build, automate, and verify garments.</p>
         </div>
-        <div className="lp-steps">
-          {steps.map((s, i) => (
-            <div
-              key={i}
-              className={`lp-step ${activeStep === i ? 'active' : ''}`}
-              onClick={() => setActiveStep(i)}
-            >
-              <div className="lp-step-num">{s.num}</div>
-              <div className="lp-step-content">
-                <div className="lp-step-title">{s.title}</div>
-                <div className="lp-step-desc">{s.desc}</div>
+        
+        <div className="lp-workflow-container">
+          {/* Left Column: Stepper */}
+          <div className="lp-workflow-steps">
+            {steps.map((s, i) => (
+              <div
+                key={i}
+                className={`lp-workflow-step ${activeStep === i ? 'active' : ''}`}
+                onClick={() => setActiveStep(i)}
+              >
+                <div className="lp-step-indicator-wrapper">
+                  <div className="lp-step-line-top" />
+                  <div className="lp-step-bullet">
+                    <span className="step-bullet-num">{i + 1}</span>
+                    <span className="step-bullet-icon">{s.icon}</span>
+                  </div>
+                  <div className="lp-step-line-bottom" />
+                </div>
+                
+                <div className="lp-step-details">
+                  <span className="lp-step-meta-tag">{s.tag}</span>
+                  <h3 className="lp-step-heading">{s.title}</h3>
+                  <p className="lp-step-caption">{s.desc}</p>
+                </div>
               </div>
-              {i < steps.length - 1 && <div className="lp-step-connector" />}
+            ))}
+          </div>
+
+          {/* Right Column: Dynamic Interactive Live Board */}
+          <div className="lp-workflow-preview">
+            <div className="lp-preview-top-controls">
+              <div className="preview-dot red" /><div className="preview-dot yellow" /><div className="preview-dot green" />
+              <span className="preview-title-bar">Vector Pipeline Console – Step 0{activeStep + 1}</span>
             </div>
-          ))}
+            <div className="lp-preview-screen-body">
+              <WorkflowInteractivePreview stepIndex={activeStep} />
+            </div>
+          </div>
         </div>
       </section>
 
@@ -490,3 +657,4 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
     </div>
   );
 }
+
