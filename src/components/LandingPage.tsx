@@ -234,16 +234,53 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
       <section className="lp-hero">
         <div className="lp-hero-glow lp-glow-blue" />
         <div className="lp-hero-glow lp-glow-purple" />
+        
+        {/* Floating Assets */}
+        <div className="lp-floating-asset lp-asset-blueprint">
+          <div className="lp-app-canvas blueprint-grid" style={{ background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '16px', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
+            <svg viewBox="0 0 140 160" className="lp-jersey-svg">
+              <path d="M 28,28 C 45,15 95,15 112,28 L 125,115 L 112,122 L 112,148 L 28,148 L 28,122 L 15,115 Z" fill="rgba(0,112,243,0.08)" stroke="#0070f3" strokeWidth="1.5" />
+              <path d="M 55,28 Q 70,18 85,28" fill="none" stroke="#7928ca" strokeWidth="1.5" />
+              <line x1="28" y1="45" x2="15" y2="80" stroke="#0070f3" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5"/>
+              <line x1="112" y1="45" x2="125" y2="80" stroke="#0070f3" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5"/>
+              <rect x="52" y="70" width="36" height="40" fill="none" stroke="#0070f3" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.6" rx="1"/>
+              <text x="70" y="96" fill="#0070f3" fontSize="18" textAnchor="middle" fontFamily="Outfit" fontWeight="800" opacity="0.9">7</text>
+            </svg>
+          </div>
+        </div>
+
+        <div className="lp-floating-asset lp-asset-card">
+          <div className="lp-app-frame" style={{ boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
+            <div className="lp-app-topbar">
+              <div className="lp-dot red" /><div className="lp-dot yellow" /><div className="lp-dot green" />
+              <span className="lp-app-title" style={{ fontSize: '10px' }}>roster_sync.csv</span>
+            </div>
+            <div className="lp-app-body" style={{ padding: '12px', background: '#0a0a0c' }}>
+              <div className="lp-rule-row" style={{ fontSize: '11px', marginBottom: '8px' }}><span>JAY #7</span><span className="green">✓ 100%</span></div>
+              <div className="lp-rule-row" style={{ fontSize: '11px', marginBottom: '8px' }}><span>MARK #10</span><span className="green">✓ 100%</span></div>
+              <div className="lp-rule-row" style={{ fontSize: '11px' }}><span>LEX #23</span><span className="green">✓ 100%</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div className="lp-floating-asset lp-asset-palette">
+          <div className="lp-card-preview" style={{ background: '#0a0a0c', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', padding: '16px', boxShadow: '0 24px 48px rgba(0,0,0,0.5)' }}>
+            <div className="lp-layer-row"><span className="lp-layer-dot blue" />Front Panel<span className="lp-layer-badge">300 DPI</span></div>
+            <div className="lp-layer-row"><span className="lp-layer-dot purple" />Logo Layer<span className="lp-layer-badge">Locked</span></div>
+            <div className="lp-layer-row"><span className="lp-layer-dot green" />Player Names<span className="lp-layer-badge">Auto-Scale</span></div>
+          </div>
+        </div>
+
         <div className="lp-hero-content">
           <div className="lp-hero-badge">
-            <Sparkles size={12} /> AI-Powered Sublimation Platform
+            <Sparkles size={12} /> Used by 5,000+ teams worldwide
           </div>
           <h1 className="lp-hero-h1">
             From Design<br />
             <span className="lp-gradient-text">to Production.</span>
           </h1>
           <p className="lp-hero-sub">
-            The professional sublimation workspace for design teams. Generate AI garment patterns, customize layouts with real production measurements, automate your entire roster, and export print-ready files — all in one platform.
+            The professional sublimation workspace for design teams. Generate AI garment patterns, customize layouts with real production measurements, automate your roster, and export print-ready files.
           </p>
           <div className="lp-hero-ctas">
             <button className="lp-btn-primary lp-btn-lg" onClick={handlePrimary}>
@@ -261,57 +298,6 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
             <div className="lp-stat"><span className="lp-stat-num">CSV</span><span className="lp-stat-label">Roster Import</span></div>
             <div className="lp-stat-divider" />
             <div className="lp-stat"><span className="lp-stat-num">CMYK</span><span className="lp-stat-label">Print-Ready</span></div>
-          </div>
-        </div>
-
-        <div className="lp-hero-visual">
-          <div className="lp-app-frame">
-            <div className="lp-app-topbar">
-              <div className="lp-dot red" /><div className="lp-dot yellow" /><div className="lp-dot green" />
-              <span className="lp-app-title">designsync_workspace — esports_championship.ds</span>
-            </div>
-            <div className="lp-app-body">
-              <div className="lp-app-sidebar">
-                <div className="lp-side-block">
-                  <div className="lp-side-label"><Sparkles size={8} /> AI Generator</div>
-                  <div className="lp-side-prompt">"cyber hexgrid neon pattern"</div>
-                  <div className="lp-prog"><div className="lp-prog-fill" /></div>
-                </div>
-                <div className="lp-side-block">
-                  <div className="lp-side-label">Production Rules</div>
-                  <div className="lp-rule-row"><span>Collar Offset</span><span className="blue">3.5"</span></div>
-                  <div className="lp-rule-row"><span>Name Height</span><span className="blue">2.0"</span></div>
-                  <div className="lp-rule-row"><span>Number Height</span><span className="blue">8.0"</span></div>
-                </div>
-                <div className="lp-side-block">
-                  <div className="lp-side-label">Roster</div>
-                  <div className="lp-rule-row"><span>JAY #7</span><span className="green">✓</span></div>
-                  <div className="lp-rule-row"><span>MARK #10</span><span className="green">✓</span></div>
-                  <div className="lp-rule-row"><span>LEX #23</span><span className="green">✓</span></div>
-                </div>
-              </div>
-              <div className="lp-app-canvas blueprint-grid">
-                <svg viewBox="0 0 140 160" className="lp-jersey-svg">
-                  {/* Jersey body */}
-                  <path d="M 28,28 C 45,15 95,15 112,28 L 125,115 L 112,122 L 112,148 L 28,148 L 28,122 L 15,115 Z" fill="rgba(0,112,243,0.08)" stroke="#0070f3" strokeWidth="1.5" />
-                  {/* Collar */}
-                  <path d="M 55,28 Q 70,18 85,28" fill="none" stroke="#7928ca" strokeWidth="1.5" />
-                  {/* Shoulder lines */}
-                  <line x1="28" y1="45" x2="15" y2="80" stroke="#0070f3" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5"/>
-                  <line x1="112" y1="45" x2="125" y2="80" stroke="#0070f3" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5"/>
-                  {/* Alignment guides */}
-                  <line x1="35" y1="50" x2="105" y2="50" stroke="#7928ca" strokeWidth="0.5" strokeDasharray="2 3" opacity="0.7"/>
-                  <text x="70" y="47" fill="#7928ca" fontSize="4" textAnchor="middle" fontFamily="monospace">Collar 3.5"</text>
-                  {/* Number area */}
-                  <rect x="52" y="70" width="36" height="40" fill="none" stroke="#0070f3" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.6" rx="1"/>
-                  <text x="70" y="96" fill="#0070f3" fontSize="18" textAnchor="middle" fontFamily="Outfit" fontWeight="800" opacity="0.9">7</text>
-                  {/* Name area */}
-                  <text x="70" y="125" fill="#f4f4f7" fontSize="7" textAnchor="middle" fontFamily="Outfit" fontWeight="700" letterSpacing="2">JAY</text>
-                  <line x1="40" y1="128" x2="100" y2="128" stroke="#0070f3" strokeWidth="0.5" strokeDasharray="2 2" opacity="0.5"/>
-                </svg>
-                <div className="lp-canvas-badge">FRONT PANEL — 2400×2400px @ 300 DPI</div>
-              </div>
-            </div>
           </div>
         </div>
       </section>

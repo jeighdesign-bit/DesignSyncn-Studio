@@ -57,7 +57,7 @@
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
+  border-radius: 99px;
   width: 92%;
   max-width: 1200px;
   margin: 0 auto;
@@ -164,7 +164,7 @@
   background: linear-gradient(135deg, #ff4e30 0%, #ff1c00 100%);
   color: #fff;
   border: 1px solid rgba(255, 78, 48, 0.25);
-  border-radius: 8px;
+  border-radius: 99px;
   font-size: 13px;
   font-weight: 700;
   cursor: pointer;
@@ -186,7 +186,7 @@
 .lp-btn-primary.lp-btn-lg {
   padding: 14px 28px;
   font-size: 15px;
-  border-radius: 10px;
+  border-radius: 99px;
 }
 
 .lp-btn-outline {
@@ -197,7 +197,7 @@
   background: transparent;
   color: #f4f4f7;
   border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 8px;
+  border-radius: 99px;
   font-size: 13px;
   font-weight: 600;
   cursor: pointer;
@@ -213,7 +213,7 @@
 .lp-btn-outline.lp-btn-lg {
   padding: 14px 28px;
   font-size: 15px;
-  border-radius: 10px;
+  border-radius: 99px;
 }
 
 .lp-btn-ghost {
@@ -224,7 +224,7 @@
   background: transparent;
   color: #8e8e9f;
   border: none;
-  border-radius: 8px;
+  border-radius: 99px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
@@ -246,13 +246,47 @@
 .lp-hero {
   position: relative;
   min-height: 92vh;
-  display: grid;
-  grid-template-columns: 1fr 1.1fr;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  gap: 60px;
-  padding: 80px 8% 100px;
+  text-align: center;
+  padding: 120px 8% 100px;
   overflow: hidden;
   border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+
+/* ── Floating Assets ───────────────────────────────────────── */
+.lp-floating-asset {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  animation: lp-float 6s ease-in-out infinite;
+  filter: drop-shadow(0 20px 30px rgba(0,0,0,0.5));
+}
+.lp-asset-blueprint {
+  top: 15%;
+  left: 5%;
+  width: 240px;
+  animation-delay: 0s;
+}
+.lp-asset-ruler {
+  bottom: 20%;
+  left: 8%;
+  width: 180px;
+  animation-delay: -2s;
+}
+.lp-asset-palette {
+  top: 20%;
+  right: 5%;
+  width: 220px;
+  animation-delay: -4s;
+}
+.lp-asset-card {
+  bottom: 15%;
+  right: 8%;
+  width: 260px;
+  animation-delay: -1s;
 }
 
 .lp-hero-glow {
@@ -281,8 +315,11 @@
   z-index: 2;
   display: flex;
   flex-direction: column;
+  align-items: center;
   gap: 28px;
   animation: lp-fade-in 0.8s ease both;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .lp-hero-badge {
@@ -310,17 +347,19 @@
 }
 
 .lp-hero-sub {
-  font-size: 16px;
+  font-size: 18px;
   color: #8e8e9f;
   line-height: 1.7;
-  max-width: 520px;
-  margin: 0;
+  max-width: 600px;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .lp-hero-ctas {
   display: flex;
   gap: 16px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .lp-hero-stats {
@@ -329,6 +368,7 @@
   gap: 20px;
   padding-top: 8px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 .lp-stat {
@@ -591,7 +631,7 @@
 .lp-feature-card {
   background: #111115;
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
+  border-radius: 24px;
   padding: 28px;
   display: flex;
   flex-direction: column;
@@ -862,7 +902,7 @@
   padding: 32px 20px;
   background: #111115;
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 12px;
+  border-radius: 24px;
   cursor: pointer;
   transition: border-color 0.2s, background 0.2s, transform 0.2s;
   position: relative;
@@ -915,7 +955,7 @@
   position: relative;
   background: #111115;
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
+  border-radius: 24px;
   padding: 28px 16px;
   display: flex;
   flex-direction: column;
@@ -969,7 +1009,7 @@
 .lp-testi-card {
   background: #111115;
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
+  border-radius: 24px;
   padding: 28px;
   display: flex;
   flex-direction: column;
@@ -1039,7 +1079,7 @@
 .lp-pricing-card {
   background: #111115;
   border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 16px;
+  border-radius: 24px;
   padding: 32px 28px;
   display: flex;
   flex-direction: column;
