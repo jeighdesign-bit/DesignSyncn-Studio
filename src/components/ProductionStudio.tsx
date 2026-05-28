@@ -2947,7 +2947,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               gap: '10px',
               backdropFilter: 'blur(24px)',
               boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
-              width: '42px',
+              width: '46px',
             }}
           >
             {/* 1. Select Tool */}
@@ -2956,12 +2956,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Selection Tool (V)"
               className={`ap-toolbar-btn ${toolMode === 'select' ? 'active' : ''}`}
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'select' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'select' ? '#0070f3' : 'rgba(255, 255, 255, 0.65)',
+                color: toolMode === 'select' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -2969,9 +2969,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
                 boxShadow: toolMode === 'select' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <MousePointer2 size={14} />
+              <MousePointer2 size={18} />
             </button>
 
             {/* 2. Hand/Pan Tool */}
@@ -2980,12 +2982,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Hand Tool (H)"
               className={`ap-toolbar-btn ${toolMode === 'hand' ? 'active' : ''}`}
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'hand' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'hand' ? '#0070f3' : 'rgba(255, 255, 255, 0.65)',
+                color: toolMode === 'hand' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -2993,9 +2995,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
                 boxShadow: toolMode === 'hand' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Hand size={14} />
+              <Hand size={18} />
             </button>
 
             {/* 3. Move Tool */}
@@ -3004,12 +3008,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Move Tool (M)"
               className={`ap-toolbar-btn ${toolMode === 'move' ? 'active' : ''}`}
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'move' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'move' ? '#0070f3' : 'rgba(255, 255, 255, 0.65)',
+                color: toolMode === 'move' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3017,9 +3021,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
                 boxShadow: toolMode === 'move' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Move size={14} />
+              <Move size={18} />
             </button>
 
             {/* 4. Garment Panel Tool */}
@@ -3029,12 +3035,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 title="Garment Panel Selector"
                 className={`ap-toolbar-btn ${panelSelectorOpen ? 'active' : ''}`}
                 style={{
-                  width: '30px',
-                  height: '30px',
+                  width: '34px',
+                  height: '34px',
                   borderRadius: '50%',
                   border: 'none',
                   background: panelSelectorOpen ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                  color: panelSelectorOpen ? '#0070f3' : 'rgba(255, 255, 255, 0.65)',
+                  color: panelSelectorOpen ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.75)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -3042,9 +3048,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                   transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                   outline: 'none',
                   boxShadow: panelSelectorOpen ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                  padding: 0,
+                  minWidth: 'auto',
                 }}
               >
-                <Shirt size={14} />
+                <Shirt size={18} />
               </button>
 
               {/* Dynamic Panel Selector Popup */}
@@ -3123,12 +3131,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Shape Tool (R)"
               className={`ap-toolbar-btn ${toolMode === 'shape' ? 'active' : ''}`}
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'shape' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'shape' ? '#0070f3' : 'rgba(255, 255, 255, 0.65)',
+                color: toolMode === 'shape' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3136,9 +3144,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
                 boxShadow: toolMode === 'shape' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Square size={14} />
+              <Square size={18} />
             </button>
 
             {/* 6. Text Tool */}
@@ -3147,12 +3157,12 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Text Tool (T)"
               className={`ap-toolbar-btn ${toolMode === 'text' ? 'active' : ''}`}
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'text' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'text' ? '#0070f3' : 'rgba(255, 255, 255, 0.65)',
+                color: toolMode === 'text' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3160,9 +3170,11 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
                 boxShadow: toolMode === 'text' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Type size={14} />
+              <Type size={18} />
             </button>
 
             {/* 7. Upload Tool */}
@@ -3174,21 +3186,23 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Upload Image"
               className="ap-toolbar-btn"
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
-                color: 'rgba(255, 255, 255, 0.65)',
+                color: 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Upload size={14} />
+              <Upload size={18} />
             </button>
 
             {/* Divider */}
@@ -3203,21 +3217,23 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Undo (Ctrl+Z)"
               className="ap-toolbar-btn"
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
-                color: 'rgba(255, 255, 255, 0.65)',
+                color: 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Undo2 size={14} />
+              <Undo2 size={18} />
             </button>
 
             {/* 9. Redo */}
@@ -3229,21 +3245,23 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               title="Redo (Ctrl+Shift+Z)"
               className="ap-toolbar-btn"
               style={{
-                width: '30px',
-                height: '30px',
+                width: '34px',
+                height: '34px',
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
-                color: 'rgba(255, 255, 255, 0.65)',
+                color: 'rgba(255, 255, 255, 0.75)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
+                padding: 0,
+                minWidth: 'auto',
               }}
             >
-              <Redo2 size={14} />
+              <Redo2 size={18} />
             </button>
 
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
