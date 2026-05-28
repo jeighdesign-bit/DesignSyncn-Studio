@@ -817,23 +817,6 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
         </div>
 
-        {/* Canvas Bottom Info Bar — minimal */}
-        <div className="ap-canvas-infobar">
-          <div className="ap-canvas-info-item">
-            <Layers size={10} />
-            <span>{concepts.length > 0 ? `${concepts.length} panels` : 'No panels yet'}</span>
-          </div>
-          <div className="ap-canvas-info-item">
-            <Palette size={10} />
-            <span>{inkMode.toUpperCase()}</span>
-          </div>
-          <div className="ap-canvas-info-item" style={{ marginLeft: 'auto' }}>
-            <span className={`ap-status-dot ${allCompliant ? 'ok' : 'warn'}`} />
-            <span style={{ color: allCompliant ? '#00e676' : '#f59e0b' }}>
-              {allCompliant ? 'Ready' : 'Review needed'}
-            </span>
-          </div>
-        </div>
       </div>
 
       {/* ═══ COLLAPSIBLE RIGHT PANEL (Inspector) ═══════════════════════════════ */}
