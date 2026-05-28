@@ -597,6 +597,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const undoStackRef = useRef<string[]>(initialUndoStack ?? []);
   const redoStackRef = useRef<string[]>(initialRedoStack ?? []);
   const isProcessingHistoryRef = useRef(false);
+  const lastLoadedStateRef = useRef<string | null>(null);
   const activeGuideLinesRef = useRef<{ x?: number; y?: number; label?: string }[]>([]);
   const onCreationCompleteRef = useRef(onCreationComplete);
 
@@ -1135,6 +1136,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
 
     undoStackRef.current = [...undoStackRef.current, state];
     redoStackRef.current = [];
+    lastLoadedStateRef.current = state;
 
     if (onHistoryChangeRef.current) {
       onHistoryChangeRef.current(undoStackRef.current, redoStackRef.current);
@@ -1169,6 +1171,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         if (onHistoryChangeRef.current) {
           onHistoryChangeRef.current([...undoStackRef.current], [...redoStackRef.current]);
         }
+        lastLoadedStateRef.current = previousState;
       } catch (err) {
         console.error('Failed to undo:', err);
       }
@@ -1201,6 +1204,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         if (onHistoryChangeRef.current) {
           onHistoryChangeRef.current([...undoStackRef.current], [...redoStackRef.current]);
         }
+        lastLoadedStateRef.current = nextState;
       } catch (err) {
         console.error('Failed to redo:', err);
       }
@@ -1215,7 +1219,6 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   });
 
   // Watch initialUndoStack changes (e.g. if views switch but canvas doesn't re-initialize)
-  const lastLoadedStateRef = useRef<string | null>(null);
   useEffect(() => {
     // Skip if already processing history (change came from within this canvas)
     if (isProcessingHistoryRef.current) return;
@@ -2172,7 +2175,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         }
       });
       canvas.defaultCursor = 'default';
-      canvas.hoverCursor = 'default';
+      canvas.hoverCursor = 'move';
       canvas.setCursor('default');
     } else if (toolMode === 'move') {
       canvas.selection = true;
