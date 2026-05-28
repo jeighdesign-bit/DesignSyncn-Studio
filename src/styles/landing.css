@@ -46,79 +46,141 @@
 /* ── NAV ───────────────────────────────────────────────────── */
 .lp-nav {
   position: sticky;
-  top: 0;
-  z-index: 100;
+  top: 16px;
+  z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 8%;
-  height: 64px;
-  background: rgba(9, 9, 11, 0.85);
-  backdrop-filter: blur(16px);
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  padding: 0 24px;
+  height: 56px;
+  background: rgba(10, 10, 12, 0.7);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  width: 92%;
+  max-width: 1200px;
+  margin: 0 auto;
+  box-shadow: 
+    0 15px 35px rgba(0, 0, 0, 0.6), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 0 30px rgba(255, 78, 48, 0.03);
+  transition: all 0.3s ease;
+}
+
+.lp-nav:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow: 
+    0 20px 45px rgba(0, 0, 0, 0.7), 
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 40px rgba(255, 78, 48, 0.05);
 }
 
 .lp-nav-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  font-size: 18px;
-  font-weight: 800;
+  gap: 8px;
   color: #f4f4f7;
-  letter-spacing: -0.02em;
-  white-space: nowrap;
-}
-
-.lp-nav-dot {
-  width: 10px;
-  height: 10px;
-  background: linear-gradient(135deg, #0070f3, #7928ca);
-  border-radius: 3px;
-  flex-shrink: 0;
+  user-select: none;
 }
 
 .lp-nav-links {
   display: flex;
-  gap: 32px;
+  gap: 28px;
+  align-items: center;
 }
 
 .lp-nav-links a {
-  color: #8e8e9f;
+  color: #a1a1a6;
   text-decoration: none;
   font-size: 13px;
   font-weight: 500;
-  transition: color 0.15s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: color 0.2s ease;
 }
 
-.lp-nav-links a:hover { color: #f4f4f7; }
+.lp-nav-links a:hover {
+  color: #ffffff;
+}
+
+.lp-nav-chevron {
+  opacity: 0.6;
+  transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.lp-nav-links a:hover .lp-nav-chevron {
+  opacity: 1;
+  transform: translateY(1px);
+}
 
 .lp-nav-actions {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
+}
+
+/* ── GitHub stars badge ── */
+.lp-github-badge {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px 0 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  color: #a1a1a6;
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.lp-github-badge:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+.lp-github-divider {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 0 8px;
+}
+
+.lp-github-stars {
+  color: #f4f4f7;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 /* ── Buttons ───────────────────────────────────────────────── */
 .lp-btn-primary {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 20px;
-  background: #0070f3;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #ff4e30 0%, #ff1c00 100%);
   color: #fff;
-  border: none;
+  border: 1px solid rgba(255, 78, 48, 0.25);
   border-radius: 8px;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+  box-shadow: 
+    0 4px 12px rgba(255, 78, 48, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   font-family: inherit;
 }
 
 .lp-btn-primary:hover {
-  background: #3291ff;
+  background: linear-gradient(135deg, #ff5f44 0%, #ff2e19 100%);
   transform: translateY(-1px);
-  box-shadow: 0 0 20px rgba(0,112,243,0.4);
+  box-shadow: 
+    0 6px 18px rgba(255, 78, 48, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
 .lp-btn-primary.lp-btn-lg {
