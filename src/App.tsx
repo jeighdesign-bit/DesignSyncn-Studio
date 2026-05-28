@@ -10,7 +10,8 @@ import { AIDesignStudio } from './components/AIDesignStudio';
 import { 
   Layers, FileText, Download,
   ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload, ChevronDown,
-  Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy
+  Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy,
+  AlertTriangle
 } from 'lucide-react';
 
 // Default Project Settings
@@ -132,10 +133,7 @@ const createNewProject = (details: {
 export default function App() {
   const [view, setView] = useState<'landing' | 'dashboard' | 'editor'>('landing');
   const [wizardStep, setWizardStep] = useState<number>(1);
-  const [isAnalyzingReferences, setIsAnalyzingReferences] = useState<boolean>(false);
-  const [vectorScanLogs, setVectorScanLogs] = useState<string[]>([]);
-  const [rollWidth, setRollWidth] = useState<string>('63"');
-  const [exportFormat, setExportFormat] = useState<string>('Vector PDF');
+  const [blueprintView, setBlueprintView] = useState<'front' | 'back'>('front');
   
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -239,12 +237,10 @@ export default function App() {
     }
   }, [isModalOpen]);
 
-  // Reset wizard steps and diagnostics logs when active project changes
+  // Reset wizard steps when active project changes
   useEffect(() => {
     if (project?.id) {
       setWizardStep(1);
-      setIsAnalyzingReferences(false);
-      setVectorScanLogs([]);
     }
   }, [project?.id]);
 
@@ -568,57 +564,6 @@ export default function App() {
       logos: prev.logos.filter(l => l.id !== id)
     }));
     addLog('Sponsor logo removed.');
-  };
-
-  const runPreFlightVectorScan = () => {
-    setIsAnalyzingReferences(true);
-    setVectorScanLogs([]);
-    addLog("Pre-flight vector inspection started.");
-    
-    const logs = [
-      `[INIT] Invoking high-fidelity vector diagnostics engine v4.2...`,
-      `[SCAN] Inspecting active apparel template: '${project.apparelType ? project.apparelType.replace('_', ' ').toUpperCase() : 'UNKNOWN'}'`,
-      `[SCAN] Seam margin overlap boundaries: ${project.rules.safeMarginInches}" Safe Margin / ${project.rules.bleedInches}" Seam Bleed`,
-      `[SCAN] Active ink RIP preset: ${project.stylePreference || 'Standard CMYK Sublimation'}`,
-      `[ASSETS] Found ${project.logos.length} graphic references loaded in project library.`
-    ];
-
-    if (project.logos.length === 0) {
-      logs.push(`[WARN] No primary branding or sponsor vector files found. Recommended to load logos before design generation.`);
-      logs.push(`[READY] Diagnostics scan finished with minor warnings. 0 critical print blocks detected.`);
-    } else {
-      project.logos.forEach(logo => {
-        if (logo.resolutionStatus === 'high') {
-          logs.push(`[OK] '${logo.name}' verified as high-res Vector. Vector layers extracted successfully. (DPI: ${logo.dpi})`);
-          logs.push(`[OK] '${logo.name}' anchor inspection: 184 path nodes verified. Seam collision boundaries established.`);
-        } else {
-          logs.push(`[WARN] '${logo.name}' is low resolution (${logo.dpi} DPI). Dye-sublimation RIP requires at least 300 DPI to avoid textile pixelation.`);
-        }
-      });
-      logs.push(`[OK] PANTONE PMS 293C color profile formulas mapped successfully.`);
-      logs.push(`[READY] Pre-flight diagnostics finished. Graphics fully mapped for textile printing!`);
-    }
-
-    let currentLogIndex = 0;
-    const interval = setInterval(() => {
-      if (currentLogIndex < logs.length) {
-        const nextLine = logs[currentLogIndex];
-        const timestampedLine = `[${new Date().toLocaleTimeString()}] ${nextLine}`;
-        setVectorScanLogs(prev => [...prev, timestampedLine]);
-        currentLogIndex++;
-        
-        setTimeout(() => {
-          const consoleEl = document.getElementById('terminal-body-console');
-          if (consoleEl) {
-            consoleEl.scrollTop = consoleEl.scrollHeight;
-          }
-        }, 50);
-      } else {
-        clearInterval(interval);
-        setIsAnalyzingReferences(false);
-        addLog("Pre-flight vector inspection completed.");
-      }
-    }, 450);
   };
 
   const handlePresetSelect = (presetId: string) => {
@@ -1631,49 +1576,73 @@ export default function App() {
               {project.stage === 'brief' && (
                 <div className="brief-workspace-premium">
                   {/* Backdrop glow atmosphere */}
-                  <div className="atmosphere-glow secondary-glow"></div>
-                  <div className="atmosphere-glow primary-glow"></div>
+                  <div className="atmosphere-glow secondary-glow" style={{ zIndex: 1, opacity: 0.18 }}></div>
+                  <div className="atmosphere-glow primary-glow" style={{ zIndex: 1, opacity: 0.18 }}></div>
 
-                  <div className="brief-wizard-header">
+                  <div className="brief-wizard-header" style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 2, position: 'relative' }}>
                     <div className="wizard-title-area">
-                      <span className="wizard-subtitle">PRODUCTION SETUP WIZARD</span>
-                      <h2 className="wizard-title">Configure Dye-Sublimation Print Project</h2>
+                      <span className="wizard-subtitle" style={{ fontSize: '10px', fontWeight: '800', color: 'var(--accent-blue)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Apparel Design Setup</span>
+                      <h2 className="wizard-title" style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0', letterSpacing: '-0.02em', fontFamily: 'Outfit, sans-serif' }}>Create Design Project</h2>
                     </div>
-                    <div className="wizard-steps-timeline">
-                      <div className={`wizard-step-node ${wizardStep === 1 ? 'active' : ''} ${wizardStep > 1 ? 'completed' : ''}`} onClick={() => setWizardStep(1)}>
-                        <span className="step-num">[01]</span>
-                        <span className="step-label">SPECIFICATIONS & IDENTITY</span>
-                        <div className="step-bar" />
-                      </div>
-                      <div className={`wizard-step-node ${wizardStep === 2 ? 'active' : ''} ${wizardStep > 2 ? 'completed' : ''}`} onClick={() => setWizardStep(2)}>
-                        <span className="step-num">[02]</span>
-                        <span className="step-label">ASSET VECTOR DIAGNOSTICS</span>
-                        <div className="step-bar" />
-                      </div>
-                      <div className={`wizard-step-node ${wizardStep === 3 ? 'active' : ''} ${wizardStep > 3 ? 'completed' : ''}`} onClick={() => setWizardStep(3)}>
-                        <span className="step-num">[03]</span>
-                        <span className="step-label">INDUSTRIAL DEFAULTS</span>
-                        <div className="step-bar" />
-                      </div>
+                    <div className="wizard-steps-timeline" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
+                      {[
+                        { step: 1, label: '1. Project Info' },
+                        { step: 2, label: '2. Select Garment' },
+                        { step: 3, label: '3. Upload Assets' }
+                      ].map(node => (
+                        <div 
+                          key={node.step}
+                          className={`wizard-step-node ${wizardStep === node.step ? 'active' : ''} ${wizardStep > node.step ? 'completed' : ''}`} 
+                          onClick={() => setWizardStep(node.step)}
+                          style={{
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: 'flex-start',
+                            position: 'relative',
+                            padding: '4px 8px',
+                            transition: 'all 0.2s',
+                            opacity: wizardStep === node.step ? 1.0 : 0.6
+                          }}
+                        >
+                          <span className="step-label" style={{ fontSize: '11px', fontWeight: '800', color: wizardStep === node.step ? 'var(--accent-blue)' : '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                            {node.label}
+                          </span>
+                          <div 
+                            className="step-bar" 
+                            style={{ 
+                              height: '2px', 
+                              width: '100%', 
+                              background: wizardStep === node.step ? 'var(--accent-blue)' : wizardStep > node.step ? 'var(--color-success)' : 'rgba(255,255,255,0.1)', 
+                              marginTop: '6px',
+                              boxShadow: wizardStep === node.step ? '0 0 8px var(--accent-blue)' : 'none',
+                              transition: 'all 0.2s'
+                            }} 
+                          />
+                        </div>
+                      ))}
                     </div>
                   </div>
 
-                  <div className="brief-grid-layout">
+                  <div className="brief-grid-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '32px', padding: '32px', height: 'calc(100% - 160px)', overflowY: 'auto', boxSizing: 'border-box', zIndex: 2, position: 'relative' }}>
                     {/* LEFT COLUMN: Inputs & Options */}
-                    <div className="brief-column left-column">
+                    <div className="brief-column left-column" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                       
                       {wizardStep === 1 && (
-                        <div className="wizard-step-content animate-fade-in">
-                          <div className="wizard-section-tech">
-                            <h3 className="wizard-section-title">
-                              <span className="section-title-dot" /> [1.1] Project Identity & Metadata
+                        <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                            <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
+                              Project Specifications
                             </h3>
-                            <p className="wizard-section-desc">Define naming and client identifiers for production job tracking.</p>
+                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '28px', lineHeight: '1.5' }}>
+                              Establish the creative details and naming for your custom dye-sublimation project.
+                            </p>
                             
-                            <div className="tech-input-group">
-                              <div className="tech-input-field">
-                                <label htmlFor="project-name">
-                                  <span className="label-code">PRJ_NAME</span> Project Identification Name
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                              <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label htmlFor="project-name" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                  Project Name
                                 </label>
                                 <input
                                   id="project-name"
@@ -1681,13 +1650,35 @@ export default function App() {
                                   className="tech-text-input"
                                   value={project.name}
                                   onChange={(e) => handleUpdateProject({ name: e.target.value })}
-                                  placeholder="e.g. Esports Championship Jersey 2026"
+                                  placeholder="e.g. Neon Strike Esports Jersey 2026"
+                                  style={{
+                                    width: '100%',
+                                    background: 'rgba(255, 255, 255, 0.02)',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderRadius: '12px',
+                                    padding: '14px 18px',
+                                    color: '#fff',
+                                    fontSize: '14px',
+                                    outline: 'none',
+                                    transition: 'all 0.2s',
+                                    boxSizing: 'border-box'
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.style.borderColor = 'var(--accent-blue)';
+                                    e.target.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.2)';
+                                    e.target.style.background = 'rgba(255,255,255,0.03)';
+                                  }}
+                                  onBlur={(e) => {
+                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                                    e.target.style.boxShadow = 'none';
+                                    e.target.style.background = 'rgba(255,255,255,0.02)';
+                                  }}
                                 />
                               </div>
                               
-                              <div className="tech-input-field">
-                                <label htmlFor="team-name">
-                                  <span className="label-code">CLI_TEAM</span> Client / Team Name
+                              <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label htmlFor="team-name" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                  Client / Team Name
                                 </label>
                                 <input
                                   id="team-name"
@@ -1696,133 +1687,67 @@ export default function App() {
                                   value={project.teamName || ''}
                                   onChange={(e) => handleUpdateProject({ teamName: e.target.value })}
                                   placeholder="e.g. Apex Predators Gaming"
+                                  style={{
+                                    width: '100%',
+                                    background: 'rgba(255, 255, 255, 0.02)',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderRadius: '12px',
+                                    padding: '14px 18px',
+                                    color: '#fff',
+                                    fontSize: '14px',
+                                    outline: 'none',
+                                    transition: 'all 0.2s',
+                                    boxSizing: 'border-box'
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.style.borderColor = 'var(--accent-blue)';
+                                    e.target.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.2)';
+                                    e.target.style.background = 'rgba(255,255,255,0.03)';
+                                  }}
+                                  onBlur={(e) => {
+                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                                    e.target.style.boxShadow = 'none';
+                                    e.target.style.background = 'rgba(255,255,255,0.02)';
+                                  }}
                                 />
                               </div>
-                            </div>
-                          </div>
 
-                          <div className="wizard-section-tech">
-                            <h3 className="wizard-section-title">
-                              <span className="section-title-dot" /> [1.2] Garment Silhouette Specification
-                            </h3>
-                            <p className="wizard-section-desc">Select the primary patterns for printing boundaries and seam assembly.</p>
-                            
-                            <div className="garment-tech-grid">
-                              {[
-                                { id: 'esports_jersey', name: 'Esports Jersey', panels: '8 Panels', seam: 'Raglan Sleeve', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )},
-                                { id: 'tshirt', name: 'T-Shirt', panels: '4 Panels', seam: 'Set-in Sleeve', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )},
-                                { id: 'hoodie', name: 'Hoodie', panels: '6 Panels', seam: 'Pocket & Hood Seams', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                                  </svg>
-                                )},
-                                { id: 'longsleeve', name: 'Long Sleeve', panels: '6 Panels', seam: 'Full Arm Cuff', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )},
-                                { id: 'cycling_jersey', name: 'Cycling Jersey', panels: '7 Panels', seam: 'Triple Rear Pockets', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
-                                  </svg>
-                                )},
-                                { id: 'polo_shirt', name: 'Polo Shirt', panels: '5 Panels', seam: 'Collared Placket', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                    <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                                  </svg>
-                                )},
-                                { id: 'compression_wear', name: 'Compression Wear', panels: '10 Panels', seam: 'Flatlock High Elastic', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )},
-                                { id: 'basketball_jersey', name: 'Basketball Jersey', panels: '4 Panels', seam: 'Sleeveless Trim', svg: (
-                                  <svg viewBox="0 0 100 100" className="garment-mini-svg">
-                                    <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-                                  </svg>
-                                )}
-                              ].map(g => (
-                                <div 
-                                  key={g.id}
-                                  className={`garment-tech-card ${project.apparelType === g.id ? 'active' : ''}`}
-                                  onClick={() => handleUpdateProject({ apparelType: g.id })}
-                                >
-                                  <div className="garment-tech-svg-box">{g.svg}</div>
-                                  <div className="garment-tech-info">
-                                    <span className="garment-tech-name">{g.name}</span>
-                                    <span className="garment-tech-meta">{g.panels} · {g.seam}</span>
-                                  </div>
-                                  <div className="garment-tech-indicator" />
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-
-                          <div className="wizard-input-split">
-                            <div className="wizard-section-tech" style={{ flex: 1 }}>
-                              <h3 className="wizard-section-title">
-                                <span className="section-title-dot" /> [1.3] Fit Profile Selection
-                              </h3>
-                              <p className="wizard-section-desc">Applies preset structural grade lines to target body fit curves.</p>
-                              
-                              <div className="tech-select-grid">
-                                {[
-                                  { id: 'Pro Athletic Fit', label: 'Pro Athletic Fit', desc: 'Slim, athletic contour with low drag' },
-                                  { id: 'Loose Street Fit', label: 'Loose Street Fit', desc: 'Standard straight cut streetwear design' },
-                                  { id: 'Oversized Boxy', label: 'Oversized Boxy', desc: 'Relaxed drop-shoulder comfort layout' },
-                                  { id: 'Youth Active Fit', label: 'Youth Active Fit', desc: 'Scaled grades optimized for school/junior sports' }
-                                ].map(f => (
-                                  <div
-                                    key={f.id}
-                                    className={`tech-select-card ${project.templateChoice === f.id ? 'active' : ''}`}
-                                    onClick={() => handleUpdateProject({ templateChoice: f.id })}
-                                  >
-                                    <div className="select-card-bullet" />
-                                    <div className="select-card-texts">
-                                      <span className="select-card-label">{f.label}</span>
-                                      <span className="select-card-desc">{f.desc}</span>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="wizard-section-tech" style={{ flex: 1 }}>
-                              <h3 className="wizard-section-title">
-                                <span className="section-title-dot" /> [1.4] Sublimation RIP Preset
-                              </h3>
-                              <p className="wizard-section-desc">Select ink profiling curves configured for print density optimization.</p>
-                              
-                              <div className="tech-select-grid">
-                                {[
-                                  { id: 'Standard CMYK Sublimation', label: 'Standard Sublimation', desc: '4-color ink limits optimized for standard polyester' },
-                                  { id: 'High-Density Neon / Fluorescent', label: 'High-Density Neon', desc: 'Fluorescent ink mapping for glowing electric vector lines' },
-                                  { id: 'Multi-Layer Custom Ink Process', label: 'Multi-Layer CMYK', desc: 'High-density pigment layer for deep photographic transitions' },
-                                  { id: 'Esports Pro Print', label: 'Esports Pro Print', desc: 'Rich matte finish optimized for heavy active-wear polyester' }
-                                ].map(p => (
-                                  <div
-                                    key={p.id}
-                                    className={`tech-select-card ${project.stylePreference === p.id ? 'active' : ''}`}
-                                    onClick={() => handleUpdateProject({ stylePreference: p.id })}
-                                  >
-                                    <div className="select-card-bullet" />
-                                    <div className="select-card-texts">
-                                      <span className="select-card-label">{p.label}</span>
-                                      <span className="select-card-desc">{p.desc}</span>
-                                    </div>
-                                  </div>
-                                ))}
+                              <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <label htmlFor="project-notes" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                                  Optional Project Notes
+                                </label>
+                                <textarea
+                                  id="project-notes"
+                                  className="tech-text-input"
+                                  rows={4}
+                                  value={project.prompt || ''}
+                                  onChange={(e) => handleUpdateProject({ prompt: e.target.value })}
+                                  placeholder="Provide any custom design details, color guidelines, branding preferences, or creative guidelines..."
+                                  style={{
+                                    width: '100%',
+                                    background: 'rgba(255, 255, 255, 0.02)',
+                                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                                    borderRadius: '12px',
+                                    padding: '14px 18px',
+                                    color: '#fff',
+                                    fontSize: '14px',
+                                    outline: 'none',
+                                    transition: 'all 0.2s',
+                                    resize: 'none',
+                                    fontFamily: 'inherit',
+                                    boxSizing: 'border-box'
+                                  }}
+                                  onFocus={(e) => {
+                                    e.target.style.borderColor = 'var(--accent-blue)';
+                                    e.target.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.2)';
+                                    e.target.style.background = 'rgba(255,255,255,0.03)';
+                                  }}
+                                  onBlur={(e) => {
+                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                                    e.target.style.boxShadow = 'none';
+                                    e.target.style.background = 'rgba(255,255,255,0.02)';
+                                  }}
+                                />
                               </div>
                             </div>
                           </div>
@@ -1830,265 +1755,271 @@ export default function App() {
                       )}
 
                       {wizardStep === 2 && (
-                        <div className="wizard-step-content animate-fade-in">
-                          <div className="wizard-section-tech">
-                            <h3 className="wizard-section-title">
-                              <span className="section-title-dot" /> [2.1] Production Graphic Asset Uploads
+                        <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                          <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                            <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
+                              Choose Garment Silhouette
                             </h3>
-                            <p className="wizard-section-desc">Upload sponsor logos, inspiration reference patterns, and existing layout examples.</p>
+                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '24px' }}>
+                              Select the garment shape for direct canvas placement and blueprint generation.
+                            </p>
                             
-                            <div className="tech-upload-slots">
-                              {/* SLOT 1: SPONSOR LOGOS */}
-                              <div className="tech-upload-box" onClick={loadHighResLogo}>
-                                <div className="upload-box-header">
-                                  <Upload size={18} className="upload-icon-blue" />
-                                  <span className="upload-box-title">SPONSOR BRANDING VECTOR</span>
-                                </div>
-                                <p className="upload-box-desc">Vector graphics for primary branding chest/shoulder spots.</p>
-                                <span className="upload-box-spec">Accepts: .SVG, .EPS (True vector paths)</span>
-                                <div className="upload-box-action-hint">Click to mock high-res vector upload</div>
-                              </div>
-
-                              {/* SLOT 2: INSPIRATION MOODBOARDS */}
-                              <div className="tech-upload-box" onClick={loadLowResLogo}>
-                                <div className="upload-box-header">
-                                  <Upload size={18} className="upload-icon-purple" />
-                                  <span className="upload-box-title">CREATIVE STYLE REFERENCE</span>
-                                </div>
-                                <p className="upload-box-desc">Moodboard textures, patterns, and background inspirations.</p>
-                                <span className="upload-box-spec">Accepts: .PNG, .JPG (Target: &gt;300 DPI)</span>
-                                <div className="upload-box-action-hint">Click to mock low-res raster upload</div>
-                              </div>
-
-                              {/* SLOT 3: EXISTING JERSEY REFERENCES */}
-                              <div className="tech-upload-box" onClick={() => {
-                                addLog("Mock Jersey reference photo uploaded.");
-                              }}>
-                                <div className="upload-box-header">
-                                  <Upload size={18} className="upload-icon-gray" />
-                                  <span className="upload-box-title">EXISTING JERSEY REFERENCE</span>
-                                </div>
-                                <p className="upload-box-desc">Photographs or scans of previous garments for layout matching.</p>
-                                <span className="upload-box-spec">Accepts: .PNG, .JPG, .PDF</span>
-                                <div className="upload-box-action-hint">Click to mock physical reference photo upload</div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* UPLOADED ASSETS LIST */}
-                          <div className="wizard-section-tech">
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                              <h4 className="wizard-section-sub-title" style={{ margin: 0 }}>Registered Graphics Library</h4>
-                              <span className="asset-counter-hud">{project.logos.length} Active Graphics</span>
-                            </div>
-                            
-                            {project.logos.length === 0 ? (
-                              <div className="tech-empty-state">
-                                No graphical assets verified. Click above to load sponsor and reference mockups.
-                              </div>
-                            ) : (
-                              <div className="tech-asset-grid">
-                                {project.logos.map(logo => (
-                                  <div className="tech-asset-card-item" key={logo.id}>
-                                    <div className="tech-asset-thumb">
-                                      {logo.url ? (
-                                        <img src={logo.url} alt={logo.name} />
-                                      ) : (
-                                        <div className="tech-asset-placeholder">{logo.name.split('.').pop()?.toUpperCase()}</div>
-                                      )}
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                              {[
+                                { id: 'esports_jersey', name: 'Esports Jersey', panels: '8 Panels', cuff: 'Raglan Sleeve', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                  </svg>
+                                )},
+                                { id: 'tshirt', name: 'T-Shirt', panels: '4 Panels', cuff: 'Standard Fit', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                  </svg>
+                                )},
+                                { id: 'hoodie', name: 'Hoodie', panels: '6 Panels', cuff: 'Pocket & Hood', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                  </svg>
+                                )},
+                                { id: 'polo_shirt', name: 'Polo Shirt', panels: '5 Panels', cuff: 'Collared Placket', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                  </svg>
+                                )},
+                                { id: 'longsleeve', name: 'Long Sleeve', panels: '6 Panels', cuff: 'Full Arm Cuff', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                  </svg>
+                                )},
+                                { id: 'cycling_jersey', name: 'Cycling Jersey', panels: '7 Panels', cuff: 'Back Pocket Slots', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                    <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
+                                  </svg>
+                                )},
+                                { id: 'compression_wear', name: 'Compression Wear', panels: '10 Panels', cuff: 'High Elastic Trim', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                  </svg>
+                                )},
+                                { id: 'basketball_jersey', name: 'Basketball Jersey', panels: '4 Panels', cuff: 'Sleeveless Fit', svg: (
+                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
+                                    <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                  </svg>
+                                )}
+                              ].map(g => {
+                                const isActive = project.apparelType === g.id;
+                                return (
+                                  <div 
+                                    key={g.id}
+                                    onClick={() => handleUpdateProject({ apparelType: g.id })}
+                                    style={{
+                                      background: isActive ? 'rgba(0, 112, 243, 0.08)' : 'rgba(255, 255, 255, 0.01)',
+                                      border: isActive ? '2px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.05)',
+                                      borderRadius: '16px',
+                                      padding: '24px 20px',
+                                      cursor: 'pointer',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      gap: '14px',
+                                      textAlign: 'center',
+                                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      position: 'relative',
+                                      boxShadow: isActive ? '0 0 20px rgba(0, 112, 243, 0.2)' : 'none',
+                                      overflow: 'hidden'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      if (!isActive) {
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
+                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                      }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      if (!isActive) {
+                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
+                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
+                                        e.currentTarget.style.transform = 'translateY(0)';
+                                      }
+                                    }}
+                                  >
+                                    {isActive && (
+                                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'var(--accent-blue)', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px var(--accent-blue)' }}>
+                                        <Check size={10} style={{ color: '#fff' }} />
+                                      </div>
+                                    )}
+                                    <div style={{ color: isActive ? 'var(--accent-blue)' : 'rgba(255,255,255,0.4)', transition: 'color 0.2s', filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 112, 243, 0.4))' : 'none' }}>
+                                      {g.svg}
                                     </div>
-                                    <div className="tech-asset-info">
-                                      <span className="tech-asset-name">{logo.name}</span>
-                                      <span className={`tech-asset-badge ${logo.resolutionStatus === 'high' ? 'badge-success' : 'badge-warning'}`}>
-                                        {logo.resolutionStatus === 'high' ? `✓ Vector Verified (${logo.dpi} DPI)` : `⚠ Low Res Vector (${logo.dpi} DPI)`}
-                                      </span>
+                                    <div>
+                                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', letterSpacing: '-0.01em' }}>{g.name}</h4>
+                                      <span style={{ fontSize: '10px', color: 'var(--text-disabled)', marginTop: '4px', display: 'block', opacity: 0.8 }}>{g.panels} · {g.cuff}</span>
                                     </div>
-                                    <button className="tech-asset-delete" onClick={() => deleteLogo(logo.id)}>
-                                      <Trash2 size={12} />
-                                    </button>
                                   </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-
-                          {/* AI PRINT PRE-FLIGHT DIAGNOSTICS SCANNER */}
-                          <div className="wizard-section-tech">
-                            <div className="diagnostics-panel-header">
-                              <div>
-                                <h3 className="wizard-section-title" style={{ margin: 0 }}>
-                                  <span className="section-title-dot" /> [2.2] Pre-Flight Vector Diagnostics Scanner
-                                </h3>
-                                <p className="wizard-section-desc" style={{ marginTop: '4px' }}>Analyze paths, font curves, color spaces, and resolution compatibility before printing.</p>
-                              </div>
-                              <button 
-                                className={`tech-scan-button ${isAnalyzingReferences ? 'running' : ''}`}
-                                onClick={runPreFlightVectorScan}
-                                disabled={isAnalyzingReferences}
-                              >
-                                {isAnalyzingReferences ? (
-                                  <>
-                                    <Sparkles size={14} className="sparkle-spin" /> Scanning Paths...
-                                  </>
-                                ) : (
-                                  <>
-                                    <Sparkles size={14} /> Run Vector Diagnostics
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            <div className="terminal-logs-console">
-                              <div className="terminal-header">
-                                <span className="terminal-dot red" />
-                                <span className="terminal-dot yellow" />
-                                <span className="terminal-dot green" />
-                                <span className="terminal-title">RIP_VECTOR_SCANNER_v4.2.EXE</span>
-                                <span className="terminal-status-hud">{isAnalyzingReferences ? 'STATUS: ACTIVE SCAN' : vectorScanLogs.length > 0 ? 'STATUS: SCAN COMPLETE' : 'STATUS: IDLE'}</span>
-                              </div>
-                              <div className="terminal-body" id="terminal-body-console">
-                                {vectorScanLogs.length === 0 ? (
-                                  <div className="terminal-empty-text">Awaiting input graphics setup. Click "Run Vector Diagnostics" to analyze vector paths.</div>
-                                ) : (
-                                  vectorScanLogs.map((log, index) => (
-                                    <div key={index} className={`terminal-log-line ${log.includes('[WARN]') ? 'warn' : log.includes('[OK]') ? 'success' : 'info'}`}>
-                                      {log}
-                                    </div>
-                                  ))
-                                )}
-                              </div>
+                                );
+                              })}
                             </div>
                           </div>
                         </div>
                       )}
 
                       {wizardStep === 3 && (
-                        <div className="wizard-step-content animate-fade-in">
-                          <div className="wizard-input-split">
-                            <div className="wizard-section-tech" style={{ flex: 1 }}>
-                              <h3 className="wizard-section-title">
-                                <span className="section-title-dot" /> [3.1] Target Print Density (DPI)
-                              </h3>
-                              <p className="wizard-section-desc">Select raster density for large-format textile output.</p>
-                              
-                              <div className="tech-segmented-control">
-                                {[
-                                  { dpi: 150, label: '150 DPI', desc: 'Fast proofing & soft layout drafts' },
-                                  { dpi: 300, label: '300 DPI', desc: 'Standard production high-res commercial print' },
-                                  { dpi: 600, label: '600 DPI', desc: 'Ultra-fine textile detail & razor text outlines' }
-                                ].map(opt => (
-                                  <button
-                                    key={opt.dpi}
-                                    type="button"
-                                    className={`tech-segment-btn ${project.dpi === opt.dpi ? 'active' : ''}`}
-                                    onClick={() => handleUpdateProject({ dpi: opt.dpi })}
-                                  >
-                                    <span className="segment-btn-title">{opt.label}</span>
-                                    <span className="segment-btn-desc">{opt.desc}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="wizard-section-tech" style={{ flex: 1 }}>
-                              <h3 className="wizard-section-title">
-                                <span className="section-title-dot" /> [3.2] Seam Bleed Margins
-                              </h3>
-                              <p className="wizard-section-desc">Width of safety pattern overlap boundaries extended past seam lines.</p>
-                              
-                              <div className="tech-segmented-control">
-                                {[
-                                  { value: 0.25, label: '0.25" Margin', desc: 'Slim fit sports seams & collar cuts' },
-                                  { value: 0.50, label: '0.50" Margin', desc: 'Standard commercial sublimation bleed safety' },
-                                  { value: 0.75, label: '0.75" Margin', desc: 'Heavy overlap safety for loose garments' }
-                                ].map(opt => (
-                                  <button
-                                    key={opt.value}
-                                    type="button"
-                                    className={`tech-segment-btn ${project.rules.bleedInches === opt.value ? 'active' : ''}`}
-                                    onClick={() => handleUpdateProject({
-                                      rules: {
-                                        ...project.rules,
-                                        bleedInches: opt.value
-                                      }
-                                    })}
-                                  >
-                                    <span className="segment-btn-title">{opt.label}</span>
-                                    <span className="segment-btn-desc">{opt.desc}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className="wizard-input-split">
-                            <div className="wizard-section-tech" style={{ flex: 1 }}>
-                              <h3 className="wizard-section-title">
-                                <span className="section-title-dot" /> [3.3] Ink Color Space Profile
-                              </h3>
-                              <p className="wizard-section-desc">Toggle rendering system color modes for pre-flight design layouts.</p>
-                              
-                              <div className="tech-toggle-group">
-                                <button
-                                  type="button"
-                                  className={`tech-toggle-btn ${project.colorMode === 'RGB' ? 'active' : ''}`}
-                                  onClick={() => handleUpdateProject({ colorMode: 'RGB' })}
-                                >
-                                  <span className="toggle-btn-badge">RGB</span>
-                                  <span className="toggle-btn-text">Standard Screen sRGB</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  className={`tech-toggle-btn ${project.colorMode === 'CMYK' ? 'active' : ''}`}
-                                  onClick={() => handleUpdateProject({ colorMode: 'CMYK' })}
-                                >
-                                  <span className="toggle-btn-badge">CMYK</span>
-                                  <span className="toggle-btn-text">Coated FOGRA39 RIP (Textiles)</span>
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="wizard-section-tech" style={{ flex: 1 }}>
-                              <h3 className="wizard-section-title">
-                                <span className="section-title-dot" /> [3.4] Printer Roll Width
-                              </h3>
-                              <p className="wizard-section-desc">Physical boundary width of roll paper running through the dye-sub printer.</p>
-                              
-                              <select
-                                className="tech-select-dropdown"
-                                value={rollWidth}
-                                onChange={(e) => setRollWidth(e.target.value)}
-                              >
-                                <option value='44"'>44 Inches (1120 mm) — Small plot rolls</option>
-                                <option value='63"'>63 Inches (1600 mm) — Standard commercial dye-sub rollers</option>
-                                <option value='72"'>72 Inches (1830 mm) — Large industrial plot rollers</option>
-                              </select>
-                            </div>
-                          </div>
-
-                          <div className="wizard-section-tech">
-                            <h3 className="wizard-section-title">
-                              <span className="section-title-dot" /> [3.5] Production Export File Format
+                        <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                          <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                            <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
+                              Upload Design Assets
                             </h3>
-                            <p className="wizard-section-desc">Select the final output vector asset packaging structure.</p>
+                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '24px' }}>
+                              Upload sponsor logos, emblems, artwork, or design patterns. Supporting vector or transparent high-resolution files.
+                            </p>
                             
-                            <div className="export-format-grid">
-                              {[
-                                { id: 'Vector PDF', label: 'Vector PDF', desc: 'Vector layout layers with embedded high-precision PMS ink vectors' },
-                                { id: 'CMYK SVG', label: 'CMYK SVG', desc: 'Direct vector lines optimized for standard cutting software plotters' },
-                                { id: 'High-Res TIFF', label: 'High-Res TIFF', desc: 'Flat pixel layout at 300 DPI ready for direct printing RIP engines' },
-                                { id: 'EPS Format', label: 'EPS Format', desc: 'PostScript encapsulated curves for legacy commercial plotters' }
-                              ].map(fmt => (
-                                <div
-                                  key={fmt.id}
-                                  className={`export-format-card ${exportFormat === fmt.id ? 'active' : ''}`}
-                                  onClick={() => setExportFormat(fmt.id)}
+                            {/* Unified Drag and Drop Area */}
+                            <div 
+                              style={{
+                                background: 'rgba(10, 10, 15, 0.4)',
+                                border: '2px dashed rgba(0, 112, 243, 0.25)',
+                                borderRadius: '16px',
+                                padding: '40px 32px',
+                                textAlign: 'center',
+                                cursor: 'pointer',
+                                transition: 'all 0.3s ease',
+                                position: 'relative',
+                                overflow: 'hidden',
+                                boxShadow: 'inset 0 0 20px rgba(0, 112, 243, 0.03)'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
+                                e.currentTarget.style.background = 'rgba(0, 112, 243, 0.03)';
+                                e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 112, 243, 0.1), inset 0 0 20px rgba(0, 112, 243, 0.06)';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.borderColor = 'rgba(0, 112, 243, 0.25)';
+                                e.currentTarget.style.background = 'rgba(10, 10, 15, 0.4)';
+                                e.currentTarget.style.boxShadow = 'inset 0 0 20px rgba(0, 112, 243, 0.03)';
+                              }}
+                            >
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                  <Upload size={22} style={{ color: 'var(--accent-blue)' }} />
+                                </div>
+                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>Drag & drop design assets here</h3>
+                                <p style={{ fontSize: '11px', color: 'var(--text-disabled)', margin: 0, maxWidth: '380px', lineHeight: '1.4' }}>
+                                  Staging area for high-resolution logos. Supports <strong style={{ color: 'var(--accent-blue)' }}>SVG, PNG, JPG, PDF, AI</strong>.
+                                  Vector files are highly recommended for clean dye-sublimation print results.
+                                </p>
+                                
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                                  <button 
+                                    className="premium-ghost-btn" 
+                                    onClick={(e) => { e.stopPropagation(); loadHighResLogo(); }}
+                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', background: 'rgba(0, 112, 243, 0.08)', border: '1px solid rgba(0, 112, 243, 0.2)', color: '#fff' }}
+                                  >
+                                    Simulate SVG Upload (High-Res)
+                                  </button>
+                                  <button 
+                                    className="premium-ghost-btn" 
+                                    onClick={(e) => { e.stopPropagation(); loadLowResLogo(); }}
+                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', background: 'rgba(121, 40, 202, 0.08)', border: '1px solid rgba(121, 40, 202, 0.2)', color: '#fff' }}
+                                  >
+                                    Simulate JPG Upload (Low-Res)
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* User-Friendly Inline Diagnostics / Silenced alerts */}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
+                              {project.logos.map(logo => (
+                                <div 
+                                  key={logo.id}
+                                  style={{
+                                    background: logo.resolutionStatus === 'high' ? 'rgba(0, 230, 118, 0.06)' : 'rgba(245, 166, 35, 0.06)',
+                                    border: logo.resolutionStatus === 'high' ? '1px solid rgba(0, 230, 118, 0.2)' : '1px solid rgba(245, 166, 35, 0.2)',
+                                    borderRadius: '10px',
+                                    padding: '12px 16px',
+                                    display: 'flex',
+                                    alignItems: 'flex-start',
+                                    gap: '12px',
+                                    fontSize: '11px',
+                                    lineHeight: '1.4',
+                                    boxShadow: logo.resolutionStatus === 'high' ? 'inset 0 0 10px rgba(0, 230, 118, 0.02)' : 'inset 0 0 10px rgba(245, 166, 35, 0.02)'
+                                  }}
                                 >
-                                  <div className="format-card-accent" />
-                                  <span className="format-card-title">{fmt.label}</span>
-                                  <span className="format-card-desc">{fmt.desc}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: logo.resolutionStatus === 'high' ? 'rgba(0, 230, 118, 0.1)' : 'rgba(245, 166, 35, 0.1)', color: logo.resolutionStatus === 'high' ? 'var(--color-success)' : 'var(--color-warning)', flexShrink: 0 }}>
+                                    {logo.resolutionStatus === 'high' ? <Check size={11} /> : <AlertTriangle size={11} />}
+                                  </div>
+                                  <div style={{ flex: 1 }}>
+                                    <strong style={{ color: '#fff', display: 'block', marginBottom: '2px' }}>
+                                      {logo.resolutionStatus === 'high' ? '✓ Print-Ready Graphic Verified' : '⚠ High-Resolution Warning'}
+                                    </strong>
+                                    <span style={{ color: 'var(--text-secondary)' }}>
+                                      {logo.resolutionStatus === 'high' 
+                                        ? `Vector asset "${logo.name}" has been auto-scanned. Layer node structures (300 DPI) are optimized for direct-to-textile dye-sublimation.` 
+                                        : `Asset "${logo.name}" is low resolution (${logo.dpi} DPI). Physical textile prints may exhibit minor aliasing. For best results, vector formats (.SVG) are highly recommended.`
+                                      }
+                                    </span>
+                                  </div>
                                 </div>
                               ))}
+                            </div>
+
+                            {/* Registered Artwork Vault List */}
+                            <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
+                              <h4 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                                Staged Project Assets ({project.logos.length})
+                              </h4>
+                              
+                              {project.logos.length === 0 ? (
+                                <div style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '10px', padding: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-disabled)' }}>
+                                  No assets staged yet. Use the upload simulator controls above to populate.
+                                </div>
+                              ) : (
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
+                                  {project.logos.map(logo => (
+                                    <div 
+                                      key={logo.id}
+                                      style={{
+                                        background: 'rgba(25, 25, 32, 0.4)',
+                                        border: '1px solid rgba(255, 255, 255, 0.05)',
+                                        borderRadius: '10px',
+                                        padding: '10px 14px',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        gap: '12px',
+                                        position: 'relative',
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      <div style={{ width: '36px', height: '36px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
+                                        {logo.url ? (
+                                          <img src={logo.url} alt={logo.name} style={{ maxWidth: '85%', maxHeight: '85%', objectFit: 'contain' }} />
+                                        ) : (
+                                          <span style={{ fontSize: '9px', fontWeight: '800', color: 'rgba(255,255,255,0.2)' }}>SVG</span>
+                                        )}
+                                      </div>
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <span style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{logo.name}</span>
+                                        <span style={{ fontSize: '10px', color: logo.resolutionStatus === 'high' ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: '600', display: 'block', marginTop: '2px' }}>
+                                          {logo.resolutionStatus === 'high' ? '300 DPI — High Res' : '72 DPI — Low Res'}
+                                        </span>
+                                      </div>
+                                      <button 
+                                        onClick={() => deleteLogo(logo.id)}
+                                        style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}
+                                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-error)'}
+                                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
+                                      >
+                                        <Trash2 size={13} />
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
@@ -2096,180 +2027,208 @@ export default function App() {
 
                     </div>
 
-                    {/* RIGHT COLUMN: Live Technical Blueprint Preview */}
+                    {/* RIGHT COLUMN: Highly Simplified Neon Blueprint Preview */}
                     <div className="brief-column right-column">
-                      <div className="live-preview-panel-premium-tech">
-                        <div className="tech-preview-header">
-                          <span className="tech-preview-title">DYE-SUB BLUEPRINT RIP VIEWER</span>
-                          <span className="tech-preview-badge">LIVE VECTOR RENDERING</span>
+                      <div className="live-preview-panel-premium-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
+                        <div className="tech-preview-header" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px', marginBottom: '16px', alignItems: 'center' }}>
+                          <span className="tech-preview-title" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Blueprint schematic</span>
+                          <span className="tech-preview-badge" style={{ fontSize: '9px', fontWeight: 'bold', background: 'rgba(0,112,243,0.1)', color: 'var(--accent-blue)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(0,112,243,0.15)' }}>Active Block</span>
                         </div>
                         
-                        <div className="tech-blueprint-container">
+                        {/* Blueprint View Toggle */}
+                        <div className="blueprint-toggle" style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '2px', marginBottom: '16px' }}>
+                          <button 
+                            className={`toggle-btn ${blueprintView === 'front' ? 'active' : ''}`}
+                            onClick={() => setBlueprintView('front')}
+                            style={{
+                              flex: 1,
+                              background: blueprintView === 'front' ? 'var(--accent-blue)' : 'transparent',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: '#fff',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              padding: '6px 12px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            Front View
+                          </button>
+                          <button 
+                            className={`toggle-btn ${blueprintView === 'back' ? 'active' : ''}`}
+                            onClick={() => setBlueprintView('back')}
+                            style={{
+                              flex: 1,
+                              background: blueprintView === 'back' ? 'var(--accent-blue)' : 'transparent',
+                              border: 'none',
+                              borderRadius: '6px',
+                              color: '#fff',
+                              fontSize: '11px',
+                              fontWeight: 'bold',
+                              padding: '6px 12px',
+                              cursor: 'pointer',
+                              transition: 'all 0.2s',
+                            }}
+                          >
+                            Back View
+                          </button>
+                        </div>
+
+                        <div className="tech-blueprint-container" style={{ flex: 1, position: 'relative', background: '#050508', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', minHeight: '260px' }}>
                           {/* Blueprint background grid lines */}
                           <div className="blueprint-overlay-grid-lines" />
                           
                           {/* Schematic drawing */}
-                          <div className="blueprint-silhouette-box">
-                            {project.apparelType === 'esports_jersey' && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
-                                {/* Bleed outline - scales dynamically based on bleedInches */}
-                                <path
-                                  d="M 20,20 C 35,10 65,10 80,20 L 92,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z"
-                                  fill="none"
-                                  stroke="var(--accent-purple)"
-                                  strokeWidth="1.2"
-                                  strokeDasharray="4,3"
-                                  style={{
-                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
-                                    transformOrigin: 'center 60px',
-                                    transition: 'transform 0.3s ease'
-                                  }}
-                                />
-                                {/* Safe zone outline */}
-                                <path d="M 22,22 C 35,13 65,13 78,22 L 89,48 L 76,51 L 77,108 C 60,113 40,113 23,108 L 24,51 L 11,48 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                
-                                {/* Layout labels */}
-                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">8-PANEL RAGLAN LAYOUT</text>
-                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
-                                
-                                {/* Center seam alignment indicators */}
-                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
-                              </svg>
-                            )}
-                            {project.apparelType === 'tshirt' && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
-                                {/* Bleed outline */}
-                                <path
-                                  d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z"
-                                  fill="none"
-                                  stroke="var(--accent-purple)"
-                                  strokeWidth="1.2"
-                                  strokeDasharray="4,3"
-                                  style={{
-                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
-                                    transformOrigin: 'center 60px',
-                                    transition: 'transform 0.3s ease'
-                                  }}
-                                />
-                                <path d="M 20,24 C 32,17 68,17 80,24 L 92,46 L 80,48 L 78,107 L 22,107 L 20,48 L 8,46 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">STREET T-SHIRT TEMPLATE</text>
-                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
-                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
-                              </svg>
-                            )}
-                            {project.apparelType === 'hoodie' && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
-                                {/* Bleed outline */}
-                                <path
-                                  d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z"
-                                  fill="none"
-                                  stroke="var(--accent-purple)"
-                                  strokeWidth="1.2"
-                                  strokeDasharray="4,3"
-                                  style={{
-                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
-                                    transformOrigin: 'center 60px',
-                                    transition: 'transform 0.3s ease'
-                                  }}
-                                />
-                                {/* Hood bleed outline */}
-                                <path
-                                  d="M 32,29 C 30,10 70,10 68,29 Z"
-                                  fill="none"
-                                  stroke="var(--accent-purple)"
-                                  strokeWidth="1"
-                                  strokeDasharray="4,3"
-                                  style={{
-                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.15})`,
-                                    transformOrigin: '50px 20px',
-                                    transition: 'transform 0.3s ease'
-                                  }}
-                                />
-                                <path d="M 20,34 C 32,27 68,27 80,34 L 91,56 L 82,58 L 78,109 L 22,109 L 18,58 L 9,56 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <path d="M 32,29 C 30,10 70,10 68,29 Z" fill="none" stroke="var(--accent-blue)" strokeWidth="1.2" />
-                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">6-PANEL HOODIE BLOCK</text>
-                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
-                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
-                              </svg>
-                            )}
-                            {(!project.apparelType || (project.apparelType !== 'esports_jersey' && project.apparelType !== 'tshirt' && project.apparelType !== 'hoodie')) && (
-                              <svg viewBox="0 0 100 120" className="preview-garment-svg-tech">
-                                <path
-                                  d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z"
-                                  fill="none"
-                                  stroke="var(--accent-purple)"
-                                  strokeWidth="1.2"
-                                  strokeDasharray="4,3"
-                                  style={{
-                                    transform: `scale(${1 + (project.rules.bleedInches - 0.25) * 0.1})`,
-                                    transformOrigin: 'center 60px',
-                                    transition: 'transform 0.3s ease'
-                                  }}
-                                />
-                                <path d="M 22,27 C 35,17 65,17 78,27 L 89,48 L 78,50 L 76,107 L 24,107 L 22,50 L 11,48 Z" fill="rgba(0, 112, 243, 0.03)" stroke="var(--accent-blue)" strokeWidth="1.5" />
-                                <text x="50" y="70" textAnchor="middle" fill="var(--text-secondary)" fontSize="4.5" fontFamily="monospace">{project.apparelType ? project.apparelType.toUpperCase().replace('_', ' ') : 'APPAREL PATTERN'}</text>
-                                <text x="50" y="77" textAnchor="middle" fill="var(--text-disabled)" fontSize="3.5" fontFamily="monospace">BLEED OFFSET: +{project.rules.bleedInches.toFixed(2)}"</text>
-                                <line x1="50" y1="10" x2="50" y2="115" stroke="rgba(255,255,255,0.08)" strokeWidth="0.5" strokeDasharray="2,2" />
-                              </svg>
-                            )}
-                          </div>
-
-                          {/* Grid overlay annotations */}
-                          <div className="blueprint-legend">
-                            <div className="legend-item"><span className="legend-color blue" /> <span>Safe Print Boundaries</span></div>
-                            <div className="legend-item"><span className="legend-color purple dashed" /> <span>Dye-Sub Seam Bleed (+{project.rules.bleedInches.toFixed(2)}")</span></div>
+                          <div className="blueprint-silhouette-box" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {(() => {
+                              const isFront = blueprintView === 'front';
+                              const strokeColor = 'var(--accent-blue)';
+                              const strokeWidth = 1.8;
+                              
+                              switch (project.apparelType) {
+                                case 'esports_jersey':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 20,20 C 35,10 65,10 80,20 L 92,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+                                      <path d="M 20,20 L 33,35 M 80,20 L 67,35" fill="none" stroke={strokeColor} strokeWidth={1.2} strokeDasharray="3,3" />
+                                      {isFront ? (
+                                        <path d="M 40,13 A 10 10 0 0 0 60,13" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
+                                      ) : (
+                                        <path d="M 40,13 A 10 6 0 0 0 60,13" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
+                                      )}
+                                    </svg>
+                                  );
+                                case 'tshirt':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      <path d="M 22,30 L 22,46 M 78,30 L 78,46" fill="none" stroke={strokeColor} strokeWidth={1.2} strokeDasharray="2,2" />
+                                      {isFront ? (
+                                        <path d="M 40,15 A 10 10 0 0 0 60,15" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
+                                      ) : (
+                                        <path d="M 40,15 A 10 5 0 0 0 60,15" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
+                                      )}
+                                    </svg>
+                                  );
+                                case 'hoodie':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      <path d="M 32,29 C 30,10 70,10 68,29 Z" fill="none" stroke={strokeColor} strokeWidth={1.5} />
+                                      {isFront ? (
+                                        <>
+                                          <path d="M 38,70 L 62,70 L 67,88 L 33,88 Z" fill="none" stroke={strokeColor} strokeWidth={1.2} />
+                                          <path d="M 46,29 L 46,42 M 54,29 L 54,42" fill="none" stroke={strokeColor} strokeWidth={1.0} />
+                                        </>
+                                      ) : (
+                                        <path d="M 32,29 L 50,48 L 68,29" fill="none" stroke={strokeColor} strokeWidth={1.0} strokeDasharray="3,3" />
+                                      )}
+                                    </svg>
+                                  );
+                                case 'polo_shirt':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,110 L 20,110 L 18,47 L 8,45 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      {isFront ? (
+                                        <>
+                                          <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke={strokeColor} strokeWidth={1.5} />
+                                          <line x1="50" y1="32" x2="50" y2="48" stroke={strokeColor} strokeWidth="1.5" />
+                                        </>
+                                      ) : (
+                                        <path d="M 38,20 C 45,17 55,17 62,20" fill="none" stroke={strokeColor} strokeWidth={1.5} />
+                                      )}
+                                    </svg>
+                                  );
+                                case 'longsleeve':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,110 L 22,110 L 12,83 L 5,80 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      {isFront ? (
+                                        <path d="M 40,20 C 45,26 55,26 60,20" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
+                                      ) : (
+                                        <path d="M 40,20 C 45,22 55,22 60,20" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
+                                      )}
+                                    </svg>
+                                  );
+                                case 'cycling_jersey':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,110 L 22,110 L 20,48 L 8,45 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      {isFront ? (
+                                        <line x1="50" y1="14" x2="50" y2="110" stroke={strokeColor} strokeWidth="1.5" />
+                                      ) : (
+                                        <>
+                                          <path d="M 22,80 L 78,80" stroke={strokeColor} strokeWidth="1.5" fill="none" />
+                                          <line x1="40" y1="80" x2="40" y2="110" stroke={strokeColor} strokeWidth="1.2" />
+                                          <line x1="60" y1="80" x2="60" y2="110" stroke={strokeColor} strokeWidth="1.2" />
+                                        </>
+                                      )}
+                                    </svg>
+                                  );
+                                case 'compression_wear':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      {isFront ? (
+                                        <path d="M 30,14 C 40,40 40,65 30,85 M 70,14 C 60,40 60,65 70,85" fill="none" stroke={strokeColor} strokeWidth="1.2" strokeDasharray="3,3" />
+                                      ) : (
+                                        <line x1="50" y1="14" x2="50" y2="85" stroke={strokeColor} strokeWidth="1.5" strokeDasharray="3,3" />
+                                      )}
+                                    </svg>
+                                  );
+                                case 'basketball_jersey':
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
+                                      <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
+                                      {isFront ? (
+                                        <path d="M 32,14 A 18 18 0 0 0 68,14" fill="none" stroke={strokeColor} strokeWidth="1.5" />
+                                      ) : (
+                                        <path d="M 32,14 A 18 10 0 0 0 68,14" fill="none" stroke={strokeColor} strokeWidth="1.5" />
+                                      )}
+                                    </svg>
+                                  );
+                                default:
+                                  return (
+                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px' }}>
+                                      <path d="M 22,27 C 35,17 65,17 78,27 L 89,48 L 78,50 L 76,107 L 24,107 L 22,50 L 11,48 Z" fill="none" stroke={strokeColor} strokeWidth="1.5" />
+                                    </svg>
+                                  );
+                              }
+                            })()}
                           </div>
                         </div>
 
-                        {/* HUD Parameter telemetry specs */}
-                        <div className="blueprint-telemetry-panel">
-                          <div className="telemetry-item">
-                            <span className="telemetry-label">COLOR MODE</span>
-                            <span className="telemetry-value text-neon-blue">{project.colorMode || 'CMYK'} (FOGRA39)</span>
-                          </div>
-                          <div className="telemetry-item">
-                            <span className="telemetry-label">TARGET INK RES</span>
-                            <span className="telemetry-value text-neon-purple">{project.dpi || 300} DPI</span>
-                          </div>
-                          <div className="telemetry-item">
-                            <span className="telemetry-label">SEAM BLEED SCALE</span>
-                            <span className="telemetry-value">+{project.rules.bleedInches.toFixed(2)} INCH</span>
-                          </div>
-                          <div className="telemetry-item">
-                            <span className="telemetry-label">PRINTER WIDTH</span>
-                            <span className="telemetry-value">{rollWidth} DYE-SUB</span>
-                          </div>
-                          <div className="telemetry-item">
-                            <span className="telemetry-label">EXPORT FORMAT</span>
-                            <span className="telemetry-value">{exportFormat}</span>
-                          </div>
+                        {/* Garment details text */}
+                        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', textTransform: 'capitalize', fontFamily: 'Outfit, sans-serif' }}>
+                            {project.apparelType ? project.apparelType.replace('_', ' ') : 'Apparel Block'}
+                          </span>
+                          <span style={{ fontSize: '11px', color: 'var(--text-disabled)' }}>
+                            {blueprintView === 'front' ? 'Front' : 'Back'} View Blueprint Schematic
+                          </span>
                         </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Sticky Cinematic Action Bar */}
-                  <div className="sticky-action-bar-premium">
+                  <div className="sticky-action-bar-premium" style={{ padding: '20px 32px', borderTop: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 10, background: 'rgba(10, 10, 15, 0.8)', backdropFilter: 'blur(10px)' }}>
                     <div className="action-bar-left">
                       {wizardStep > 1 ? (
                         <button 
                           className="premium-ghost-btn" 
                           onClick={() => setWizardStep(wizardStep - 1)}
-                          style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'var(--bg-tertiary)', border: '1px solid var(--border-muted)', borderRadius: '6px', color: 'var(--text-primary)', fontWeight: 'bold' }}
+                          style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}
                         >
-                          <ArrowLeft size={14} /> Back to Step {wizardStep - 1}
+                          <ArrowLeft size={14} /> Back
                         </button>
                       ) : (
-                        <div className="readiness-status-badge">
-                          <div className="status-dot green-pulsing" />
-                          <span>RIP ENGINE ACTIVE</span>
+                        <div className="readiness-status-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-disabled)' }}>
+                          <div className="status-dot green-pulsing" style={{ width: '6px', height: '6px', background: 'var(--color-success)', borderRadius: '50%', boxShadow: '0 0 6px var(--color-success)' }} />
+                          <span>System Active</span>
                         </div>
                       )}
-                      <div className="action-bar-summary">
-                        <span>{project.logos.length} asset{project.logos.length !== 1 ? 's' : ''} loaded</span>
-                        <span className="divider-dot" />
-                        <span className="text-glow-accent">{project.dpi || 300} DPI · {project.colorMode || 'CMYK'}</span>
-                      </div>
                     </div>
 
                     <div className="action-bar-right">
@@ -2277,20 +2236,20 @@ export default function App() {
                         <button 
                           className="continue-btn-premium"
                           onClick={() => setWizardStep(wizardStep + 1)}
-                          style={{ cursor: 'pointer' }}
+                          style={{ cursor: 'pointer', background: 'var(--accent-blue)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 10px rgba(0, 112, 243, 0.3)' }}
                         >
-                          Next: {wizardStep === 1 ? 'Upload Assets & Reference' : 'Configure Print Defaults'} <ArrowRight size={14} />
+                          Next Step <ArrowRight size={14} />
                         </button>
                       ) : (
                         <button 
                           className="continue-btn-premium"
                           onClick={() => {
-                            addLog("Project setup complete. Production presets locked.");
+                            addLog("Project setup complete. Launching design workbench.");
                             handleUpdateProject({ stage: 'design' });
                           }}
-                          style={{ background: 'var(--accent-blue)', boxShadow: '0 0 15px rgba(0, 112, 243, 0.4)', cursor: 'pointer' }}
+                          style={{ cursor: 'pointer', background: 'var(--color-success)', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 10px rgba(0, 230, 118, 0.3)' }}
                         >
-                          Lock & Launch Production Project <ArrowRight size={14} />
+                          Start Designing <ArrowRight size={14} />
                         </button>
                       )}
                     </div>
