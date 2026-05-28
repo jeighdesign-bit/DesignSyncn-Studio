@@ -74,5 +74,25 @@ function garmentTemplateRegistry() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), garmentTemplateRegistry()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules')) {
+            if (id.includes('fabric')) {
+              return 'vendor-fabric';
+            }
+            if (id.includes('lucide-react')) {
+              return 'vendor-lucide';
+            }
+            if (id.includes('react') || id.includes('scheduler')) {
+              return 'vendor-react';
+            }
+            return 'vendor-core';
+          }
+        }
+      }
+    }
+  }
 })
 
