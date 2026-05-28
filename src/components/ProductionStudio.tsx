@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Project, RosterPlayer, SponsorLogo } from '../types';
 import {
   MousePointer2, Type, Square, Hand, Move, Shirt,
-  AlignLeft, AlignCenter, AlignRight,
+  AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
   Shield, Ruler, Users,
   Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin,
-  Search, CheckCircle
+  CheckCircle
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode, setCenterPosition, clampObjectToLimits, clampObjectToSafeZone } from './FabricCanvas';
@@ -22,8 +22,7 @@ import {
 } from '../lib/garment-size-engine';
 import {
   resolvePlayerPanelLayout,
-  batchResolveRoster,
-  resolvePlayerLayout
+  batchResolveRoster
 } from '../lib/production-engine';
 import * as fabric from 'fabric';
 
