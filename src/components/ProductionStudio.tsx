@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import type { Project, RosterPlayer, SponsorLogo } from '../types';
 import {
-  MousePointer2, Type, Square, Hand, Move,
+  MousePointer2, Type, Square, Hand, Move, Shirt,
   AlignLeft, AlignCenter, AlignRight, Undo2, Redo2,
   Shield, Ruler, Users,
   Upload, Plus, Trash2, AlertTriangle, Cpu, Sparkles, RefreshCw, FileDown, MapPin
@@ -1927,6 +1927,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   setPan,
 }) => {
   const [toolMode, setToolMode] = useState<ToolMode>('select');
+  const [panelSelectorOpen, setPanelSelectorOpen] = useState(false);
   const [canvasBg] = useState<'white' | 'dark' | 'transparent' | 'checkerboard'>('white');
   const [activeTextObj, setActiveTextObj] = useState<fabric.IText | null>(null);
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
@@ -2780,13 +2781,40 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   // ─────────────────────────────────────────────────────────────────────────
   // TOOLBAR TOOLS
   // ─────────────────────────────────────────────────────────────────────────
-  const TOOLS = [
-    { id: 'select' as ToolMode, title: 'Selection Tool (V)', icon: <MousePointer2 size={14} /> },
-    { id: 'hand' as ToolMode, title: 'Hand Tool (H)', icon: <Hand size={14} /> },
-    { id: 'move' as ToolMode, title: 'Move Tool (M)', icon: <Move size={14} /> },
-    { id: 'text' as ToolMode, title: 'Text Tool (T)', icon: <Type size={14} /> },
-    { id: 'shape' as ToolMode, title: 'Shape Tool (R)', icon: <Square size={14} /> },
-  ];
+  const getGarmentPanels = () => {
+    const type = project.apparelType || 'tshirt';
+    if (type === 'hoodie') {
+      return [
+        { id: 'front', label: 'Front Panel' },
+        { id: 'back', label: 'Back Panel' },
+        { id: 'sleeves', label: 'Sleeves' },
+        { id: 'hood', label: 'Hood' },
+        { id: 'pocket', label: 'Pocket' }
+      ];
+    } else if (type === 'jersey') {
+      return [
+        { id: 'front', label: 'Front Panel' },
+        { id: 'back', label: 'Back Panel' },
+        { id: 'collar', label: 'Collar' },
+        { id: 'side-panels', label: 'Side Panels' }
+      ];
+    } else if (type === 'compression') {
+      return [
+        { id: 'front', label: 'Front Panel' },
+        { id: 'back', label: 'Back Panel' },
+        { id: 'arm-panels', label: 'Arm Panels' },
+        { id: 'side-panels', label: 'Side Panels' }
+      ];
+    } else {
+      // Default / T-shirt
+      return [
+        { id: 'front', label: 'Front Panel' },
+        { id: 'back', label: 'Back Panel' },
+        { id: 'sleeves', label: 'Sleeves' },
+        ...(activeTemplate.files['collar'] ? [{ id: 'collar', label: 'Collar / Neckline' }] : [])
+      ];
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -2900,7 +2928,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         {/* Canvas body: Toolbar + Rulers + Viewport */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
 
-          {/* ── Vertical Edit Toolbar (Floating) ── */}
+          {/* ── Vertical Edit Toolbar (Floating Pill) ── */}
           <div 
             className="ap-left-floating-toolbar"
             style={{
@@ -2908,48 +2936,321 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               left: '20px',
               top: '50%',
               transform: 'translateY(-50%)',
-              zIndex: 25,
-              background: 'rgba(18, 18, 24, 0.75)',
+              zIndex: 35,
+              background: 'rgba(10, 10, 15, 0.85)',
               border: '1px solid rgba(255, 255, 255, 0.08)',
-              borderRadius: '18px',
-              padding: '10px',
+              borderRadius: '30px',
+              padding: '12px 6px',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '8px',
-              backdropFilter: 'blur(20px)',
+              gap: '10px',
+              backdropFilter: 'blur(24px)',
               boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+              width: '42px',
             }}
           >
-            {/* ── 5 Main Tools ── */}
-            {TOOLS.map(tool => {
-              const isActive = toolMode === tool.id;
-              return (
-                <button
-                  key={tool.id}
-                  onClick={() => setToolMode(tool.id)}
-                  title={tool.title}
-                  className={`ap-toolbar-btn ${isActive ? 'active' : ''}`}
+            {/* 1. Select Tool */}
+            <button
+              onClick={() => { setToolMode('select'); setPanelSelectorOpen(false); }}
+              title="Selection Tool (V)"
+              className={`ap-toolbar-btn ${toolMode === 'select' ? 'active' : ''}`}
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: toolMode === 'select' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                color: toolMode === 'select' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+                boxShadow: toolMode === 'select' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+              }}
+            >
+              <MousePointer2 size={14} style={{ color: toolMode === 'select' ? 'var(--accent-blue)' : 'inherit' }} />
+            </button>
+
+            {/* 2. Hand/Pan Tool */}
+            <button
+              onClick={() => { setToolMode('hand'); setPanelSelectorOpen(false); }}
+              title="Hand Tool (H)"
+              className={`ap-toolbar-btn ${toolMode === 'hand' ? 'active' : ''}`}
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: toolMode === 'hand' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                color: toolMode === 'hand' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+                boxShadow: toolMode === 'hand' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+              }}
+            >
+              <Hand size={14} style={{ color: toolMode === 'hand' ? 'var(--accent-blue)' : 'inherit' }} />
+            </button>
+
+            {/* 3. Move Tool */}
+            <button
+              onClick={() => { setToolMode('move'); setPanelSelectorOpen(false); }}
+              title="Move Tool (M)"
+              className={`ap-toolbar-btn ${toolMode === 'move' ? 'active' : ''}`}
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: toolMode === 'move' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                color: toolMode === 'move' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+                boxShadow: toolMode === 'move' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+              }}
+            >
+              <Move size={14} style={{ color: toolMode === 'move' ? 'var(--accent-blue)' : 'inherit' }} />
+            </button>
+
+            {/* 4. Garment Panel Tool */}
+            <div style={{ position: 'relative' }}>
+              <button
+                onClick={() => setPanelSelectorOpen(!panelSelectorOpen)}
+                title="Garment Panel Selector"
+                className={`ap-toolbar-btn ${panelSelectorOpen ? 'active' : ''}`}
+                style={{
+                  width: '30px',
+                  height: '30px',
+                  borderRadius: '50%',
+                  border: 'none',
+                  background: panelSelectorOpen ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                  color: panelSelectorOpen ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                  outline: 'none',
+                  boxShadow: panelSelectorOpen ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+                }}
+              >
+                <Shirt size={14} style={{ color: panelSelectorOpen ? 'var(--accent-blue)' : 'inherit' }} />
+              </button>
+
+              {/* Dynamic Panel Selector Popup */}
+              {panelSelectorOpen && (
+                <div 
+                  className="ap-floating-panel-selector"
                   style={{
-                    width: '32px',
-                    height: '32px',
-                    borderRadius: '10px',
-                    border: isActive ? '1px solid rgba(0,112,243,0.3)' : '1px solid transparent',
-                    background: isActive ? 'rgba(0,112,243,0.15)' : 'transparent',
-                    color: isActive ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
-                    cursor: 'pointer',
+                    position: 'absolute',
+                    left: '52px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'rgba(12, 12, 18, 0.95)',
+                    border: '1px solid rgba(255, 255, 255, 0.08)',
+                    borderRadius: '16px',
+                    padding: '8px',
+                    boxShadow: '0 15px 30px rgba(0,0,0,0.5)',
                     display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0,
-                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-                    padding: 0,
+                    flexDirection: 'column',
+                    gap: '4px',
+                    minWidth: '150px',
+                    zIndex: 40,
+                    backdropFilter: 'blur(20px)',
                   }}
                 >
-                  {tool.icon}
-                </button>
-              );
-            })}
+                  <div style={{ fontSize: '9px', fontWeight: 'bold', color: 'var(--text-disabled)', padding: '4px 8px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Garment Areas
+                  </div>
+                  {getGarmentPanels().map(panel => {
+                    const isActive = currentView === panel.id;
+                    return (
+                      <button
+                        key={panel.id}
+                        onClick={() => {
+                          onUpdateProject({ activeCanvasView: panel.id as any });
+                          setPanelSelectorOpen(false);
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 10px',
+                          background: isActive ? 'rgba(0,112,243,0.15)' : 'transparent',
+                          border: 'none',
+                          borderRadius: '8px',
+                          color: isActive ? '#fff' : 'rgba(255, 255, 255, 0.65)',
+                          fontSize: '11px',
+                          cursor: 'pointer',
+                          textAlign: 'left',
+                          width: '100%',
+                          transition: 'all 0.15s',
+                        }}
+                        onMouseEnter={(e) => {
+                          if (!isActive) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+                        }}
+                        onMouseLeave={(e) => {
+                          if (!isActive) e.currentTarget.style.background = 'transparent';
+                        }}
+                      >
+                        <span style={{ 
+                          width: '6px', 
+                          height: '6px', 
+                          borderRadius: '50%', 
+                          background: isActive ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.2)' 
+                        }} />
+                        <span>{panel.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 5. Shape Tool */}
+            <button
+              onClick={() => { setToolMode('shape'); setPanelSelectorOpen(false); }}
+              title="Shape Tool (R)"
+              className={`ap-toolbar-btn ${toolMode === 'shape' ? 'active' : ''}`}
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: toolMode === 'shape' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                color: toolMode === 'shape' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+                boxShadow: toolMode === 'shape' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+              }}
+            >
+              <Square size={14} style={{ color: toolMode === 'shape' ? 'var(--accent-blue)' : 'inherit' }} />
+            </button>
+
+            {/* 6. Text Tool */}
+            <button
+              onClick={() => { setToolMode('text'); setPanelSelectorOpen(false); }}
+              title="Text Tool (T)"
+              className={`ap-toolbar-btn ${toolMode === 'text' ? 'active' : ''}`}
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: toolMode === 'text' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                color: toolMode === 'text' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+                boxShadow: toolMode === 'text' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
+              }}
+            >
+              <Type size={14} style={{ color: toolMode === 'text' ? 'var(--accent-blue)' : 'inherit' }} />
+            </button>
+
+            {/* 7. Upload Tool */}
+            <button
+              onClick={() => {
+                setPanelSelectorOpen(false);
+                fileInputRef.current?.click();
+              }}
+              title="Upload Image"
+              className="ap-toolbar-btn"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'transparent',
+                color: 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
+            >
+              <Upload size={14} />
+            </button>
+
+            {/* Divider */}
+            <div style={{ width: '20px', height: '1px', background: 'rgba(255,255,255,0.08)', margin: '4px 0' }} />
+
+            {/* 8. Undo */}
+            <button
+              onClick={() => {
+                setPanelSelectorOpen(false);
+                fabricRef.current?.undo();
+              }}
+              title="Undo (Ctrl+Z)"
+              className="ap-toolbar-btn"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'transparent',
+                color: 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
+            >
+              <Undo2 size={14} />
+            </button>
+
+            {/* 9. Redo */}
+            <button
+              onClick={() => {
+                setPanelSelectorOpen(false);
+                fabricRef.current?.redo();
+              }}
+              title="Redo (Ctrl+Shift+Z)"
+              className="ap-toolbar-btn"
+              style={{
+                width: '30px',
+                height: '30px',
+                borderRadius: '50%',
+                border: 'none',
+                background: 'transparent',
+                color: 'rgba(255, 255, 255, 0.6)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                outline: 'none',
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
+            >
+              <Redo2 size={14} />
+            </button>
 
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
           </div>
