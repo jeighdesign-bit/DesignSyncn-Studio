@@ -2961,7 +2961,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'select' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'select' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -2971,7 +2970,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 boxShadow: toolMode === 'select' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
               }}
             >
-              <MousePointer2 size={14} style={{ color: toolMode === 'select' ? 'var(--accent-blue)' : 'inherit' }} />
+              <MousePointer2 size={14} style={{ color: toolMode === 'select' ? '#0070f3' : 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* 2. Hand/Pan Tool */}
@@ -2985,7 +2984,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'hand' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'hand' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -2995,7 +2993,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 boxShadow: toolMode === 'hand' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
               }}
             >
-              <Hand size={14} style={{ color: toolMode === 'hand' ? 'var(--accent-blue)' : 'inherit' }} />
+              <Hand size={14} style={{ color: toolMode === 'hand' ? '#0070f3' : 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* 3. Move Tool */}
@@ -3009,7 +3007,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'move' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'move' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3019,7 +3016,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 boxShadow: toolMode === 'move' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
               }}
             >
-              <Move size={14} style={{ color: toolMode === 'move' ? 'var(--accent-blue)' : 'inherit' }} />
+              <Move size={14} style={{ color: toolMode === 'move' ? '#0070f3' : 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* 4. Garment Panel Tool */}
@@ -3034,7 +3031,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                   borderRadius: '50%',
                   border: 'none',
                   background: panelSelectorOpen ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                  color: panelSelectorOpen ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                   cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
@@ -3044,7 +3040,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                   boxShadow: panelSelectorOpen ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
                 }}
               >
-                <Shirt size={14} style={{ color: panelSelectorOpen ? 'var(--accent-blue)' : 'inherit' }} />
+                <Shirt size={14} style={{ color: panelSelectorOpen ? '#0070f3' : 'rgba(255, 255, 255, 0.75)' }} />
               </button>
 
               {/* Dynamic Panel Selector Popup */}
@@ -3107,7 +3103,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                           width: '6px', 
                           height: '6px', 
                           borderRadius: '50%', 
-                          background: isActive ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.2)' 
+                          background: isActive ? '#0070f3' : 'rgba(255, 255, 255, 0.2)' 
                         }} />
                         <span>{panel.label}</span>
                       </button>
@@ -3128,7 +3124,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'shape' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'shape' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3138,7 +3133,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 boxShadow: toolMode === 'shape' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
               }}
             >
-              <Square size={14} style={{ color: toolMode === 'shape' ? 'var(--accent-blue)' : 'inherit' }} />
+              <Square size={14} style={{ color: toolMode === 'shape' ? '#0070f3' : 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* 6. Text Tool */}
@@ -3152,7 +3147,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: toolMode === 'text' ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
-                color: toolMode === 'text' ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3162,7 +3156,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 boxShadow: toolMode === 'text' ? 'inset 0 0 8px rgba(0, 112, 243, 0.25)' : 'none',
               }}
             >
-              <Type size={14} style={{ color: toolMode === 'text' ? 'var(--accent-blue)' : 'inherit' }} />
+              <Type size={14} style={{ color: toolMode === 'text' ? '#0070f3' : 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* 7. Upload Tool */}
@@ -3179,7 +3173,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
-                color: 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3187,10 +3180,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
             >
-              <Upload size={14} />
+              <Upload size={14} style={{ color: 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* Divider */}
@@ -3210,7 +3201,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
-                color: 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3218,10 +3208,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
             >
-              <Undo2 size={14} />
+              <Undo2 size={14} style={{ color: 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             {/* 9. Redo */}
@@ -3238,7 +3226,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 borderRadius: '50%',
                 border: 'none',
                 background: 'transparent',
-                color: 'rgba(255, 255, 255, 0.6)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
@@ -3246,10 +3233,8 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                 outline: 'none',
               }}
-              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-              onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)'}
             >
-              <Redo2 size={14} />
+              <Redo2 size={14} style={{ color: 'rgba(255, 255, 255, 0.75)' }} />
             </button>
 
             <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
