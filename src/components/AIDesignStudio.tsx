@@ -651,7 +651,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
         {/* Minimal top breadcrumb bar */}
         <div className="ap-center-topbar">
           <div className="ap-topbar-breadcrumb">
-            <Sparkles size={12} style={{ color: 'var(--accent-blue)', opacity: 0.7 }} />
+            <Sparkles size={13} color="#0070f3" />
             <span className="ap-topbar-stage">Generate</span>
             <span className="ap-topbar-sep">·</span>
             <span className="ap-topbar-project">{project.name}</span>
@@ -661,7 +661,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             className="ap-topbar-toggle"
             title="Toggle Settings Panel"
           >
-            <PanelRight size={14} style={{ color: rightPanelExpanded ? 'var(--accent-blue)' : 'rgba(255,255,255,0.5)' }} />
+            <PanelRight size={16} color={rightPanelExpanded ? '#0070f3' : '#ffffff'} />
           </button>
         </div>
 
