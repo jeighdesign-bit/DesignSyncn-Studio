@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Sparkles, Check, Flame, ShieldCheck, Zap } from 'lucide-react';
+import { Sparkles, Check, Flame, ShieldCheck, Zap } from 'lucide-react';
 
 interface UpgradeModalProps {
   isOpen: boolean;
