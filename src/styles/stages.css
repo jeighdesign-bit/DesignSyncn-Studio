@@ -726,7 +726,7 @@
    ==================================================== */
 .sticky-action-bar-premium {
   position: fixed;
-  bottom: 0;
+  bottom: 24px;
   left: 0;
   right: 0;
   height: 72px;
