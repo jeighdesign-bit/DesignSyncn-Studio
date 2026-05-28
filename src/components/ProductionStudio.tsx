@@ -2327,12 +2327,19 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     canvas.getObjects().forEach((obj: any) => {
       if (obj.__isArtboard) return;
       if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
-        const textVal = (obj.text || '').trim().toUpperCase();
+        // Cache master template placeholder text
+        if (obj.__originalText === undefined) {
+          obj.__originalText = obj.text || '';
+        }
+
+        const templateText = obj.__originalText || '';
+        const textVal = templateText.trim().toUpperCase();
 
         const isName = obj.__isNameText ||
           textVal === 'SURNAME' ||
           textVal === 'PLAYER NAME' ||
           textVal === 'NAME' ||
+          textVal.includes('{{PLAYER_NAME}}') ||
           (previousPlayer && textVal === previousPlayer.name.toUpperCase()) ||
           project.roster.some(p => p.name.toUpperCase() === textVal);
 
@@ -2340,18 +2347,31 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           textVal === '00' ||
           textVal === 'PLAYER NUMBER' ||
           textVal === 'NUMBER' ||
+          textVal.includes('{{PLAYER_NUMBER}}') ||
           (previousPlayer && textVal === previousPlayer.number) ||
           project.roster.some(p => p.number === textVal);
 
+        let newText = templateText;
+
         if (isName) {
           obj.__isNameText = true;
-          obj.set({ text: nameToSet });
+          if (newText.includes('{{PLAYER_NAME}}')) {
+            newText = newText.replace(/\{\{PLAYER_NAME\}\}/gi, nameToSet);
+          } else {
+            newText = nameToSet;
+          }
           canvasChanged = true;
 
           // Typography auto-scaling & Safe zones
           const maxTextWidthInches = project.rules.maxTextWidthInches || 18;
           const maxTextWidthPx = maxTextWidthInches * 40;
+          
+          // Use temporary text width for scaling before setting
+          const oldText = obj.text;
+          obj.text = newText;
           const currentWidth = obj.width;
+          obj.text = oldText; // Restore temporarily
+
           if (currentWidth > 0) {
             const fittedScale = Math.min(1.0, maxTextWidthPx / currentWidth);
             const finalScale = fittedScale * player.nameScale;
@@ -2365,10 +2385,13 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               obj.set({ left: (canvas.width - obj.width * obj.scaleX) / 2 });
             }
           }
-          obj.setCoords();
         } else if (isNumber) {
           obj.__isNumberText = true;
-          obj.set({ text: numberToSet });
+          if (newText.includes('{{PLAYER_NUMBER}}')) {
+            newText = newText.replace(/\{\{PLAYER_NUMBER\}\}/gi, numberToSet);
+          } else {
+            newText = numberToSet;
+          }
           canvasChanged = true;
 
           if (project.rules.autoCenter) {
@@ -2378,8 +2401,23 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               obj.set({ left: (canvas.width - obj.width * obj.scaleX) / 2 });
             }
           }
-          obj.setCoords();
         }
+
+        // Replace other general placeholders
+        if (newText.includes('{{TEAM_NAME}}')) {
+          newText = newText.replace(/\{\{TEAM_NAME\}\}/gi, (project.name || 'TEAM').toUpperCase());
+          canvasChanged = true;
+        }
+        if (newText.includes('{{PLAYER_SIZE}}')) {
+          newText = newText.replace(/\{\{PLAYER_SIZE\}\}/gi, player.size || 'M');
+          canvasChanged = true;
+        }
+
+        if (obj.text !== newText) {
+          obj.set({ text: newText });
+          canvasChanged = true;
+        }
+        obj.setCoords();
       }
     });
 
@@ -3411,6 +3449,7 @@ const RosterPreviewsGrid: React.FC<RosterPreviewsGridProps> = ({
                   getSizeScaleFactor={getSizeScaleFactor}
                   viewBoxW={1120}
                   viewBoxH={1360}
+                  teamName={project.name}
                 />
               </div>
             </div>
@@ -3429,6 +3468,7 @@ const RosterPreviewsGrid: React.FC<RosterPreviewsGridProps> = ({
                   getSizeScaleFactor={getSizeScaleFactor}
                   viewBoxW={1120}
                   viewBoxH={1360}
+                  teamName={project.name}
                 />
               </div>
             </div>
@@ -3447,6 +3487,7 @@ const RosterPreviewsGrid: React.FC<RosterPreviewsGridProps> = ({
                   getSizeScaleFactor={getSizeScaleFactor}
                   viewBoxW={960}
                   viewBoxH={640}
+                  teamName={project.name}
                 />
               </div>
             </div>
@@ -3464,6 +3505,7 @@ interface PlayerSublimationPreviewProps {
   getSizeScaleFactor: (size: string) => number;
   viewBoxW: number;
   viewBoxH: number;
+  teamName?: string;
 }
 
 const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
@@ -3473,6 +3515,7 @@ const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
   getSizeScaleFactor,
   viewBoxW,
   viewBoxH,
+  teamName = 'TEAM',
 }) => {
   const objects = React.useMemo(() => {
     try {
@@ -3516,22 +3559,41 @@ const PlayerSublimationPreview: React.FC<PlayerSublimationPreviewProps> = ({
 
         // 1. Text Elements
         if (obj.type === 'textbox' || obj.type === 'i-text' || obj.type === 'text') {
-          const textVal = (obj.text || '').trim().toUpperCase();
-          const isName = obj.__isNameText || textVal === 'SURNAME' || textVal === 'PLAYER NAME' || textVal === 'NAME';
-          const isNumber = obj.__isNumberText || textVal === '00' || textVal === '0' || textVal === 'NUMBER';
+          const templateText = obj.__originalText || obj.text || '';
+          const textVal = templateText.trim().toUpperCase();
+          const isName = obj.__isNameText || textVal === 'SURNAME' || textVal === 'PLAYER NAME' || textVal === 'NAME' || textVal.includes('{{PLAYER_NAME}}');
+          const isNumber = obj.__isNumberText || textVal === '00' || textVal === '0' || textVal === 'NUMBER' || textVal.includes('{{PLAYER_NUMBER}}');
 
-          let content = textVal;
+          let content = templateText;
           let finalScaleX = scaleX;
           let finalScaleY = scaleY;
 
           if (isName) {
-            content = (player.name || 'UNNAMED').toUpperCase();
+            const rawName = (player.name || 'UNNAMED').toUpperCase();
+            if (content.includes('{{PLAYER_NAME}}')) {
+              content = content.replace(/\{\{PLAYER_NAME\}\}/gi, rawName);
+            } else {
+              content = rawName;
+            }
             finalScaleX = scaleX * sizeScale * player.nameScale;
             finalScaleY = scaleY * sizeScale * player.nameScale;
           } else if (isNumber) {
-            content = player.number || '0';
+            const rawNum = player.number || '0';
+            if (content.includes('{{PLAYER_NUMBER}}')) {
+              content = content.replace(/\{\{PLAYER_NUMBER\}\}/gi, rawNum);
+            } else {
+              content = rawNum;
+            }
             finalScaleX = scaleX * sizeScale;
             finalScaleY = scaleY * sizeScale;
+          }
+
+          // Parse other placeholders
+          if (content.includes('{{TEAM_NAME}}')) {
+            content = content.replace(/\{\{TEAM_NAME\}\}/gi, teamName.toUpperCase());
+          }
+          if (content.includes('{{PLAYER_SIZE}}')) {
+            content = content.replace(/\{\{PLAYER_SIZE\}\}/gi, player.size || 'M');
           }
 
           let x = obj.left;
