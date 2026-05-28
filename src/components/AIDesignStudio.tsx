@@ -3,11 +3,10 @@ import type { Project } from '../types';
 import {
   Sparkles, RefreshCw,
   Check, Clock, AlertTriangle,
-  Shield, Shirt, Layers, Settings, Target,
+  Shield, Shirt, Layers, Settings,
   TriangleAlert, CircleCheck, Info, ArrowRight,
   Ruler, Palette, Cpu, Eye,
-  ChevronDown, ChevronUp, Paperclip,
-  MousePointer, Hand, Image, Type, Sliders, PanelRight
+  ChevronDown, ChevronUp, Paperclip, PanelRight
 } from 'lucide-react';
 import { generateProductionCanvasStates } from '../lib/measurements';
 
@@ -469,7 +468,6 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const [handoffDone, setHandoffDone] = useState(false);
 
   const [rightPanelExpanded, setRightPanelExpanded] = useState(true);
-  const [activeTool, setActiveTool] = useState<string>('select');
   const [activePanelDropdown, setActivePanelDropdown] = useState(false);
   const [accordions, setAccordions] = useState({
     dna: true,
@@ -669,52 +667,8 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
         {/* Flat Canvas Workspace with interactive mockups */}
         <div className="ap-flat-canvas-wrapper ap-canvas-dotgrid">
-          
-          {/* LEFT FLOATING VERTICAL TOOLBAR */}
-          <div className="ap-left-floating-toolbar">
-            {/* Navigation tools */}
-            {[
-              { id: 'select', icon: <MousePointer size={15} />, label: 'Select (V)' },
-              { id: 'pan', icon: <Hand size={15} />, label: 'Pan (H)' },
-            ].map(tool => (
-              <button
-                key={tool.id}
-                onClick={() => setActiveTool(tool.id)}
-                className={`ap-toolbar-btn ${activeTool === tool.id ? 'active' : ''}`}
-                title={tool.label}
-              >
-                {tool.icon}
-              </button>
-            ))}
-            <div className="ap-toolbar-divider" />
-            {/* Creative tools */}
-            {[
-              { id: 'reference', icon: <Image size={15} />, label: 'Reference Image' },
-              { id: 'logo', icon: <Target size={15} />, label: 'Brand Logo' },
-              { id: 'text', icon: <Type size={15} />, label: 'Add Text' },
-              { id: 'style', icon: <Palette size={15} />, label: 'Styles' },
-              { id: 'colors', icon: <Sliders size={15} />, label: 'Colors' },
-              { id: 'variations', icon: <RefreshCw size={15} />, label: 'Variations' }
-            ].map(tool => (
-              <button
-                key={tool.id}
-                onClick={() => {
-                  setActiveTool(tool.id);
-                  if (tool.id === 'style') {
-                    setRightPanelExpanded(true);
-                    setAccordions(p => ({ ...p, dna: true }));
-                  } else if (tool.id === 'colors') {
-                    setRightPanelExpanded(true);
-                    setAccordions(p => ({ ...p, constraints: true }));
-                  }
-                }}
-                className={`ap-toolbar-btn ${activeTool === tool.id ? 'active' : ''}`}
-                title={tool.label}
-              >
-                {tool.icon}
-              </button>
-            ))}
-          </div>
+
+
 
           {/* Canvas loading/generating overlay states */}
           {generating && (
