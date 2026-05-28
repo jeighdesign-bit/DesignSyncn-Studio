@@ -7,6 +7,14 @@ import {
 } from '../lib/measurements';
 import type { Project } from '../types';
 import * as fabric from 'fabric';
+import { ToolManager } from '../editor-engine/tools/manager';
+import type { InteractionContext } from '../editor-engine/types';
+import { SelectionOutlines } from '../editor-engine/selection/outlines';
+import { SelectTool } from '../editor-engine/tools/select';
+import { MoveTool } from '../editor-engine/tools/move';
+import { PanTool } from '../editor-engine/tools/pan';
+import { RectangleTool } from '../editor-engine/tools/rectangle';
+import { TextTool } from '../editor-engine/tools/text';
 
 // Register custom properties for serialization in Fabric.js v7
 (fabric.FabricObject as any).customProperties = [
@@ -479,8 +487,18 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
   const toolModeRef = useRef<ToolMode>(toolMode);
-  const isPanningRef = useRef(false);
-  const lastPosRef = useRef({ x: 0, y: 0 });
+
+  const toolManager = useState(() => {
+    const manager = new ToolManager();
+    manager.registerTool(new SelectTool());
+    manager.registerTool(new MoveTool());
+    manager.registerTool(new PanTool());
+    manager.registerTool(new RectangleTool());
+    manager.registerTool(new TextTool());
+    return manager;
+  })[0];
+
+  const selectionOutlines = useState(() => new SelectionOutlines())[0];
 
   // ── Template Loading & Caching ─────────────────────────────────────────────
   const [panelTemplates, setPanelTemplates] = useState<Record<string, { pathData: string; viewBoxW: number; viewBoxH: number; svgContent: string }>>({});
@@ -1843,6 +1861,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         drawRulersRef.current(ctx);
       }
 
+      // Draw Figma selection outlines
+      selectionOutlines.drawHoverOutline(canvas);
+
       const ctx = canvas.getContext();
       const vpt = canvas.viewportTransform;
       if (!vpt) return;
@@ -2034,99 +2055,56 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       if (onSelectionMeasureRef.current) onSelectionMeasureRef.current(null);
     });
 
+    canvas.on('mouse:over', (opt) => {
+      if (opt.target) {
+        selectionOutlines.setHoveredObject(opt.target);
+        canvas.requestRenderAll();
+      }
+    });
+
+    canvas.on('mouse:out', () => {
+      selectionOutlines.setHoveredObject(null);
+      canvas.requestRenderAll();
+    });
+
     // Notify measurement during live transform
     canvas.on('object:moving',  (e: any) => { if (e.target) notifyMeasure(e.target); });
     canvas.on('object:scaling', (e: any) => { if (e.target) notifyMeasure(e.target); });
     canvas.on('object:rotating',(e: any) => { if (e.target) notifyMeasure(e.target); });
 
-    // ── Mouse events for tool modes ──────────────────────────────────────────
-    canvas.on('mouse:down', (opt) => {
-      const mode = toolModeRef.current;
+    // ── Interaction Context Helper ──────────────────────────────────────────
+    const getContext = (opt: any): InteractionContext => {
       const pointer = canvas.getScenePoint(opt.e as any);
-      const nativeEvt = opt.e as MouseEvent;
+      return {
+        canvas,
+        pointer,
+        nativeEvent: opt.e as MouseEvent,
+        target: opt.target,
+        zoom: zoomRef.current,
+        pan: panRef.current,
+        onPanChange: onPanChangeRef.current,
+        onZoomChange: onZoomChangeRef.current,
+        onCreationComplete: onCreationCompleteRef.current,
+        saveHistory: saveHistoryRef.current,
+        notifyLayers,
+        configureDesignObject: configureDesignObjectRef.current
+      };
+    };
 
-      if (mode === 'hand') {
-        isPanningRef.current = true;
-        lastPosRef.current = { x: nativeEvt.clientX, y: nativeEvt.clientY };
-        canvas.setCursor('grabbing');
-        canvas.selection = false;
-        return;
-      }
+    // Initialize the active tool inside toolManager initially
+    toolManager.setTool(toolModeRef.current, getContext({ e: new MouseEvent('mousedown') }));
 
-      const isTargetArtboard = opt.target && (opt.target as any).__isArtboard;
-      const canPlace = !opt.target || isTargetArtboard;
-
-      if (mode === 'text' && canPlace) {
-        const text = new fabric.Textbox('Click to edit', {
-          left: pointer.x,
-          top: pointer.y,
-          width: 250,
-          fontFamily: 'Outfit, sans-serif',
-          fontSize: 48,
-          fontWeight: '800',
-          fill: '#ffffff',
-          textAlign: 'center',
-          originX: 'center',
-          originY: 'center',
-          splitByGrapheme: true,
-        } as any);
-        (text as any).__id = `text-${Date.now()}`;
-        (text as any).__layerName = `Text ${textCounter++}`;
-        canvas.add(text);
-        canvas.setActiveObject(text);
-        text.enterEditing();
-        canvas.requestRenderAll();
-        if (!nativeEvt.shiftKey && onCreationCompleteRef.current) {
-          onCreationCompleteRef.current();
-        }
-      }
-
-      if (mode === 'shape' && canPlace) {
-        const rect = new fabric.Rect({
-          left: pointer.x,
-          top: pointer.y,
-          width: 120,
-          height: 80,
-          fill: '#0070f3',
-          stroke: '#ffffff',
-          strokeWidth: 2,
-          rx: 8,
-          ry: 8,
-          originX: 'center',
-          originY: 'center',
-        });
-        (rect as any).__id = `shape-${Date.now()}`;
-        (rect as any).__layerName = `Shape ${shapeCounter++}`;
-        canvas.add(rect);
-        canvas.setActiveObject(rect);
-        canvas.requestRenderAll();
-        if (!nativeEvt.shiftKey && onCreationCompleteRef.current) {
-          onCreationCompleteRef.current();
-        }
-      }
+    // ── Mouse events for tool modes (decoupled via ToolManager) ──────────────
+    canvas.on('mouse:down', (opt) => {
+      toolManager.onPointerDown(getContext(opt));
     });
 
     canvas.on('mouse:move', (opt) => {
-      if (isPanningRef.current && toolModeRef.current === 'hand') {
-        const nativeEvt = opt.e as MouseEvent;
-        const deltaX = nativeEvt.clientX - lastPosRef.current.x;
-        const deltaY = nativeEvt.clientY - lastPosRef.current.y;
-        lastPosRef.current = { x: nativeEvt.clientX, y: nativeEvt.clientY };
-        const vpt = canvas.viewportTransform;
-        if (vpt) {
-          vpt[4] += deltaX;
-          vpt[5] += deltaY;
-          canvas.requestRenderAll();
-          onPanChange({ x: vpt[4], y: vpt[5] });
-        }
-      }
+      toolManager.onPointerMove(getContext(opt));
     });
 
-    canvas.on('mouse:up', () => {
-      isPanningRef.current = false;
-      if (toolModeRef.current === 'hand') {
-        canvas.setCursor('grab');
-      }
+    canvas.on('mouse:up', (opt) => {
+      toolManager.onPointerUp(getContext(opt));
     });
 
     // ── Wheel zoom ───────────────────────────────────────────────────────────
@@ -2161,56 +2139,20 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   useEffect(() => {
     const canvas = fabricRef.current;
     if (!canvas) return;
-    if (toolMode === 'hand') {
-      canvas.selection = false;
-      canvas.getObjects().forEach(o => { o.selectable = false; });
-      canvas.defaultCursor = 'grab';
-      canvas.hoverCursor = 'grab';
-      canvas.setCursor('grab');
-    } else if (toolMode === 'select') {
-      canvas.selection = true;
-      canvas.getObjects().forEach(o => {
-        if (!(o as any).__isArtboard) {
-          o.selectable = !((o as any).__locked);
-        }
-      });
-      canvas.defaultCursor = 'default';
-      canvas.hoverCursor = 'move';
-      canvas.setCursor('default');
-    } else if (toolMode === 'move') {
-      canvas.selection = true;
-      canvas.getObjects().forEach(o => {
-        if (!(o as any).__isArtboard) {
-          o.selectable = !((o as any).__locked);
-        }
-      });
-      canvas.defaultCursor = 'move';
-      canvas.hoverCursor = 'move';
-      canvas.setCursor('move');
-    } else if (toolMode === 'text') {
-      // Keep selection enabled so existing text/objects can still be scaled/rotated
-      canvas.selection = true;
-      canvas.getObjects().forEach(o => {
-        if (!(o as any).__isArtboard) {
-          o.selectable = !((o as any).__locked);
-        }
-      });
-      canvas.defaultCursor = 'text';
-      canvas.hoverCursor = 'text';
-      canvas.setCursor('text');
-    } else if (toolMode === 'shape') {
-      // Keep selection enabled so existing shapes can still be scaled/rotated
-      canvas.selection = true;
-      canvas.getObjects().forEach(o => {
-        if (!(o as any).__isArtboard) {
-          o.selectable = !((o as any).__locked);
-        }
-      });
-      canvas.defaultCursor = 'crosshair';
-      canvas.hoverCursor = 'crosshair';
-      canvas.setCursor('crosshair');
-    }
-    canvas.requestRenderAll();
+
+    toolManager.setTool(toolMode, {
+      canvas,
+      pointer: { x: 0, y: 0 },
+      nativeEvent: new MouseEvent('mousedown'),
+      zoom: zoomRef.current,
+      pan: panRef.current,
+      onPanChange: onPanChangeRef.current,
+      onZoomChange: onZoomChangeRef.current,
+      onCreationComplete: onCreationCompleteRef.current,
+      saveHistory: saveHistoryRef.current,
+      notifyLayers,
+      configureDesignObject: configureDesignObjectRef.current
+    });
   }, [toolMode]);
 
   // ── Sync background ───────────────────────────────────────────────────────
