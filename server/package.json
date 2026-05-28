@@ -1,0 +1,27 @@
+{
+  "name": "designsync-server",
+  "version": "1.0.0",
+  "description": "BullMQ + Redis Microservice for high-resolution sublimation exports",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "nodemon --watch src -e ts --exec ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.106.2",
+    "bullmq": "^5.41.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "ioredis": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.13.5",
+    "nodemon": "^3.1.9",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

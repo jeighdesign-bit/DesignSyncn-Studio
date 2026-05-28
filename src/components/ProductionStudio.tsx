@@ -9,6 +9,7 @@ import {
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode, setCenterPosition, clampObjectToLimits, clampObjectToSafeZone } from './FabricCanvas';
 import { RuleEngine } from './RuleEngine';
+import { ExportHUD } from './ExportHUD';
 
 import {
   formatMeasurement, unitLabel, calcSafeZones, getAnchorCoords,
@@ -1932,6 +1933,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
   const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
   const [configTab, setConfigTab] = useState<'workspace' | 'rules'>('workspace');
+  const [showExportHUD, setShowExportHUD] = useState(false);
 
 
 
@@ -2830,6 +2832,31 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
             <button className="studio-ctrl-icon-btn" onClick={() => fabricRef.current?.redo()} title="Redo (Ctrl+Shift+Z)"><Redo2 size={13} /></button>
           </div>
 
+          {/* Export Queue trigger */}
+          <div className="studio-ctrl-group" style={{ paddingLeft: '4px' }}>
+            <button
+              onClick={() => setShowExportHUD(true)}
+              style={{
+                background: 'rgba(16, 185, 129, 0.12)',
+                border: '1px solid rgba(16, 185, 129, 0.3)',
+                color: '#34d399',
+                fontSize: '11px',
+                fontWeight: 'bold',
+                padding: '4px 10px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                transition: 'all 0.2s',
+                boxShadow: '0 0 10px rgba(16, 185, 129, 0.05)',
+              }}
+            >
+              <FileDown size={13} />
+              <span>Export Queue</span>
+            </button>
+          </div>
+
         </div>
 
         {/* Canvas body: Toolbar + Rulers + Viewport */}
@@ -3219,6 +3246,31 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
           })()}
         </div>
       </div>
+
+      {/* Floating Export Queue HUD Modal */}
+      {showExportHUD && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(5, 5, 10, 0.75)',
+          backdropFilter: 'blur(8px)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px',
+        }}>
+          <ExportHUD
+            projectId={project.id || ''}
+            roster={project.roster}
+            getCanvasElements={() => {
+              const canvas = fabricRef.current?.getCanvas();
+              return canvas ? canvas.toJSON().objects : [];
+            }}
+            onClose={() => setShowExportHUD(false)}
+          />
+        </div>
+      )}
 
     </div>
   );
