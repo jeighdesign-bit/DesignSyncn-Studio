@@ -4827,7 +4827,7 @@
 /* Floating chips container just above prompt bar */
 .ap-chips-floating-container {
   position: absolute;
-  bottom: 72px;
+  bottom: 88px;
   left: 50%;
   transform: translateX(-50%);
   width: 90%;
