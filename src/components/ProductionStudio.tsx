@@ -2900,20 +2900,27 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         {/* Canvas body: Toolbar + Rulers + Viewport */}
         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
 
-          {/* ── Vertical Edit Toolbar (Docked) ── */}
-          <div style={{
-            width: '46px',
-            minWidth: '46px',
-            background: '#0f0f14',
-            borderRight: '1px solid #1c1c28',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '12px 0',
-            gap: '5px',
-            zIndex: 20,
-            flexShrink: 0,
-          }}>
+          {/* ── Vertical Edit Toolbar (Floating) ── */}
+          <div 
+            className="ap-left-floating-toolbar"
+            style={{
+              position: 'absolute',
+              left: '20px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 25,
+              background: 'rgba(18, 18, 24, 0.75)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '18px',
+              padding: '10px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '8px',
+              backdropFilter: 'blur(20px)',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+            }}
+          >
             {/* ── 5 Main Tools ── */}
             {TOOLS.map(tool => {
               const isActive = toolMode === tool.id;
@@ -2922,19 +2929,20 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                   key={tool.id}
                   onClick={() => setToolMode(tool.id)}
                   title={tool.title}
+                  className={`ap-toolbar-btn ${isActive ? 'active' : ''}`}
                   style={{
-                    width: '30px',
-                    height: '30px',
-                    borderRadius: '6px',
-                    border: isActive ? '1px solid rgba(0,112,243,0.6)' : '1px solid transparent',
-                    background: isActive ? 'rgba(0,112,243,0.18)' : 'transparent',
-                    color: isActive ? '#3b9eff' : '#7a7a90',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '10px',
+                    border: isActive ? '1px solid rgba(0,112,243,0.3)' : '1px solid transparent',
+                    background: isActive ? 'rgba(0,112,243,0.15)' : 'transparent',
+                    color: isActive ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.6)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     flexShrink: 0,
-                    transition: 'all 0.15s',
+                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                     padding: 0,
                   }}
                 >

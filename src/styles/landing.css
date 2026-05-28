@@ -621,80 +621,82 @@
   margin: 0;
 }
 
-/* ── Feature Cards ─────────────────────────────────────────── */
+/* ── Feature Cards (Figma/n8n Sticky Stacked Scroll) ─────────────────────────── */
 .lp-features-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 32px;
-  padding-top: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 80px; /* High gap to allow comfortable scroll-stacking animations */
+  padding-top: 60px;
+  position: relative;
+  width: 100%;
 }
 
 .lp-feature-card {
-  background: #0d0d11;
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 24px;
-  padding: 32px;
+  position: sticky;
+  background: rgba(13, 13, 17, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 28px;
+  padding: 48px;
+  display: grid;
+  grid-template-columns: 1.2fr 1fr;
+  gap: 40px;
+  align-items: center;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  overflow: hidden;
+  box-shadow: 
+    0 30px 60px rgba(0, 0, 0, 0.6),
+    0 0 100px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  width: 100%;
+  max-width: 1024px;
+  min-height: 400px;
+  transform-origin: center top;
+}
+
+.lp-feature-left {
   display: flex;
   flex-direction: column;
   gap: 20px;
-  transition: all 0.5s cubic-bezier(0.25, 1, 0.5, 1);
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  text-align: left;
 }
 
-/* Overlapping stacked cards structure (n8n Style) */
-.lp-feature-card:nth-child(1),
-.lp-feature-card:nth-child(4) {
-  transform: translateY(0);
+.lp-feature-right {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
-.lp-feature-card:nth-child(2),
-.lp-feature-card:nth-child(5) {
-  transform: translateY(24px);
-}
-
-.lp-feature-card:nth-child(3),
-.lp-feature-card:nth-child(6) {
-  transform: translateY(48px);
-}
-
+/* Beautiful neon gradient border-glow top highlight */
 .lp-feature-card::before {
   content: '';
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255, 78, 48, 0.6), transparent);
-  opacity: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--accent-blue, #0070f3), var(--accent-purple, #7928ca), transparent);
+  opacity: 0.6;
   transition: opacity 0.4s ease;
 }
 
+/* Progressive scale based on card index so layered cards underneath feel smaller/nested */
+.lp-feature-card {
+  transform: scale(calc(1 - (5 - var(--card-index)) * 0.015));
+}
+
 .lp-feature-card:hover {
-  border-color: rgba(255, 78, 48, 0.3);
+  border-color: rgba(0, 112, 243, 0.3);
   box-shadow: 
-    0 20px 40px rgba(0, 0, 0, 0.7), 
-    0 0 30px rgba(255, 78, 48, 0.05),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  /* Keep offset but add a subtle elevation pull on hover */
-  transform: translateY(var(--hover-translate, -8px)) scale(1.02);
+    0 40px 80px rgba(0, 0, 0, 0.8), 
+    0 0 40px rgba(0, 112, 243, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transform: scale(calc(1 - (5 - var(--card-index)) * 0.015 + 0.01)) translateY(-4px);
 }
 
-.lp-feature-card:nth-child(1):hover,
-.lp-feature-card:nth-child(4):hover {
-  --hover-translate: -8px;
+.lp-feature-card:hover::before {
+  opacity: 1;
 }
-
-.lp-feature-card:nth-child(2):hover,
-.lp-feature-card:nth-child(5):hover {
-  --hover-translate: 16px;
-}
-
-.lp-feature-card:nth-child(3):hover,
-.lp-feature-card:nth-child(6):hover {
-  --hover-translate: 40px;
-}
-
-.lp-feature-card:hover::before { opacity: 1; }
 
 .lp-feature-top {
   display: flex;
@@ -1358,12 +1360,10 @@
 
 /* ── Responsive ────────────────────────────────────────────── */
 @media (max-width: 1100px) {
-  .lp-features-grid { 
-    grid-template-columns: repeat(2, 1fr); 
-    gap: 20px;
-  }
   .lp-feature-card {
-    transform: none !important;
+    padding: 36px;
+    gap: 30px;
+    min-height: 360px;
   }
   .lp-garment-grid  { grid-template-columns: repeat(3, 1fr); }
 }
@@ -1373,12 +1373,21 @@
   .lp-hero-visual { display: none; }
   .lp-nav-links { display: none; }
   .lp-features-grid { 
-    grid-template-columns: 1fr; 
-    gap: 20px;
+    gap: 32px;
     padding-top: 20px;
   }
   .lp-feature-card {
+    position: relative !important;
+    top: 0 !important;
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 28px;
+    min-height: auto;
     transform: none !important;
+    box-shadow: 0 15px 30px rgba(0, 0, 0, 0.4);
+  }
+  .lp-feature-card:hover {
+    transform: translateY(-4px) !important;
   }
   .lp-testi-grid { grid-template-columns: 1fr; }
   .lp-pricing-grid { grid-template-columns: 1fr; }

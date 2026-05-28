@@ -5,7 +5,9 @@ import {
   Check, Clock, AlertTriangle,
   Shield, Shirt, Layers, Settings, Target,
   TriangleAlert, CircleCheck, Info, ArrowRight,
-  Ruler, Palette, Cpu, Eye, Activity
+  Ruler, Palette, Cpu, Eye,
+  ChevronDown, ChevronUp, Paperclip,
+  MousePointer, Hand, Image, Type, Sliders, PanelRight
 } from 'lucide-react';
 import { generateProductionCanvasStates } from '../lib/measurements';
 
@@ -465,7 +467,17 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const [loadingMsg, setLoadingMsg] = useState('');
   const [handoffProcessing, setHandoffProcessing] = useState(false);
   const [handoffDone, setHandoffDone] = useState(false);
-  const [activeTab, setActiveTab] = useState<'prompt' | 'constraints' | 'style'>('prompt');
+
+  const [rightPanelExpanded, setRightPanelExpanded] = useState(true);
+  const [activeTool, setActiveTool] = useState<string>('select');
+  const [activePanelDropdown, setActivePanelDropdown] = useState(false);
+  const [accordions, setAccordions] = useState({
+    dna: true,
+    constraints: false,
+    status: false,
+    compliance: false,
+    logs: false
+  });
 
   const LOADING_MSGS = [
     '[PANEL AI] Mapping front body layout zones...',
@@ -633,297 +645,84 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="ap-engine-layout">
-
-      {/* ═══ LEFT PANEL ═══════════════════════════════════════════════════════ */}
-      <div className="ap-left-panel">
-
-        {/* Header */}
-        <div className="ap-left-header">
-          <div className="ap-engine-badge"><Cpu size={9} /> APPAREL AI ENGINE</div>
-          <div className="ap-left-title">Panel Layout Studio</div>
-          <div className="ap-left-subtitle">Configure each garment panel independently for production</div>
+    <div className="ap-engine-layout" style={{ display: 'flex', position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
+      
+      {/* ═══ CENTER Dominant Viewport & Floating controls ═══════════════════ */}
+      <div className="ap-center-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: '#06060c' }}>
+        
+        {/* Minimal top breadcrumb bar */}
+        <div className="ap-center-topbar">
+          <div className="ap-topbar-breadcrumb">
+            <Sparkles size={12} style={{ color: 'var(--accent-blue)', opacity: 0.7 }} />
+            <span className="ap-topbar-stage">Generate</span>
+            <span className="ap-topbar-sep">·</span>
+            <span className="ap-topbar-project">{project.name}</span>
+          </div>
+          <button
+            onClick={() => setRightPanelExpanded(!rightPanelExpanded)}
+            className="ap-topbar-toggle"
+            title="Toggle Settings Panel"
+          >
+            <PanelRight size={14} style={{ color: rightPanelExpanded ? 'var(--accent-blue)' : '#555' }} />
+          </button>
         </div>
 
-        {/* Panel Selector Tabs */}
-        <div className="ap-panel-selector">
-          <div className="ap-section-label"><Shirt size={11} /> Garment Panels</div>
-          <div className="ap-panel-tabs">
-            {panels.map(p => (
+        {/* Flat Canvas Workspace with interactive mockups */}
+        <div className="ap-flat-canvas-wrapper ap-canvas-dotgrid">
+          
+          {/* LEFT FLOATING VERTICAL TOOLBAR */}
+          <div className="ap-left-floating-toolbar">
+            {/* Navigation tools */}
+            {[
+              { id: 'select', icon: <MousePointer size={15} />, label: 'Select (V)' },
+              { id: 'pan', icon: <Hand size={15} />, label: 'Pan (H)' },
+            ].map(tool => (
               <button
-                key={p.id}
-                className={`ap-panel-tab ${activePanel === p.id ? 'active' : ''}`}
-                onClick={() => setActivePanel(p.id)}
-                title={p.label}
+                key={tool.id}
+                onClick={() => setActiveTool(tool.id)}
+                className={`ap-toolbar-btn ${activeTool === tool.id ? 'active' : ''}`}
+                title={tool.label}
               >
-                <span className="ap-panel-tab-dot" style={{ background: STATUS_COLOR[p.status] }} />
-                <span className="ap-panel-tab-label">{p.shortLabel}</span>
+                {tool.icon}
+              </button>
+            ))}
+            <div className="ap-toolbar-divider" />
+            {/* Creative tools */}
+            {[
+              { id: 'reference', icon: <Image size={15} />, label: 'Reference Image' },
+              { id: 'logo', icon: <Target size={15} />, label: 'Brand Logo' },
+              { id: 'text', icon: <Type size={15} />, label: 'Add Text' },
+              { id: 'style', icon: <Palette size={15} />, label: 'Styles' },
+              { id: 'colors', icon: <Sliders size={15} />, label: 'Colors' },
+              { id: 'variations', icon: <RefreshCw size={15} />, label: 'Variations' }
+            ].map(tool => (
+              <button
+                key={tool.id}
+                onClick={() => {
+                  setActiveTool(tool.id);
+                  if (tool.id === 'style') {
+                    setRightPanelExpanded(true);
+                    setAccordions(p => ({ ...p, dna: true }));
+                  } else if (tool.id === 'colors') {
+                    setRightPanelExpanded(true);
+                    setAccordions(p => ({ ...p, constraints: true }));
+                  }
+                }}
+                className={`ap-toolbar-btn ${activeTool === tool.id ? 'active' : ''}`}
+                title={tool.label}
+              >
+                {tool.icon}
               </button>
             ))}
           </div>
 
-          {/* Active Panel Status */}
-          <div className="ap-panel-status-row">
-            <span className="ap-panel-name">{activeConfig.label}</span>
-            <span className="ap-panel-badge" style={{ background: `${STATUS_COLOR[activeConfig.status]}22`, color: STATUS_COLOR[activeConfig.status], border: `1px solid ${STATUS_COLOR[activeConfig.status]}55` }}>
-              {activeConfig.status.toUpperCase()}
-            </span>
-          </div>
-        </div>
-
-        {/* Content Tabs */}
-        <div className="ap-content-tabs">
-          <button className={`ap-content-tab ${activeTab === 'prompt' ? 'active' : ''}`} onClick={() => setActiveTab('prompt')}>
-            <Target size={10} /> Prompt
-          </button>
-          <button className={`ap-content-tab ${activeTab === 'style' ? 'active' : ''}`} onClick={() => setActiveTab('style')}>
-            <Palette size={10} /> Style DNA
-          </button>
-          <button className={`ap-content-tab ${activeTab === 'constraints' ? 'active' : ''}`} onClick={() => setActiveTab('constraints')}>
-            <Settings size={10} /> Constraints
-          </button>
-        </div>
-
-        {/* ── TAB: Prompt ── */}
-        {activeTab === 'prompt' && (
-          <div className="ap-section">
-            <div className="ap-section-label"><Target size={11} /> Panel Instructions — {activeConfig.label}</div>
-            <textarea
-              className="ap-prompt-input"
-              placeholder={`Describe the ${activeConfig.label.toLowerCase()} design...\ne.g. "${PANEL_PROMPT_CHIPS[activePanel][0]}"`}
-              value={activeConfig.prompt}
-              rows={4}
-              onChange={e => {
-                updatePanel(activePanel, {
-                  prompt: e.target.value,
-                  status: e.target.value.trim() ? 'configured' : 'empty'
-                });
-              }}
-            />
-
-            {/* Prompt chips */}
-            <div className="ap-chip-row">
-              {PANEL_PROMPT_CHIPS[activePanel].map(chip => (
-                <button
-                  key={chip}
-                  className="ap-chip"
-                  onClick={() => updatePanel(activePanel, { prompt: chip, status: 'configured' })}
-                >
-                  + {chip}
-                </button>
-              ))}
-            </div>
-
-            {/* Panel actions */}
-            {activeConfig.status === 'generated' && (
-              <button className="ap-approve-btn" onClick={() => handleApprovePanel(activePanel)}>
-                <Check size={12} /> Approve This Panel
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* ── TAB: Style DNA ── */}
-        {activeTab === 'style' && (
-          <div className="ap-section">
-            <div className="ap-section-label"><Palette size={11} /> Style DNA — Applied to All Panels</div>
-            <div className="ap-style-dna-grid">
-              {STYLE_DNA.map(dna => (
-                <div
-                  key={dna.id}
-                  className={`ap-dna-card ${selectedDNA?.id === dna.id ? 'active' : ''}`}
-                  onClick={() => {
-                    setSelectedDNA(selectedDNA?.id === dna.id ? null : dna);
-                    if (selectedDNA?.id !== dna.id) {
-                      onUpdateProject({
-                        baseColors: {
-                          ...project.baseColors,
-                          primary: dna.primaryColor,
-                          secondary: dna.secondaryColor,
-                          accent: dna.accentColor,
-                        }
-                      });
-                      pushLog(`Style DNA: "${dna.name}" selected`);
-                    }
-                  }}
-                >
-                  <div className="ap-dna-swatch">
-                    <div style={{ background: dna.primaryColor, flex: 2 }} />
-                    <div style={{ background: dna.secondaryColor, flex: 1.5 }} />
-                    <div style={{ background: dna.accentColor, flex: 0.5 }} />
-                  </div>
-                  <div className="ap-dna-info">
-                    <div className="ap-dna-name">{dna.name}</div>
-                    <div className="ap-dna-tag">{dna.tag}</div>
-                  </div>
-                  {selectedDNA?.id === dna.id && <div className="ap-dna-check"><Check size={8} /></div>}
-                </div>
-              ))}
-            </div>
-            {selectedDNA && (
-              <div className="ap-dna-desc">
-                <Info size={10} />
-                <span>{selectedDNA.description}</span>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── TAB: Production Constraints ── */}
-        {activeTab === 'constraints' && (
-          <div className="ap-section">
-            <div className="ap-section-label"><Settings size={11} /> Production Constraints</div>
-
-            <div className="ap-constraint-block">
-              <div className="ap-constraint-row">
-                <label className="ap-constraint-label">
-                  <Shield size={10} /> Sponsor Zone
-                </label>
-                <button
-                  className={`ap-toggle ${sponsorZone ? 'on' : ''}`}
-                  onClick={() => setSponsorZone(v => !v)}
-                >
-                  <span className="ap-toggle-knob" />
-                </button>
-              </div>
-              <div className="ap-constraint-hint">Reserve top-front chest for sponsor logo placement</div>
-            </div>
-
-            <div className="ap-constraint-block">
-              <div className="ap-constraint-row">
-                <label className="ap-constraint-label">
-                  <Ruler size={10} /> Name/# Safe Margin
-                </label>
-                <span className="ap-constraint-value">{safeZoneRadius}"</span>
-              </div>
-              <input
-                type="range"
-                min="0.25" max="1.0" step="0.05"
-                value={safeZoneRadius}
-                onChange={e => setSafeZoneRadius(parseFloat(e.target.value))}
-                className="ap-range-slider"
-              />
-              <div className="ap-range-labels"><span>0.25"</span><span>0.5"</span><span>1.0"</span></div>
-            </div>
-
-            <div className="ap-constraint-block">
-              <div className="ap-constraint-row">
-                <label className="ap-constraint-label">
-                  <Layers size={10} /> Seam Bleed
-                </label>
-              </div>
-              <div className="ap-bleed-options">
-                {([0.25, 0.5, 0.75] as const).map(val => (
-                  <button
-                    key={val}
-                    className={`ap-bleed-opt ${seamBleed === val ? 'active' : ''}`}
-                    onClick={() => setSeamBleed(val)}
-                  >
-                    {val}"
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="ap-constraint-block">
-              <div className="ap-constraint-row">
-                <label className="ap-constraint-label">
-                  <Palette size={10} /> Sublimation Ink Mode
-                </label>
-              </div>
-              <div className="ap-ink-options">
-                {(['cmyk', 'rgb', 'neon'] as const).map(mode => (
-                  <button
-                    key={mode}
-                    className={`ap-ink-opt ${inkMode === mode ? 'active' : ''}`}
-                    onClick={() => setInkMode(mode)}
-                  >
-                    {mode.toUpperCase()}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Zone Visibility Toggles */}
-            <div className="ap-constraint-block">
-              <div className="ap-section-label" style={{ marginBottom: '8px' }}><Eye size={10} /> Overlay Visibility</div>
-              {(Object.keys(showZones) as ZoneType[]).map(zone => (
-                <div key={zone} className="ap-constraint-row" style={{ marginBottom: '6px' }}>
-                  <label className="ap-constraint-label" style={{ color: ZONE_COLORS[zone].stroke }}>
-                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '2px', border: `1px solid ${ZONE_COLORS[zone].stroke}`, marginRight: '4px' }} />
-                    {ZONE_COLORS[zone].label}
-                  </label>
-                  <button
-                    className={`ap-toggle ${showZones[zone] ? 'on' : ''}`}
-                    onClick={() => setShowZones(prev => ({ ...prev, [zone]: !prev[zone] }))}
-                  >
-                    <span className="ap-toggle-knob" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Generate Button */}
-        <div className="ap-generate-section">
-          <button
-            className={`ap-generate-btn ${generating ? 'loading' : ''}`}
-            onClick={handleGenerate}
-            disabled={generating || (panels.every(p => p.prompt.trim() === '') && !selectedDNA)}
-          >
-            {generating ? (
-              <><RefreshCw size={14} className="animate-spin" /> Generating Layout...</>
-            ) : (
-              <><Sparkles size={14} /> Generate Panel Layout</>
-            )}
-          </button>
-          <div className="ap-generate-meta">
-            {configuredCount > 0
-              ? `${configuredCount}/5 panels configured • ${selectedDNA ? selectedDNA.name + ' DNA active' : 'No style DNA'}`
-              : selectedDNA
-              ? `Style DNA: ${selectedDNA.name} • No panel prompts`
-              : 'Configure at least one panel or select a Style DNA'}
-          </div>
-        </div>
-
-      </div>
-
-      {/* ═══ CENTER PANEL ═══════════════════════════════════════════════════════ */}
-      <div className="ap-center-panel">
-
-        {/* Top Bar */}
-        <div className="ap-center-topbar">
-          <div className="ap-center-badge-group">
-            <div className="ap-center-badge"><Layers size={10} /> GARMENT FLAT VIEW</div>
-            <span className="ap-center-title">{project.name}</span>
-          </div>
-          <div className="ap-center-controls">
-            {concepts.length > 0 && (
-              <div className="ap-panel-pills">
-                {panels.map(p => (
-                  <div
-                    key={p.id}
-                    className="ap-panel-pill"
-                    style={{ borderColor: STATUS_COLOR[p.status], color: STATUS_COLOR[p.status] }}
-                    title={p.label}
-                  >
-                    {p.shortLabel}
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Garment Flat Canvas */}
-        <div className="ap-flat-canvas-wrapper">
+          {/* Canvas loading/generating overlay states */}
           {generating && (
             <div className="ap-generation-overlay">
               <div className="ap-gen-spinner-wrap">
                 <div className="ap-gen-spinner" />
-                <div className="ap-gen-label">{loadingMsg}</div>
-                <div className="ap-gen-sub">Panel-aware AI composition engine active</div>
+                <div className="ap-gen-label">{loadingMsg || 'Running apparel design synthesizer...'}</div>
+                <div className="ap-gen-sub">Panel-aware AI creative engine synthesising textures</div>
               </div>
             </div>
           )}
@@ -934,7 +733,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--accent-blue)', fontWeight: 'bold', fontSize: '11px', fontFamily: 'monospace', letterSpacing: '0.08em' }}>
                   <Cpu size={14} className="animate-pulse" /> APPAREL PRODUCTION AI ENGINE
                 </div>
-                <div style={{ background: '#04060a', border: '1px solid var(--border-muted)', borderRadius: '8px', padding: '16px', fontFamily: 'monospace', fontSize: '10.5px', color: '#4ade80', display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '170px', textAlign: 'left', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                <div style={{ background: '#04060a', border: '1px solid rgba(255,255,255,0.06)', borderRadius: '8px', padding: '16px', fontFamily: 'monospace', fontSize: '10.5px', color: '#4ade80', display: 'flex', flexDirection: 'column', gap: '6px', minHeight: '170px', textAlign: 'left', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
                   <div style={{ borderBottom: '1px solid rgba(74, 222, 128, 0.12)', paddingBottom: '6px', marginBottom: '6px', color: 'var(--text-disabled)', display: 'flex', justifyContent: 'space-between', fontSize: '9px', fontWeight: 'bold', textTransform: 'uppercase' }}>
                     <span>Vector Diagnostics Module v4.2</span>
                     <span className="animate-pulse" style={{ color: 'var(--accent-blue)' }}>● RUNNING</span>
@@ -955,162 +754,471 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             </div>
           )}
 
-          <GarmentFlat
-            panels={panels}
-            activePanel={activePanel}
-            concepts={concepts}
-            showZones={showZones}
-            selectedDNA={selectedDNA}
-            sponsorZone={sponsorZone}
-            safeZone={safeZoneRadius}
-            seamBleed={seamBleed}
-            onPanelClick={(id) => setActivePanel(id)}
-          />
+          {/* Actual Flat Garment SVG Blueprint preview */}
+          <div style={{ transform: 'scale(1.02)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <GarmentFlat
+              panels={panels}
+              activePanel={activePanel}
+              concepts={concepts}
+              showZones={showZones}
+              selectedDNA={selectedDNA}
+              sponsorZone={sponsorZone}
+              safeZone={safeZoneRadius}
+              seamBleed={seamBleed}
+              onPanelClick={(id) => {
+                setActivePanel(id);
+              }}
+            />
+          </div>
+
+          {/* FLOATING SUGGESTIONS FOR THE ACTIVE PANEL - Floats just above prompt bar */}
+          <div className="ap-chips-floating-container">
+            {PANEL_PROMPT_CHIPS[activePanel].map(chip => (
+              <button
+                key={chip}
+                className="ap-chip"
+                onClick={() => updatePanel(activePanel, { prompt: chip, status: 'configured' })}
+              >
+                + {chip}
+              </button>
+            ))}
+          </div>
+
+          {/* BOTTOM-CENTER FLOATING AI PROMPT BAR */}
+          <div className="ap-bottom-prompt-bar">
+            {/* Panel Selector Dropdown Trigger */}
+            <div style={{ position: 'relative' }}>
+              <button
+                className="ap-prompt-dropdown-btn"
+                onClick={() => setActivePanelDropdown(!activePanelDropdown)}
+              >
+                <Shirt size={13} style={{ color: STATUS_COLOR[activeConfig.status] }} />
+                <span>{activeConfig.shortLabel} Panel</span>
+                <ChevronDown size={12} style={{ opacity: 0.6 }} />
+              </button>
+              
+              {activePanelDropdown && (
+                <div className="ap-prompt-dropdown-menu">
+                  {panels.map(p => (
+                    <button
+                      key={p.id}
+                      className={`ap-prompt-dropdown-item ${activePanel === p.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setActivePanel(p.id);
+                        setActivePanelDropdown(false);
+                      }}
+                    >
+                      <span className="ap-dropdown-dot" style={{ background: STATUS_COLOR[p.status] }} />
+                      <span>{p.label}</span>
+                      {activePanel === p.id && <Check size={11} style={{ marginLeft: 'auto', color: 'var(--accent-blue)' }} />}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Attachment Button */}
+            <button 
+              className="ap-prompt-attachment-btn" 
+              title="Attach logo or reference illustration"
+              onClick={() => {
+                pushLog('Creative Studio: Prompt attachment added as design guidance');
+              }}
+            >
+              <Paperclip size={15} />
+            </button>
+
+            {/* Prompt Text input field */}
+            <input
+              type="text"
+              className="ap-prompt-textarea"
+              placeholder={`Describe details for ${activeConfig.label.toLowerCase()} (e.g., "${PANEL_PROMPT_CHIPS[activePanel][0]}")...`}
+              value={activeConfig.prompt}
+              onChange={e => {
+                updatePanel(activePanel, {
+                  prompt: e.target.value,
+                  status: e.target.value.trim() ? 'configured' : 'empty'
+                });
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && activeConfig.prompt.trim() !== '') {
+                  handleGenerate();
+                }
+              }}
+            />
+
+            {/* Generate Action Button */}
+            <button
+              className={`ap-prompt-generate-btn ${generating ? 'loading' : ''}`}
+              onClick={handleGenerate}
+              disabled={generating || (panels.every(p => p.prompt.trim() === '') && !selectedDNA)}
+            >
+              {generating ? (
+                <><RefreshCw size={13} className="animate-spin" /></>
+              ) : (
+                <><Sparkles size={13} /> <span>Generate</span></>
+              )}
+            </button>
+          </div>
+
         </div>
 
-        {/* Canvas Bottom Info Bar */}
+        {/* Canvas Bottom Info Bar — minimal */}
         <div className="ap-canvas-infobar">
           <div className="ap-canvas-info-item">
-            <Ruler size={10} />
-            <span>Bleed: {seamBleed}"</span>
-          </div>
-          <div className="ap-canvas-info-item">
-            <Shield size={10} />
-            <span>Safe: {safeZoneRadius}"</span>
+            <Layers size={10} />
+            <span>{concepts.length > 0 ? `${concepts.length} panels` : 'No panels yet'}</span>
           </div>
           <div className="ap-canvas-info-item">
             <Palette size={10} />
             <span>{inkMode.toUpperCase()}</span>
           </div>
-          <div className="ap-canvas-info-item">
-            <Activity size={10} />
-            <span>{concepts.length > 0 ? `${concepts.length} panels rendered` : 'Awaiting generation'}</span>
-          </div>
           <div className="ap-canvas-info-item" style={{ marginLeft: 'auto' }}>
-            <span style={{ color: allCompliant ? '#00e676' : '#f59e0b', fontWeight: 700 }}>
-              {allCompliant ? '✓ Compliant' : '⚠ Review Required'}
+            <span className={`ap-status-dot ${allCompliant ? 'ok' : 'warn'}`} />
+            <span style={{ color: allCompliant ? '#00e676' : '#f59e0b' }}>
+              {allCompliant ? 'Ready' : 'Review needed'}
             </span>
           </div>
         </div>
       </div>
 
-      {/* ═══ RIGHT PANEL ════════════════════════════════════════════════════════ */}
-      <div className="ap-right-panel">
-
-        {/* Right Header */}
-        <div className="ap-right-header">
-          <span className="ap-right-title">Panel Status</span>
-          <span className="ap-right-count" style={{ background: approvedCount === 5 ? '#00e67622' : '#0070f322', color: approvedCount === 5 ? '#00e676' : '#0070f3' }}>
-            {approvedCount}/5 approved
-          </span>
-        </div>
-
-        {/* Panel Status Board */}
-        <div className="ap-panel-status-board">
-          {panels.map(p => (
-            <div
-              key={p.id}
-              className={`ap-panel-status-item ${activePanel === p.id ? 'active' : ''}`}
-              onClick={() => setActivePanel(p.id)}
-            >
-              <div className="ap-panel-status-dot" style={{ background: STATUS_COLOR[p.status] }} />
-              <div className="ap-panel-status-info">
-                <div className="ap-panel-status-name">{p.label}</div>
-                <div className="ap-panel-status-state">{p.status}</div>
-              </div>
-              <div className="ap-panel-status-actions">
-                {p.status === 'generated' && (
-                  <button className="ap-status-approve" onClick={e => { e.stopPropagation(); handleApprovePanel(p.id); }}>
-                    <Check size={9} />
-                  </button>
-                )}
-                {p.status === 'approved' && <CircleCheck size={14} style={{ color: '#00e676' }} />}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        {/* Zone Compliance Report */}
-        <div className="ap-compliance-section">
-          <div className="ap-right-section-label">
-            <Shield size={10} /> Zone Compliance
-            <span className="ap-compliance-badge" style={{
-              background: allCompliant ? '#00e67615' : '#f59e0b15',
-              color: allCompliant ? '#00e676' : '#f59e0b',
-              border: `1px solid ${allCompliant ? '#00e67640' : '#f59e0b40'}`
-            }}>
-              {allCompliant ? 'PASS' : 'REVIEW'}
+      {/* ═══ COLLAPSIBLE RIGHT PANEL (Inspector) ═══════════════════════════════ */}
+      <div 
+        className="ap-right-panel"
+        style={{
+          width: rightPanelExpanded ? '320px' : '0px',
+          minWidth: rightPanelExpanded ? '320px' : '0px',
+          borderLeft: rightPanelExpanded ? '1px solid rgba(255,255,255,0.06)' : 'none',
+          transition: 'all 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          background: 'rgba(10,10,15,0.45)',
+          backdropFilter: 'blur(16px)',
+          height: '100%',
+          zIndex: 10
+        }}
+      >
+        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          
+          {/* HEADER */}
+          <div className="ap-right-header">
+            <span style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255,255,255,0.85)', fontFamily: 'Outfit, sans-serif' }}>Design Settings</span>
+            <span className="ap-right-count" style={{ background: approvedCount === 5 ? 'rgba(0,230,118,0.1)' : 'rgba(255,255,255,0.04)', color: approvedCount === 5 ? '#00e676' : 'rgba(255,255,255,0.4)' }}>
+              {approvedCount}/5
             </span>
           </div>
-          <div className="ap-compliance-list">
-            {zoneCompliance.map(item => (
-              <div key={item.id} className="ap-compliance-item">
-                <div className="ap-compliance-icon">{complianceIcon(item.status)}</div>
-                <div className="ap-compliance-text">
-                  <div className="ap-compliance-label">{item.label}</div>
-                  <div className="ap-compliance-detail">{item.detail}</div>
+
+          {/* ACCORDION 1: STYLE DNA LIBRARY */}
+          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <button 
+              className="ap-accordion-header"
+              onClick={() => setAccordions(p => ({ ...p, dna: !p.dna }))}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
+                <Palette size={13} style={{ color: 'var(--accent-blue)' }} /> Styles
+              </span>
+              {accordions.dna ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
+            </button>
+            
+            {accordions.dna && (
+              <div className="ap-accordion-content" style={{ padding: '4px 16px 16px' }}>
+                <div className="ap-style-dna-grid">
+                  {STYLE_DNA.map(dna => (
+                    <div
+                      key={dna.id}
+                      className={`ap-dna-card ${selectedDNA?.id === dna.id ? 'active' : ''}`}
+                      onClick={() => {
+                        setSelectedDNA(selectedDNA?.id === dna.id ? null : dna);
+                        if (selectedDNA?.id !== dna.id) {
+                          onUpdateProject({
+                            baseColors: {
+                              ...project.baseColors,
+                              primary: dna.primaryColor,
+                              secondary: dna.secondaryColor,
+                              accent: dna.accentColor,
+                            }
+                          });
+                          pushLog(`Style DNA: "${dna.name}" selected`);
+                        }
+                      }}
+                      style={{ padding: '8px', borderRadius: '10px', minHeight: '44px' }}
+                    >
+                      <div className="ap-dna-swatch" style={{ width: '28px', height: '22px' }}>
+                        <div style={{ background: dna.primaryColor, flex: 2 }} />
+                        <div style={{ background: dna.secondaryColor, flex: 1.5 }} />
+                        <div style={{ background: dna.accentColor, flex: 0.5 }} />
+                      </div>
+                      <div className="ap-dna-info">
+                        <div className="ap-dna-name" style={{ fontSize: '10px' }}>{dna.name}</div>
+                        <div className="ap-dna-tag" style={{ fontSize: '7px' }}>{dna.tag}</div>
+                      </div>
+                      {selectedDNA?.id === dna.id && <div className="ap-dna-check" style={{ width: '12px', height: '12px' }}><Check size={6} /></div>}
+                    </div>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Activity Log */}
-        <div className="ap-right-log">
-          <div className="ap-right-section-label">
-            <Clock size={10} /> Production Log
-            <div className={`ap-log-dot ${generating ? 'pulsing' : ''}`} />
-          </div>
-          <div className="ap-log-entries">
-            {actionLog.length === 0 ? (
-              <div className="ap-log-empty">Production activity will appear here.</div>
-            ) : (
-              actionLog.slice(0, 8).map((entry, i) => (
-                <div key={i} className="ap-log-entry">{entry}</div>
-              ))
             )}
           </div>
+
+          {/* ACCORDION 2: GARMENT PRODUCTION CONSTRAINTS */}
+          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <button 
+              className="ap-accordion-header"
+              onClick={() => setAccordions(p => ({ ...p, constraints: !p.constraints }))}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
+                <Settings size={13} style={{ color: 'var(--accent-blue)' }} /> Constraints
+              </span>
+              {accordions.constraints ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
+            </button>
+            
+            {accordions.constraints && (
+              <div className="ap-accordion-content" style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                <div className="ap-constraint-block">
+                  <div className="ap-constraint-row">
+                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
+                      <Shield size={11} /> Sponsor Safe Margin
+                    </label>
+                    <button
+                      className={`ap-toggle ${sponsorZone ? 'on' : ''}`}
+                      onClick={() => setSponsorZone(v => !v)}
+                    >
+                      <span className="ap-toggle-knob" />
+                    </button>
+                  </div>
+                  <div className="ap-constraint-hint" style={{ fontSize: '8px' }}>Reserve chest bounds for team placement</div>
+                </div>
+
+                <div className="ap-constraint-block">
+                  <div className="ap-constraint-row">
+                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
+                      <Ruler size={11} /> Name/# Clearance
+                    </label>
+                    <span className="ap-constraint-value" style={{ fontSize: '10px' }}>{safeZoneRadius}"</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.25" max="1.0" step="0.05"
+                    value={safeZoneRadius}
+                    onChange={e => setSafeZoneRadius(parseFloat(e.target.value))}
+                    className="ap-range-slider"
+                  />
+                  <div className="ap-range-labels" style={{ fontSize: '8px' }}><span>0.25"</span><span>0.5"</span><span>1.0"</span></div>
+                </div>
+
+                <div className="ap-constraint-block">
+                  <div className="ap-constraint-row" style={{ marginBottom: '6px' }}>
+                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
+                      <Layers size={11} /> Flat Seam Bleed
+                    </label>
+                  </div>
+                  <div className="ap-bleed-options">
+                    {([0.25, 0.5, 0.75] as const).map(val => (
+                      <button
+                        key={val}
+                        className={`ap-bleed-opt ${seamBleed === val ? 'active' : ''}`}
+                        onClick={() => setSeamBleed(val)}
+                        style={{ padding: '4px', fontSize: '9px' }}
+                      >
+                        {val}"
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="ap-constraint-block">
+                  <div className="ap-constraint-row" style={{ marginBottom: '6px' }}>
+                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
+                      <Palette size={11} /> Ink Settings
+                    </label>
+                  </div>
+                  <div className="ap-ink-options">
+                    {(['cmyk', 'rgb', 'neon'] as const).map(mode => (
+                      <button
+                        key={mode}
+                        className={`ap-ink-opt ${inkMode === mode ? 'active' : ''}`}
+                        onClick={() => setInkMode(mode)}
+                        style={{ padding: '4px', fontSize: '9px' }}
+                      >
+                        {mode.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="ap-constraint-block" style={{ borderBottom: 'none' }}>
+                  <div className="ap-section-label" style={{ marginBottom: '8px', fontSize: '9px' }}><Eye size={11} /> Overlay visibility</div>
+                  {(Object.keys(showZones) as ZoneType[]).map(zone => (
+                    <div key={zone} className="ap-constraint-row" style={{ marginBottom: '6px' }}>
+                      <label className="ap-constraint-label" style={{ color: ZONE_COLORS[zone].stroke, fontSize: '9.5px' }}>
+                        <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '1.5px', border: `1px solid ${ZONE_COLORS[zone].stroke}`, marginRight: '4px' }} />
+                        {ZONE_COLORS[zone].label.replace(' Zone', '').replace(' Area', '')}
+                      </label>
+                      <button
+                        className={`ap-toggle ${showZones[zone] ? 'on' : ''}`}
+                        onClick={() => setShowZones(prev => ({ ...prev, [zone]: !prev[zone] }))}
+                      >
+                        <span className="ap-toggle-knob" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+              </div>
+            )}
+          </div>
+
+          {/* ACCORDION 3: INTERACTIVE PANEL STATUS BOARD */}
+          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <button 
+              className="ap-accordion-header"
+              onClick={() => setAccordions(p => ({ ...p, status: !p.status }))}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
+                <Shirt size={13} style={{ color: 'var(--accent-blue)' }} /> Panels
+              </span>
+              {accordions.status ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
+            </button>
+            
+            {accordions.status && (
+              <div className="ap-accordion-content" style={{ padding: '0 12px 16px' }}>
+                <div className="ap-panel-status-board" style={{ padding: 0, borderBottom: 'none' }}>
+                  {panels.map(p => (
+                    <div
+                      key={p.id}
+                      className={`ap-panel-status-item ${activePanel === p.id ? 'active' : ''}`}
+                      onClick={() => setActivePanel(p.id)}
+                      style={{ padding: '5px 8px' }}
+                    >
+                      <div className="ap-panel-status-dot" style={{ background: STATUS_COLOR[p.status], width: '6px', height: '6px' }} />
+                      <div className="ap-panel-status-info">
+                        <div className="ap-panel-status-name" style={{ fontSize: '10.5px' }}>{p.label}</div>
+                        <div className="ap-panel-status-state" style={{ fontSize: '7.5px' }}>{p.status}</div>
+                      </div>
+                      <div className="ap-panel-status-actions">
+                        {p.status === 'generated' && (
+                          <button className="ap-status-approve" onClick={e => { e.stopPropagation(); handleApprovePanel(p.id); }} style={{ width: '18px', height: '18px' }}>
+                            <Check size={8} />
+                          </button>
+                        )}
+                        {p.status === 'approved' && <CircleCheck size={12} style={{ color: '#00e676' }} />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ACCORDION 4: ZONE COMPLIANCE REPORT */}
+          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <button 
+              className="ap-accordion-header"
+              onClick={() => setAccordions(p => ({ ...p, compliance: !p.compliance }))}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
+                <Shield size={13} style={{ color: 'var(--accent-blue)' }} /> Design Checks
+              </span>
+              {accordions.compliance ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
+            </button>
+            
+            {accordions.compliance && (
+              <div className="ap-accordion-content" style={{ padding: '0 16px 16px' }}>
+                <div className="ap-compliance-list">
+                  {zoneCompliance.map(item => (
+                    <div key={item.id} className="ap-compliance-item" style={{ padding: '4px 6px' }}>
+                      <div className="ap-compliance-icon">{complianceIcon(item.status)}</div>
+                      <div className="ap-compliance-text">
+                        <div className="ap-compliance-label" style={{ fontSize: '9.5px' }}>{item.label}</div>
+                        <div className="ap-compliance-detail" style={{ fontSize: '8.5px' }}>{item.detail}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ACCORDION 5: LOGS */}
+          <div className="ap-accordion-section">
+            <button 
+              className="ap-accordion-header"
+              onClick={() => setAccordions(p => ({ ...p, logs: !p.logs }))}
+              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
+            >
+              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
+                <Clock size={13} style={{ color: 'var(--accent-blue)' }} /> Activity
+              </span>
+              {accordions.logs ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
+            </button>
+            
+            {accordions.logs && (
+              <div className="ap-accordion-content" style={{ padding: '0 16px 16px' }}>
+                <div className="ap-log-entries" style={{ maxHeight: '140px' }}>
+                  {actionLog.length === 0 ? (
+                    <div className="ap-log-empty" style={{ fontSize: '9px' }}>Empty audit trail.</div>
+                  ) : (
+                    actionLog.slice(0, 10).map((entry, i) => (
+                      <div key={i} className="ap-log-entry" style={{ fontSize: '8.5px', padding: '2px 0' }}>{entry}</div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
 
-        {/* Production Handoff */}
-        <div className="ap-handoff-section">
-          <div className="ap-handoff-summary">
-            <div className="ap-handoff-stat">
-              <span className="ap-handoff-stat-val" style={{ color: configuredCount >= 2 ? '#00e676' : '#f59e0b' }}>{configuredCount}</span>
-              <span className="ap-handoff-stat-label">Panels</span>
+        {/* PRODUCTION HANDOFF SUBMIT FOOTER */}
+        <div className="ap-handoff-section" style={{ padding: '16px 20px', background: 'rgba(15,15,20,0.85)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+          <div className="ap-handoff-summary" style={{ marginBottom: '8px' }}>
+            <div className="ap-handoff-stat" style={{ padding: '4px' }}>
+              <span className="ap-handoff-stat-val" style={{ color: configuredCount >= 2 ? '#00e676' : '#f59e0b', fontSize: '12px' }}>{configuredCount}</span>
+              <span className="ap-handoff-stat-label" style={{ fontSize: '7px' }}>Panels</span>
             </div>
-            <div className="ap-handoff-stat">
-              <span className="ap-handoff-stat-val" style={{ color: approvedCount > 0 ? '#00e676' : '#555' }}>{approvedCount}</span>
-              <span className="ap-handoff-stat-label">Approved</span>
+            <div className="ap-handoff-stat" style={{ padding: '4px' }}>
+              <span className="ap-handoff-stat-val" style={{ color: approvedCount > 0 ? '#00e676' : '#555', fontSize: '12px' }}>{approvedCount}</span>
+              <span className="ap-handoff-stat-label" style={{ fontSize: '7px' }}>Approved</span>
             </div>
-            <div className="ap-handoff-stat">
-              <span className="ap-handoff-stat-val" style={{ color: allCompliant ? '#00e676' : '#f59e0b' }}>{allCompliant ? '✓' : '⚠'}</span>
-              <span className="ap-handoff-stat-label">Compliant</span>
+            <div className="ap-handoff-stat" style={{ padding: '4px' }}>
+              <span className="ap-handoff-stat-val" style={{ color: allCompliant ? '#00e676' : '#f59e0b', fontSize: '12px' }}>{allCompliant ? '✓' : '⚠'}</span>
+              <span className="ap-handoff-stat-label" style={{ fontSize: '7px' }}>Compliant</span>
             </div>
           </div>
+          
           <button
             className={`ap-handoff-btn ${handoffProcessing ? 'processing' : ''} ${handoffDone ? 'done' : ''}`}
             onClick={handleHandoff}
             disabled={handoffProcessing || handoffDone}
+            style={{
+              padding: '12px',
+              fontSize: '12px',
+              borderRadius: '10px',
+              background: handoffDone ? 'rgba(0,230,118,0.1)' : 'var(--accent-blue)',
+              color: '#fff',
+              border: handoffDone ? '1px solid rgba(0,230,118,0.3)' : 'none',
+              boxShadow: handoffDone ? 'none' : '0 4px 16px rgba(0,112,243,0.3)',
+              cursor: handoffProcessing || handoffDone ? 'default' : 'pointer'
+            }}
           >
             {handoffDone ? (
               <><Check size={14} /> Sent to Production</>
             ) : handoffProcessing ? (
-              <><RefreshCw size={13} className="animate-spin" /> Mapping Panels...</>
+              <><RefreshCw size={13} className="animate-spin" /> Mapped vector meshes...</>
             ) : (
-              <><ArrowRight size={14} /> Send to Production</>
+              <><ArrowRight size={14} /> Send to Refine / Studio</>
             )}
           </button>
-          {!handoffDone && (
-            <div className="ap-handoff-checklist">
-              <div className="ap-handoff-check"><div className="ap-handoff-check-dot" style={{ background: concepts.length > 0 ? '#00e676' : '#333' }} />Panels generated</div>
-              <div className="ap-handoff-check"><div className="ap-handoff-check-dot" style={{ background: allCompliant ? '#00e676' : '#f59e0b' }} />Zone compliance</div>
-              <div className="ap-handoff-check"><div className="ap-handoff-check-dot" style={{ background: approvedCount > 0 ? '#00e676' : '#333' }} />Panels approved</div>
-            </div>
-          )}
         </div>
 
       </div>
+
     </div>
   );
 };

@@ -311,14 +311,26 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
         </div>
         <div className="lp-features-grid">
           {features.map((f, i) => (
-            <div className="lp-feature-card" key={i}>
-              <div className="lp-feature-top">
-                <div className="lp-feature-icon">{f.icon}</div>
-                <div className="lp-feature-tag">{f.tag}</div>
+            <div
+              className="lp-feature-card"
+              key={i}
+              style={{
+                top: `calc(100px + ${i * 40}px)`,
+                '--card-index': i,
+                zIndex: i + 1,
+              } as React.CSSProperties}
+            >
+              <div className="lp-feature-left">
+                <div className="lp-feature-top">
+                  <div className="lp-feature-icon">{f.icon}</div>
+                  <div className="lp-feature-tag">{f.tag}</div>
+                </div>
+                <h3 className="lp-feature-title">{f.title}</h3>
+                <p className="lp-feature-desc">{f.desc}</p>
               </div>
-              <h3 className="lp-feature-title">{f.title}</h3>
-              <p className="lp-feature-desc">{f.desc}</p>
-              <FeaturePreview type={f.preview} />
+              <div className="lp-feature-right">
+                <FeaturePreview type={f.preview} />
+              </div>
             </div>
           ))}
         </div>

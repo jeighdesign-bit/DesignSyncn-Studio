@@ -1757,57 +1757,110 @@ export default function App() {
                       {wizardStep === 2 && (
                         <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                           <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                            <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
-                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
-                              Choose Garment Silhouette
+                            <h3 className="wizard-section-title" style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-blue)' }} />
+                              Select Garment Silhouette
                             </h3>
-                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '24px' }}>
-                              Select the garment shape for direct canvas placement and blueprint generation.
+                            <p className="wizard-section-desc" style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '28px' }}>
+                              Choose a premium base pattern outline. Your selection will immediately set up the active design workspace and guides.
                             </p>
                             
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
+                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
                               {[
-                                { id: 'esports_jersey', name: 'Esports Jersey', panels: '8 Panels', cuff: 'Raglan Sleeve', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,45 L 80,48 L 81,90 C 60,94 40,94 19,90 L 20,48 L 10,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                { id: 'esports_jersey', name: 'Esports Jersey', panels: '8 Panels', cuff: 'Raglan Athletic Fit', primary: '#0070f3', secondary: '#111115', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="jerseyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#1e293b" />
+                                        <stop offset="100%" stopColor="#0f172a" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 20,20 C 35,10 65,10 80,20 L 92,48 L 80,51 L 81,95 C 60,99 40,99 19,95 L 20,51 L 8,48 Z" fill="url(#jerseyGrad)" stroke="#0070f3" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 20,20 C 28,26 38,28 42,48 L 42,97 M 80,20 C 72,26 62,28 58,48 L 58,97" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
                                   </svg>
                                 )},
-                                { id: 'tshirt', name: 'T-Shirt', panels: '4 Panels', cuff: 'Standard Fit', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 15,25 C 30,17 70,17 85,25 L 95,45 L 82,48 L 80,90 L 20,90 L 18,48 L 5,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                { id: 'tshirt', name: 'Standard T-Shirt', panels: '4 Panels', cuff: 'Classic Streetwear Fit', primary: '#ff0055', secondary: '#0e0e12', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="tshirtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#2e1065" />
+                                        <stop offset="100%" stopColor="#0f052d" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 15,22 C 30,14 70,14 85,22 L 96,46 L 82,49 L 80,95 L 20,95 L 18,49 L 4,46 Z" fill="url(#tshirtGrad)" stroke="#ff0055" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 18,22 Q 33,32 50,22 Q 67,32 82,22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
                                   </svg>
                                 )},
-                                { id: 'hoodie', name: 'Hoodie', panels: '6 Panels', cuff: 'Pocket & Hood', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 20,30 C 30,22 70,22 80,30 L 95,55 L 85,58 L 80,92 L 20,92 L 15,58 L 5,55 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                                    <path d="M 32,28 C 30,10 70,10 68,28 Z" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                { id: 'hoodie', name: 'Premium Hoodie', panels: '6 Panels', cuff: 'Modern Loose Street Fit', primary: '#00ff88', secondary: '#111827', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="hoodieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#064e3b" />
+                                        <stop offset="100%" stopColor="#022c22" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 18,30 C 30,22 70,22 80,30 L 95,58 L 84,61 L 80,96 L 20,96 L 16,61 L 5,58 Z" fill="url(#hoodieGrad)" stroke="#00ff88" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 32,29 Q 50,8 68,29 Z" fill="url(#hoodieGrad)" stroke="#00ff88" strokeWidth="1.5" />
+                                    <path d="M 38,65 L 62,65 C 65,65 67,78 62,82 L 38,82 C 33,78 35,65 38,65 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" strokeWidth="1.0" />
                                   </svg>
                                 )},
-                                { id: 'polo_shirt', name: 'Polo Shirt', panels: '5 Panels', cuff: 'Collared Placket', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,90 L 20,90 L 18,47 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                                    <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                                { id: 'polo_shirt', name: 'Golf Polo Shirt', panels: '5 Panels', cuff: 'Collared Athletic Fit', primary: '#38bdf8', secondary: '#0f172a', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="poloGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#1e3a8a" />
+                                        <stop offset="100%" stopColor="#172554" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,95 L 20,95 L 18,47 L 8,45 Z" fill="url(#poloGrad)" stroke="#38bdf8" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 38,20 L 50,34 L 62,20 M 50,34 L 50,52" fill="none" stroke="#38bdf8" strokeWidth="1.5" />
                                   </svg>
                                 )},
-                                { id: 'longsleeve', name: 'Long Sleeve', panels: '6 Panels', cuff: 'Full Arm Cuff', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,90 L 22,90 L 12,83 L 5,80 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                { id: 'longsleeve', name: 'Long Sleeve Shirt', panels: '6 Panels', cuff: 'Ribbed Sleeve Cuff Fit', primary: '#ec4899', secondary: '#180815', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="longGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#701a75" />
+                                        <stop offset="100%" stopColor="#4a044e" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,82 L 88,85 L 78,95 L 22,95 L 12,85 L 5,82 Z" fill="url(#longGrad)" stroke="#ec4899" strokeWidth="2.0" strokeLinecap="round" />
                                   </svg>
                                 )},
-                                { id: 'cycling_jersey', name: 'Cycling Jersey', panels: '7 Panels', cuff: 'Back Pocket Slots', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,92 L 22,92 L 20,48 L 8,45 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
-                                    <path d="M 50,18 L 50,55" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray="3,3" />
+                                { id: 'cycling_jersey', name: 'Cycling Jersey', panels: '7 Panels', cuff: 'Aerodynamic Race Cut', primary: '#f59e0b', secondary: '#1c1917', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="cyclingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#78350f" />
+                                        <stop offset="100%" stopColor="#451a03" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,95 L 22,95 L 20,48 L 8,45 Z" fill="url(#cyclingGrad)" stroke="#f59e0b" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 50,18 L 50,55 M 22,48 L 78,48" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" strokeDasharray="3,3" />
                                   </svg>
                                 )},
-                                { id: 'compression_wear', name: 'Compression Wear', panels: '10 Panels', cuff: 'High Elastic Trim', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                { id: 'compression_wear', name: 'Compression Armor', panels: '10 Panels', cuff: 'Ultra Elastic Athletic Tight', primary: '#a855f7', secondary: '#090514', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="compressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#581c87" />
+                                        <stop offset="100%" stopColor="#3b0764" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 24,18 C 34,14 66,14 76,18 L 82,88 L 18,88 Z" fill="url(#compressGrad)" stroke="#a855f7" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 32,18 L 36,88 M 68,18 L 64,88" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
                                   </svg>
                                 )},
-                                { id: 'basketball_jersey', name: 'Basketball Jersey', panels: '4 Panels', cuff: 'Sleeveless Fit', svg: (
-                                  <svg viewBox="0 0 100 100" style={{ width: '48px', height: '48px', color: 'rgba(255,255,255,0.65)' }}>
-                                    <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" />
+                                { id: 'basketball_jersey', name: 'Basketball Jersey', panels: '4 Panels', cuff: 'Sleeveless Loose Cut', primary: '#3b82f6', secondary: '#0c1a30', svg: (
+                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
+                                    <defs>
+                                      <linearGradient id="basketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                        <stop offset="0%" stopColor="#1e3a8a" />
+                                        <stop offset="100%" stopColor="#1e1b4b" />
+                                      </linearGradient>
+                                    </defs>
+                                    <path d="M 26,18 C 36,10 64,10 74,18 L 82,38 L 77,93 C 60,96 40,96 23,93 L 18,38 Z" fill="url(#basketGrad)" stroke="#3b82f6" strokeWidth="2.0" strokeLinecap="round" />
+                                    <path d="M 26,18 C 30,22 34,35 34,44 M 74,18 C 70,22 66,35 66,44" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
                                   </svg>
                                 )}
                               ].map(g => {
@@ -1815,28 +1868,36 @@ export default function App() {
                                 return (
                                   <div 
                                     key={g.id}
-                                    onClick={() => handleUpdateProject({ apparelType: g.id })}
+                                    onClick={() => handleUpdateProject({ 
+                                      apparelType: g.id,
+                                      baseColors: {
+                                        ...project.baseColors,
+                                        accent: g.primary,
+                                        secondary: g.secondary
+                                      }
+                                    })}
                                     style={{
-                                      background: isActive ? 'rgba(0, 112, 243, 0.08)' : 'rgba(255, 255, 255, 0.01)',
-                                      border: isActive ? '2px solid var(--accent-blue)' : '1px solid rgba(255, 255, 255, 0.05)',
-                                      borderRadius: '16px',
-                                      padding: '24px 20px',
+                                      background: isActive ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.01)',
+                                      border: isActive ? `2px solid ${g.primary}` : '1px solid rgba(255, 255, 255, 0.05)',
+                                      borderRadius: '20px',
+                                      padding: '28px 24px',
                                       cursor: 'pointer',
                                       display: 'flex',
                                       flexDirection: 'column',
                                       alignItems: 'center',
-                                      gap: '14px',
+                                      gap: '16px',
                                       textAlign: 'center',
-                                      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+                                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
                                       position: 'relative',
-                                      boxShadow: isActive ? '0 0 20px rgba(0, 112, 243, 0.2)' : 'none',
+                                      boxShadow: isActive ? `0 0 25px ${g.primary}20` : 'none',
                                       overflow: 'hidden'
                                     }}
                                     onMouseEnter={(e) => {
                                       if (!isActive) {
                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                                        e.currentTarget.style.transform = 'translateY(-2px)';
+                                        e.currentTarget.style.transform = 'translateY(-4px)';
+                                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.5)';
                                       }
                                     }}
                                     onMouseLeave={(e) => {
@@ -1844,20 +1905,21 @@ export default function App() {
                                         e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
                                         e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
                                         e.currentTarget.style.transform = 'translateY(0)';
+                                        e.currentTarget.style.boxShadow = 'none';
                                       }
                                     }}
                                   >
                                     {isActive && (
-                                      <div style={{ position: 'absolute', top: '12px', right: '12px', background: 'var(--accent-blue)', borderRadius: '50%', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 10px var(--accent-blue)' }}>
-                                        <Check size={10} style={{ color: '#fff' }} />
+                                      <div style={{ position: 'absolute', top: '16px', right: '16px', background: g.primary, borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 12px ${g.primary}` }}>
+                                        <Check size={12} style={{ color: '#fff' }} />
                                       </div>
                                     )}
-                                    <div style={{ color: isActive ? 'var(--accent-blue)' : 'rgba(255,255,255,0.4)', transition: 'color 0.2s', filter: isActive ? 'drop-shadow(0 0 8px rgba(0, 112, 243, 0.4))' : 'none' }}>
+                                    <div style={{ color: isActive ? g.primary : 'rgba(255,255,255,0.4)', transition: 'color 0.2s', filter: isActive ? `drop-shadow(0 0 12px ${g.primary}4a)` : 'none' }}>
                                       {g.svg}
                                     </div>
                                     <div>
-                                      <h4 style={{ margin: 0, fontSize: '13px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', letterSpacing: '-0.01em' }}>{g.name}</h4>
-                                      <span style={{ fontSize: '10px', color: 'var(--text-disabled)', marginTop: '4px', display: 'block', opacity: 0.8 }}>{g.panels} · {g.cuff}</span>
+                                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', letterSpacing: '-0.01em' }}>{g.name}</h4>
+                                      <span style={{ fontSize: '11px', color: 'var(--text-disabled)', marginTop: '6px', display: 'block', opacity: 0.8 }}>{g.panels} · {g.cuff}</span>
                                     </div>
                                   </div>
                                 );
@@ -1870,12 +1932,12 @@ export default function App() {
                       {wizardStep === 3 && (
                         <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                           <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                            <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
-                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
+                            <h3 className="wizard-section-title" style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
+                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-blue)' }} />
                               Upload Design Assets
                             </h3>
-                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '24px' }}>
-                              Upload sponsor logos, emblems, artwork, or design patterns. Supporting vector or transparent high-resolution files.
+                            <p className="wizard-section-desc" style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
+                              Add your artwork files to stage them in the design studio.
                             </p>
                             
                             {/* Unified Drag and Drop Area */}
@@ -1884,7 +1946,7 @@ export default function App() {
                                 background: 'rgba(10, 10, 15, 0.4)',
                                 border: '2px dashed rgba(0, 112, 243, 0.25)',
                                 borderRadius: '16px',
-                                padding: '40px 32px',
+                                padding: '48px 32px',
                                 textAlign: 'center',
                                 cursor: 'pointer',
                                 transition: 'all 0.3s ease',
@@ -1904,16 +1966,16 @@ export default function App() {
                               }}
                             >
                               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
-                                  <Upload size={22} style={{ color: 'var(--accent-blue)' }} />
+                                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
+                                  <Upload size={24} style={{ color: 'var(--accent-blue)' }} />
                                 </div>
-                                <h3 style={{ fontSize: '15px', fontWeight: '800', color: '#fff', margin: 0 }}>Drag & drop design assets here</h3>
-                                <p style={{ fontSize: '11px', color: 'var(--text-disabled)', margin: 0, maxWidth: '380px', lineHeight: '1.4' }}>
-                                  Staging area for high-resolution logos. Supports <strong style={{ color: 'var(--accent-blue)' }}>SVG, PNG, JPG, PDF, AI</strong>.
-                                  Vector files are highly recommended for clean dye-sublimation print results.
+                                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#fff', margin: 0 }}>Upload logos, references, inspirations, sponsors, or artwork.</h3>
+                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, maxWidth: '380px', lineHeight: '1.5' }}>
+                                  Drag & drop your files here or click to browse. <br/>
+                                  Supports <strong style={{ color: 'var(--accent-blue)' }}>PNG, JPG, SVG, PDF, AI</strong>.
                                 </p>
                                 
-                                <div style={{ display: 'flex', gap: '12px', marginTop: '16px' }}>
+                                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
                                   <button 
                                     className="premium-ghost-btn" 
                                     onClick={(e) => { e.stopPropagation(); loadHighResLogo(); }}
@@ -1931,7 +1993,7 @@ export default function App() {
                                 </div>
                               </div>
                             </div>
-
+ 
                             {/* User-Friendly Inline Diagnostics / Silenced alerts */}
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
                               {project.logos.map(logo => (
@@ -1945,7 +2007,7 @@ export default function App() {
                                     display: 'flex',
                                     alignItems: 'flex-start',
                                     gap: '12px',
-                                    fontSize: '11px',
+                                    fontSize: '12px',
                                     lineHeight: '1.4',
                                     boxShadow: logo.resolutionStatus === 'high' ? 'inset 0 0 10px rgba(0, 230, 118, 0.02)' : 'inset 0 0 10px rgba(245, 166, 35, 0.02)'
                                   }}
@@ -1955,19 +2017,19 @@ export default function App() {
                                   </div>
                                   <div style={{ flex: 1 }}>
                                     <strong style={{ color: '#fff', display: 'block', marginBottom: '2px' }}>
-                                      {logo.resolutionStatus === 'high' ? '✓ Print-Ready Graphic Verified' : '⚠ High-Resolution Warning'}
+                                      {logo.resolutionStatus === 'high' ? '✓ Premium Resolution Detected' : '⚠ Action Recommended'}
                                     </strong>
                                     <span style={{ color: 'var(--text-secondary)' }}>
                                       {logo.resolutionStatus === 'high' 
-                                        ? `Vector asset "${logo.name}" has been auto-scanned. Layer node structures (300 DPI) are optimized for direct-to-textile dye-sublimation.` 
-                                        : `Asset "${logo.name}" is low resolution (${logo.dpi} DPI). Physical textile prints may exhibit minor aliasing. For best results, vector formats (.SVG) are highly recommended.`
+                                        ? `Asset "${logo.name}" verified at 300 DPI. Optimized for professional direct-to-garment apparel printing.` 
+                                        : `Asset "${logo.name}" has standard resolution (${logo.dpi} DPI). Physical prints may look slightly fuzzy. SVGs/Vectors are recommended.`
                                       }
                                     </span>
                                   </div>
                                 </div>
                               ))}
                             </div>
-
+ 
                             {/* Registered Artwork Vault List */}
                             <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
                               <h4 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
