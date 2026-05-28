@@ -2,8 +2,7 @@ import { useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   ArrowRight, Play, Sparkles, Layers, Sliders, Download,
-  FileText, Zap, CheckCircle, ChevronDown, Star, Users, Cpu, Globe,
-  PlusCircle, Wand2, Palette, UserPlus
+  FileText, Zap, CheckCircle, ChevronDown, Star, Users, Cpu, Globe
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -19,88 +18,52 @@ const features = [
     icon: <Sparkles size={20} />,
     tag: 'AI GENERATION',
     title: 'Prompt-to-Garment AI Designer',
-    desc: 'Write custom layout presets or prompt descriptions. Translate design concepts into production-ready sublimation layers in seconds.',
+    desc: 'Type a concept, get a full sublimation pattern. Supports reference images, esports-ready style presets, and real-time texture mapping.',
     preview: 'ai',
-    codeText: 'Write JavaScript or Python anywhere in your workflow. Imagine it, then build it.',
   },
   {
     icon: <Sliders size={20} />,
     tag: 'PRODUCTION STUDIO',
     title: 'Photoshop-Grade Edit Environment',
-    desc: 'Align and coordinate panels using a premium layer stack, safety guides, and lock mechanisms built for sublimation.',
+    desc: 'Rulers, guides, real measurement layers, and a full layer stack — all calibrated in inches for print-room precision.',
     preview: 'studio',
-    codeText: 'See the inputs and outputs right next to the settings of every step. No unnecessary clicks.',
   },
   {
     icon: <Layers size={20} />,
     tag: 'FULL LAYOUT SYSTEM',
     title: 'Front / Back / Sleeve Layout Engine',
-    desc: 'Maintain geometric alignment across collars, sleeves, and body pieces inside a single cohesive space.',
+    desc: 'Arrange your full garment in a single workspace. Front, back, sleeves, collar — all production-mapped and export-ready.',
     preview: 'layout',
-    codeText: 'Test AI workflows with real data to improve accuracy and catch exceptions early.',
   },
   {
     icon: <Zap size={20} />,
     tag: 'AUTOMATION ENGINE',
     title: 'Smart Roster & Logo Automation',
-    desc: 'Upload a team roster CSV. DesignSync automatically populates sizes, player numbers, names, and sponsors in seconds.',
+    desc: 'Upload a CSV roster. DesignSync auto-places names, numbers, and logos — scaled and aligned per your production rules.',
     preview: 'roster',
-    codeText: 'Re-run single steps, not your entire workflow. Keep your development loops fast.',
   },
   {
     icon: <FileText size={20} />,
     tag: 'PROJECT SYSTEM',
     title: 'Cloud Workspace & Project Hub',
-    desc: 'Organize files, templates, and production stages. Automatically sync with Supabase and manage historical drafts.',
+    desc: 'Multi-project dashboard, autosave, reusable templates, and Supabase-powered cloud sync across your entire team.',
     preview: 'cloud',
-    codeText: 'Replay or mock data to not wait for external systems or long rendering queues.',
   },
   {
     icon: <Download size={20} />,
     tag: 'EXPORT ENGINE',
     title: 'Pre-Flight Checks & Print-Ready Export',
-    desc: 'Inspect assets dynamically for DPI issues, bleed limits, and vector profiles before generating high-res CMYK files.',
+    desc: 'Automatic DPI validation (300+), CMYK conversion checks, and one-click SVG/PDF blueprint export for your print partner.',
     preview: 'export',
-    codeText: 'Evaluate AI natively to optimize performance and prevent color calibration clipping.',
   },
 ];
 
 const steps = [
-  { 
-    num: '01', 
-    title: 'Create Project', 
-    desc: 'Configure garment presets, templates, color profiles, canvas settings, and target output resolutions.',
-    icon: <PlusCircle size={16} />,
-    tag: 'SETUP'
-  },
-  { 
-    num: '02', 
-    title: 'Synthesize AI Textures', 
-    desc: 'Translate design concepts into production-mapped patterns using high-fidelity spatial presets.',
-    icon: <Wand2 size={16} />,
-    tag: 'INTELLIGENT GENERATION'
-  },
-  { 
-    num: '03', 
-    title: 'Customize Layout Layers', 
-    desc: 'Fine-tune placement parameters, scale graphics, lock essential layout templates, and edit vectors.',
-    icon: <Palette size={16} />,
-    tag: 'LAYER BUILDER'
-  },
-  { 
-    num: '04', 
-    title: 'Automate Garment Roster', 
-    desc: 'Auto-scale roster profiles, check collision margins, and map sponsor logos sequentially.',
-    icon: <UserPlus size={16} />,
-    tag: 'MASS PRODUCTION'
-  },
-  { 
-    num: '05', 
-    title: 'Pre-Flight & Export SVG/PDF', 
-    desc: 'Conduct automatic DPI inspections, verify color profiles, and compile vector blueprints in one-click.',
-    icon: <Download size={16} />,
-    tag: 'PRE-FLIGHT COMPLIANCE'
-  },
+  { num: '01', title: 'Create Project', desc: 'Name your garment, pick the apparel type, set canvas size & DPI.' },
+  { num: '02', title: 'Generate Design', desc: 'Describe your pattern. AI synthesizes textures and maps them to panels.' },
+  { num: '03', title: 'Customize Layout', desc: 'Fine-tune layers, place logos, adjust production rules and measurements.' },
+  { num: '04', title: 'Prepare Production', desc: 'Upload your roster CSV. Names and numbers auto-scale and align.' },
+  { num: '05', title: 'Export Print-Ready Files', desc: 'Run pre-flight checks and download CMYK-ready SVG / PDF blueprints.' },
 ];
 
 const garments = [
@@ -158,96 +121,57 @@ const plans = [
 
 // ─── Feature Preview Components ────────────────────────────────────────────────
 
-function FeatureCardVisual({ type }: { type: string }) {
+function FeaturePreview({ type }: { type: string }) {
   if (type === 'ai') return (
-    <div className="lp-capability-visual visual-ai">
-      <div className="capability-node bubble-prompt">
-        <Wand2 size={12} className="glow-icon-orange" />
-        <span>&quot;cyber grid synthwave gradient lines&quot;</span>
-      </div>
-      <div className="capability-wire" />
-      <div className="capability-canvas">
-        <div className="canvas-header-bar">
-          <div className="canvas-indicator" />
-          <span>Texture Synthesis Output</span>
-        </div>
-        <div className="canvas-art-grid">
-          <div className="mesh-effect" />
-          <div className="active-glow-dots" />
-        </div>
+    <div className="lp-card-preview">
+      <div className="lp-terminal-line"><span className="lp-prompt">&gt;</span> generate &quot;cyber hexgrid neon esports pattern&quot;</div>
+      <div className="lp-progress-track"><div className="lp-progress-fill" style={{ width: '75%' }} /></div>
+      <div className="lp-terminal-line dim">↳ Synthesizing texture layers... 75%</div>
+      <div className="lp-color-swatches">
+        <span className="lp-swatch" style={{ background: '#0070f3' }} />
+        <span className="lp-swatch" style={{ background: '#7928ca' }} />
+        <span className="lp-swatch" style={{ background: '#00e676' }} />
+        <span className="lp-swatch" style={{ background: '#ff0055' }} />
       </div>
     </div>
   );
   if (type === 'studio') return (
-    <div className="lp-capability-visual visual-studio">
-      <div className="capability-left-pane">
-        <div className="pane-header">Layout Layers</div>
-        <div className="pane-list">
-          <div className="pane-item active"><Layers size={10} /><span>Ribbed Collar (Lock)</span></div>
-          <div className="pane-item"><Sliders size={10} /><span>Sponsor Logo (Scaled)</span></div>
-          <div className="pane-item"><Palette size={10} /><span>Sleeve Sublimation</span></div>
-        </div>
-      </div>
-      <div className="capability-right-pane">
-        <div className="blueprint-outline">
-          <svg viewBox="0 0 100 100" className="visual-vector">
-            <path d="M 25,25 C 38,16 62,16 75,25 L 85,55 L 75,58 L 73,90 L 27,90 L 25,58 L 15,55 Z" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
-            <path d="M 25,25 Q 50,32 75,25" fill="none" stroke="#ff4e30" strokeWidth="1.5" />
-            <circle cx="50" cy="55" r="10" fill="none" stroke="#0070f3" strokeWidth="1" strokeDasharray="3 2" />
-          </svg>
-        </div>
-      </div>
+    <div className="lp-card-preview">
+      <div className="lp-ruler-row"><div className="lp-ruler-tick" /><div className="lp-ruler-tick" /><div className="lp-ruler-tick" /><div className="lp-ruler-tick" /><div className="lp-ruler-tick" /></div>
+      <div className="lp-layer-row"><span className="lp-layer-dot blue" />Front Panel<span className="lp-layer-badge">300 DPI</span></div>
+      <div className="lp-layer-row"><span className="lp-layer-dot purple" />Logo Layer<span className="lp-layer-badge">Locked</span></div>
+      <div className="lp-layer-row"><span className="lp-layer-dot green" />Player Names<span className="lp-layer-badge">Auto-Scale</span></div>
     </div>
   );
   if (type === 'layout') return (
-    <div className="lp-capability-visual visual-layout">
-      <div className="layout-mesh">
-        <div className="layout-part part-front active"><span>FRONT</span></div>
-        <div className="layout-part part-back"><span>BACK</span></div>
-        <div className="layout-part part-sleeve"><span>L-SLEEVE</span></div>
-        <div className="layout-part part-sleeve"><span>R-SLEEVE</span></div>
-      </div>
+    <div className="lp-card-preview lp-layout-preview">
+      <div className="lp-panel active">FRONT</div>
+      <div className="lp-panel">BACK</div>
+      <div className="lp-panel sm">L.SLV</div>
+      <div className="lp-panel sm">R.SLV</div>
     </div>
   );
   if (type === 'roster') return (
-    <div className="lp-capability-visual visual-roster">
-      <div className="csv-badge">
-        <UserPlus size={12} className="glow-icon-blue" />
-        <span>roster_names.csv</span>
-      </div>
-      <div className="capability-wire horizontal" />
-      <div className="roster-bubble-stack">
-        <div className="roster-bubble active">
-          <span className="name">A. CHEN</span>
-          <span className="num">#07</span>
-          <span className="check">✓</span>
-        </div>
-        <div className="roster-bubble">
-          <span className="name">M. GOMEZ</span>
-          <span className="num">#10</span>
-          <span className="check">✓</span>
-        </div>
-      </div>
+    <div className="lp-card-preview">
+      <div className="lp-roster-row"><span>JAY</span><span className="blue">#7</span><span className="green">✓ 100%</span></div>
+      <div className="lp-roster-row"><span>RODRIGUEZ</span><span className="blue">#14</span><span className="warn">⚡ 82%</span></div>
+      <div className="lp-roster-row"><span>CHEN</span><span className="blue">#21</span><span className="green">✓ 100%</span></div>
+      <div className="lp-roster-row dim"><span>+47 more players auto-mapped</span></div>
     </div>
   );
   if (type === 'cloud') return (
-    <div className="lp-capability-visual visual-cloud">
-      <div className="cloud-row active"><Globe size={11} /><span>Cloud Server Connected</span><span className="status">Live</span></div>
-      <div className="cloud-row"><Cpu size={11} /><span>esports_jersey_v2.ds</span><span className="time">Draft</span></div>
-      <div className="cloud-row"><Users size={11} /><span>vaporwave_crewneck.ds</span><span className="time">Draft</span></div>
+    <div className="lp-card-preview">
+      <div className="lp-cloud-row"><Globe size={10} /><span>Synced to cloud</span><span className="green">Live</span></div>
+      <div className="lp-cloud-row"><Cpu size={10} /><span>Esports Championship Jersey</span><span className="dim">Saved 2s ago</span></div>
+      <div className="lp-cloud-row"><Users size={10} /><span>Retro Vaporwave Sweatshirt</span><span className="dim">Draft</span></div>
     </div>
   );
   if (type === 'export') return (
-    <div className="lp-capability-visual visual-export">
-      <div className="checker-card">
-        <div className="checker-row"><CheckCircle size={10} color="#00e676" /><span>DPI Check: 300 verified</span></div>
-        <div className="checker-row"><CheckCircle size={10} color="#00e676" /><span>Bleed margins: 0.25&quot;</span></div>
-        <div className="checker-row"><CheckCircle size={10} color="#00e676" /><span>Color separation: CMYK</span></div>
-      </div>
-      <div className="export-action-btn">
-        <Download size={11} />
-        <span>Export Production package</span>
-      </div>
+    <div className="lp-card-preview">
+      <div className="lp-export-badge ok">✓ Pre-flight: PASSED</div>
+      <div className="lp-check-row"><CheckCircle size={10} color="#00e676" />DPI: 300 — High Res</div>
+      <div className="lp-check-row"><CheckCircle size={10} color="#00e676" />Color mode: CMYK</div>
+      <div className="lp-check-row"><CheckCircle size={10} color="#00e676" />Bleed: 0.25" — Ready</div>
     </div>
   );
   return null;
@@ -387,24 +311,14 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
         </div>
         <div className="lp-features-grid">
           {features.map((f, i) => (
-            <div className={`lp-feature-card feat-${f.preview}`} key={i}>
-              <div className="lp-feature-text-side">
-                <div className="lp-feature-top">
-                  <div className="lp-feature-icon">{f.icon}</div>
-                  <div className="lp-feature-tag">{f.tag}</div>
-                </div>
-                <h3 className="lp-feature-title">{f.title}</h3>
-                <p className="lp-feature-desc">{f.desc}</p>
-                {f.codeText && (
-                  <div className="lp-feature-bullet-note">
-                    <span className="bullet-indicator">⚡</span>
-                    <span className="bullet-content">{f.codeText}</span>
-                  </div>
-                )}
+            <div className="lp-feature-card" key={i}>
+              <div className="lp-feature-top">
+                <div className="lp-feature-icon">{f.icon}</div>
+                <div className="lp-feature-tag">{f.tag}</div>
               </div>
-              <div className="lp-feature-visual-side">
-                <FeatureCardVisual type={f.preview} />
-              </div>
+              <h3 className="lp-feature-title">{f.title}</h3>
+              <p className="lp-feature-desc">{f.desc}</p>
+              <FeaturePreview type={f.preview} />
             </div>
           ))}
         </div>
@@ -576,4 +490,3 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
     </div>
   );
 }
-
