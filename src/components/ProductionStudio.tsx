@@ -2662,6 +2662,28 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     };
   }, [toolMode]);
 
+  // ── Escape Key tool cancellation & UI reset ────────────────────────────────
+  useEffect(() => {
+    const handleEscapeKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        const canvas = fabricRef.current?.getCanvas();
+        if (canvas) {
+          const activeObj = canvas.getActiveObject();
+          if (activeObj && (activeObj as any).isEditing) {
+            (activeObj as any).exitEditing();
+          }
+          canvas.discardActiveObject();
+          canvas.requestRenderAll();
+        }
+        setToolMode('select');
+        setPanelSelectorOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscapeKey);
+    return () => window.removeEventListener('keydown', handleEscapeKey);
+  }, []);
+
   const handleSizeChange = (newSize: string) => {
     if (activePlayer) {
       const sizeToSet = newSize === '2XL' ? 'XXL' : newSize;
@@ -2685,17 +2707,14 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
       setActiveTextObj(obj as fabric.IText);
       setActiveShapeObj(null);
       setActiveImageObj(null);
-      setToolMode('text');
     } else if (layer.type === 'shape') {
       setActiveShapeObj(obj as fabric.Rect);
       setActiveTextObj(null);
       setActiveImageObj(null);
-      setToolMode('shape');
     } else if (layer.type === 'image') {
       setActiveImageObj(obj as fabric.Image);
       setActiveTextObj(null);
       setActiveShapeObj(null);
-      setToolMode('select');
     } else {
       setActiveTextObj(null);
       setActiveShapeObj(null);
@@ -2763,6 +2782,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     const url = URL.createObjectURL(file);
     fabricRef.current?.addImageFromUrl(url, file.name.replace(/\.[^.]+$/, ''));
     e.target.value = '';
+    setToolMode('select');
   };
 
 
@@ -3315,6 +3335,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                   activeTemplate={activeTemplate}
                   activeSize={activeSize}
                   offsets={layoutOffsets}
+                  onCreationComplete={() => setToolMode('select')}
                 />
               )}
 

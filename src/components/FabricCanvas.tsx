@@ -86,6 +86,7 @@ interface FabricCanvasProps {
   activeSize?: string;
   offsets?: any;
   project?: Project;
+  onCreationComplete?: () => void;
 }
 
 // ─── Helper: unique layer names ───────────────────────────────────────────────
@@ -473,6 +474,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   activeSize,
   offsets,
   project,
+  onCreationComplete,
 }, ref) => {
   const canvasElRef = useRef<HTMLCanvasElement>(null);
   const fabricRef = useRef<fabric.Canvas | null>(null);
@@ -596,6 +598,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const redoStackRef = useRef<string[]>(initialRedoStack ?? []);
   const isProcessingHistoryRef = useRef(false);
   const activeGuideLinesRef = useRef<{ x?: number; y?: number; label?: string }[]>([]);
+  const onCreationCompleteRef = useRef(onCreationComplete);
 
   // Sync callbacks and values to refs to prevent stale closures in Fabric events
   const onLayersChangeRef = useRef(onLayersChange);
@@ -636,6 +639,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     panelTemplatesRef.current = panelTemplates;
     templateRef.current = actualTemplate;
     projectRef.current = project;
+    onCreationCompleteRef.current = onCreationComplete;
   });
 
   // Sync internal stack refs when props change (e.g. on view switch)
@@ -2069,6 +2073,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         canvas.setActiveObject(text);
         text.enterEditing();
         canvas.requestRenderAll();
+        if (!nativeEvt.shiftKey && onCreationCompleteRef.current) {
+          onCreationCompleteRef.current();
+        }
       }
 
       if (mode === 'shape' && canPlace) {
@@ -2090,6 +2097,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         canvas.add(rect);
         canvas.setActiveObject(rect);
         canvas.requestRenderAll();
+        if (!nativeEvt.shiftKey && onCreationCompleteRef.current) {
+          onCreationCompleteRef.current();
+        }
       }
     });
 
@@ -2151,6 +2161,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     if (toolMode === 'hand') {
       canvas.selection = false;
       canvas.getObjects().forEach(o => { o.selectable = false; });
+      canvas.defaultCursor = 'grab';
+      canvas.hoverCursor = 'grab';
       canvas.setCursor('grab');
     } else if (toolMode === 'select') {
       canvas.selection = true;
@@ -2159,6 +2171,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
           o.selectable = !((o as any).__locked);
         }
       });
+      canvas.defaultCursor = 'default';
+      canvas.hoverCursor = 'default';
       canvas.setCursor('default');
     } else if (toolMode === 'move') {
       canvas.selection = true;
@@ -2167,6 +2181,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
           o.selectable = !((o as any).__locked);
         }
       });
+      canvas.defaultCursor = 'move';
+      canvas.hoverCursor = 'move';
       canvas.setCursor('move');
     } else if (toolMode === 'text') {
       // Keep selection enabled so existing text/objects can still be scaled/rotated
@@ -2176,6 +2192,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
           o.selectable = !((o as any).__locked);
         }
       });
+      canvas.defaultCursor = 'text';
+      canvas.hoverCursor = 'text';
       canvas.setCursor('text');
     } else if (toolMode === 'shape') {
       // Keep selection enabled so existing shapes can still be scaled/rotated
@@ -2185,6 +2203,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
           o.selectable = !((o as any).__locked);
         }
       });
+      canvas.defaultCursor = 'crosshair';
+      canvas.hoverCursor = 'crosshair';
       canvas.setCursor('crosshair');
     }
     canvas.requestRenderAll();
