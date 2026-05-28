@@ -9,6 +9,8 @@ interface LandingPageProps {
   session: Session | null;
   onEnterWorkspace: () => void;
   onShowAuth: () => void;
+  onSignOut: () => void;
+  onSelectPlan?: (planName: string, tokenAmount: number) => void;
 }
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
@@ -91,29 +93,29 @@ const faqs = [
 
 const plans = [
   {
-    name: 'Free',
-    price: '₱0',
+    name: 'Free Trial',
+    price: '$0',
     period: '/month',
     desc: 'Perfect for trying out the platform.',
-    features: ['3 active projects', '10 AI generations/month', 'Basic SVG export', 'Standard templates', 'Community support'],
+    features: ['10 Free AI Generations', '3D creased mockup masking', 'Standard Sandbox Mode', 'Standard JPEG exports', '3 active projects'],
     cta: 'Get Started Free',
     highlight: false,
   },
   {
-    name: 'Pro',
-    price: '₱799',
+    name: 'Pro Creator',
+    price: '$29',
     period: '/month',
-    desc: 'For serious sublimation studios.',
-    features: ['Unlimited projects', 'Unlimited AI generations', 'HD PDF & SVG export', 'Advanced production tools', 'CMYK workflow support', 'Priority support'],
-    cta: 'Start Pro Trial',
+    desc: 'For serious sublimation studios & custom creators.',
+    features: ['500 High-Fidelity AI generations/mo', 'Flux Schnell HD rendering', 'Recraft Infinite SVG vector outputs', 'Full custom sponsor logo slots', 'Priority generation speed', 'Pre-Flight compliance check access'],
+    cta: 'Upgrade to Pro',
     highlight: true,
   },
   {
-    name: 'Business',
-    price: '₱2,499',
+    name: 'Enterprise Brand',
+    price: '$89',
     period: '/month',
-    desc: 'For production teams & bulk orders.',
-    features: ['Everything in Pro', 'Bulk roster automation', 'Team management & roles', 'Premium template library', 'API access', 'Dedicated account manager'],
+    desc: 'For factories, shops & professional bulk orders.',
+    features: ['Unlimited AI generations', 'Dedicated custom sizing rules', 'Lossless 300 DPI SVG/PDF exports', 'Neon Sublimation ink checking', 'Dedicated server queue priority', 'Stripe checkout integration'],
     cta: 'Contact Sales',
     highlight: false,
   },
@@ -179,26 +181,38 @@ function FeaturePreview({ type }: { type: string }) {
 
 // ─── Main Component ────────────────────────────────────────────────────────────
 
-export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPageProps) {
+export function LandingPage({ session, onEnterWorkspace, onShowAuth, onSignOut, onSelectPlan }: LandingPageProps) {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const [activeStep, setActiveStep] = useState(0);
 
   const handlePrimary = () => session ? onEnterWorkspace() : onShowAuth();
+
+  const handleSelectPlanCard = (planName: string) => {
+    const tokenAmount = planName === 'Pro Creator' ? 500 : planName === 'Enterprise Brand' ? 999999 : 10;
+    if (onSelectPlan) {
+      onSelectPlan(planName, tokenAmount);
+    }
+    // If not logged in, we can save the plan choice to localStorage
+    if (!session) {
+      localStorage.setItem('ds_pending_subscription_plan', planName);
+      localStorage.setItem('ds_pending_subscription_tokens', String(tokenAmount));
+    }
+    handlePrimary();
+  };
 
   return (
     <div className="lp-root">
 
       {/* ── NAV ─────────────────────────────────────────────────────────── */}
       <nav className="lp-nav">
-        <div className="lp-nav-logo" onClick={onEnterWorkspace} style={{ cursor: 'pointer' }}>
-          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '4px', color: '#ff4e30', filter: 'drop-shadow(0 0 8px rgba(255, 78, 48, 0.6))' }}>
-            <circle cx="12" cy="12" r="3" fill="currentColor" />
-            <path d="M12 12 L6 6 M12 12 L18 6 M12 12 V18" />
-            <circle cx="6" cy="6" r="2.2" fill="#09090b" stroke="currentColor" strokeWidth="2.5" />
-            <circle cx="18" cy="6" r="2.2" fill="#09090b" stroke="currentColor" strokeWidth="2.5" />
-            <circle cx="12" cy="18" r="2.2" fill="#09090b" stroke="currentColor" strokeWidth="2.5" />
-          </svg>
-          <span style={{ fontFamily: 'Outfit, sans-serif', fontWeight: 900, fontSize: '18px', letterSpacing: '-0.03em' }}>DesignSync</span>
+        <div className="lp-nav-logo" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} style={{ cursor: 'pointer' }}>
+          <img
+            src="/DesignSync Logo.png"
+            alt="DesignSync"
+            width="44"
+            height="44"
+            style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(255, 78, 48, 0.5))' }}
+          />
         </div>
         
         <div className="lp-nav-links">
@@ -216,9 +230,18 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
         
         <div className="lp-nav-actions">
           {session ? (
-            <button className="lp-btn-primary" onClick={onEnterWorkspace}>
-              Enter Workspace <ArrowRight size={14} />
-            </button>
+            <div className="lp-nav-user-pill">
+              <div className="lp-nav-avatar" onClick={onEnterWorkspace} title="Go to Dashboard">
+                {session.user?.email?.charAt(0).toUpperCase() || 'U'}
+              </div>
+              <div className="lp-nav-user-info" onClick={onEnterWorkspace}>
+                <span className="lp-nav-user-email">{session.user?.email}</span>
+                <span className="lp-nav-user-role">Pro Workspace</span>
+              </div>
+              <button className="lp-nav-signout-btn" onClick={onSignOut} title="Sign Out">
+                Sign out
+              </button>
+            </div>
           ) : (
             <>
               <button className="lp-btn-ghost" onClick={onShowAuth}>Log In</button>
@@ -425,7 +448,12 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth }: LandingPa
                   <li key={j}><CheckCircle size={12} color={p.highlight ? '#0070f3' : '#00e676'} />{feat}</li>
                 ))}
               </ul>
-              <button className={p.highlight ? 'lp-btn-primary' : 'lp-btn-outline'} onClick={handlePrimary}>{p.cta}</button>
+              <button 
+                className={p.highlight ? 'lp-btn-primary' : 'lp-btn-outline'} 
+                onClick={() => handleSelectPlanCard(p.name)}
+              >
+                {p.cta}
+              </button>
             </div>
           ))}
         </div>

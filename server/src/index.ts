@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { exportQueue } from './queue.js';
 import { startWorker } from './worker.js';
+import { aiRouter } from './ai-gateway.js';
 
 dotenv.config();
 
@@ -12,6 +13,10 @@ const PORT = process.env.PORT || 5000;
 // Enable JSON parser and CORS
 app.use(express.json({ limit: '10mb' }));
 app.use(cors());
+
+// Mount the AI Gateway Router
+app.use('/api/ai', aiRouter);
+
 
 // Health Check
 app.get('/health', (req, res) => {

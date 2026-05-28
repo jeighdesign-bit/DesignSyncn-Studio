@@ -74,6 +74,11 @@ function garmentTemplateRegistry() {
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), garmentTemplateRegistry()],
+  server: {
+    watch: {
+      ignored: ['**/public/mockups/**']
+    }
+  },
   build: {
     rollupOptions: {
       output: {

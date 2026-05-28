@@ -7,7 +7,8 @@ import { LandingPage } from './components/LandingPage';
 import { ProductionStudio } from './components/ProductionStudio';
 import { PreFlightPanel } from './components/PreFlightPanel';
 import { AIDesignStudio } from './components/AIDesignStudio';
-import { 
+import { UpgradeModal } from './components/UpgradeModal';
+import {
   Layers, FileText, Download,
   ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload, ChevronDown,
   Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy,
@@ -143,6 +144,60 @@ export default function App() {
   // Auth state
   const [session, setSession] = useState<Session | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
+
+  // Tokens & Subscription state
+  const [tokens, setTokens] = useState<number>(10);
+  const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
+
+  // Sync token balance with secure AI Gateway
+  const syncTokens = async () => {
+    try {
+      const uId = session?.user?.id || 'anonymous-session';
+      const res = await fetch(`http://localhost:5000/api/ai/tokens/balance?userId=${uId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTokens(data.balance !== undefined ? data.balance : 10);
+      }
+    } catch (e) {
+      console.error('Error syncing tokens:', e);
+    }
+  };
+
+  useEffect(() => {
+    syncTokens();
+  }, [session]);
+
+  const handleSubscribe = async (planName: string, tokenAmount: number) => {
+    try {
+      const uId = session?.user?.id || 'anonymous-session';
+      const res = await fetch('http://localhost:5000/api/ai/tokens/grant', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: uId, amount: tokenAmount })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setTokens(data.balance);
+        setShowUpgradeModal(false);
+        alert(`🎉 Subscription to ${planName} activated successfully! Granted ${tokenAmount === 999999 ? 'Unlimited' : tokenAmount} credits.`);
+      }
+    } catch (e) {
+      console.error('Error upgrading plan:', e);
+    }
+  };
+
+  // Grant pending subscription plan from landing page upon successful login
+  useEffect(() => {
+    if (session) {
+      const pendingPlan = localStorage.getItem('ds_pending_subscription_plan');
+      const pendingTokens = localStorage.getItem('ds_pending_subscription_tokens');
+      if (pendingPlan && pendingTokens) {
+        handleSubscribe(pendingPlan, Number(pendingTokens));
+        localStorage.removeItem('ds_pending_subscription_plan');
+        localStorage.removeItem('ds_pending_subscription_tokens');
+      }
+    }
+  }, [session]);
 
   // Projects List state
   const [projects, setProjects] = useState<Project[]>([]);
@@ -628,6 +683,8 @@ export default function App() {
             session={session}
             onEnterWorkspace={() => setView('dashboard')}
             onShowAuth={() => setShowAuthModal(true)}
+            onSignOut={() => supabase.auth.signOut()}
+            onSelectPlan={handleSubscribe}
           />
           {showAuthModal && <AuthModal onClose={() => setShowAuthModal(false)} />}
         </>
@@ -638,23 +695,58 @@ export default function App() {
          ==================================================== */}
       {view === 'dashboard' && (
         <div className="dashboard-container blueprint-grid animate-grid">
-          {/* Header */}
-          <header className="dashboard-header">
-            <div className="dashboard-brand">
-              <div className="dashboard-brand-dot" />
-              DesignSync
-            </div>
-            <div className="dashboard-user">
-              <button className="ghost" onClick={() => setView('landing')} style={{ fontSize: '12px', padding: '6px 12px' }}>
-                <ChevronLeft size={14} /> Landing Page
-              </button>
-              <button className="ghost" onClick={() => supabase.auth.signOut()} style={{ fontSize: '12px', padding: '6px 12px', color: 'var(--color-warning)' }}>
-                Sign Out
-              </button>
-              <div className="avatar">{session?.user?.email?.charAt(0).toUpperCase() || 'DS'}</div>
-            </div>
-          </header>
+          <div className="dashboard-header-wrapper">
+            <header className="dashboard-header">
+              <div className="lp-nav-logo" onClick={() => setView('landing')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img
+                  src="/DesignSync Logo.png"
+                  alt="DesignSync"
+                  width="44"
+                  height="44"
+                  style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 6px rgba(255, 78, 48, 0.5))' }}
+                />
+              </div>
+              <div className="dashboard-user">
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '7px 14px',
+                    background: 'linear-gradient(135deg, rgba(121,40,202,0.15) 0%, rgba(0,112,243,0.15) 100%)',
+                    border: '1px solid rgba(121, 40, 202, 0.4)',
+                    borderRadius: '99px',
+                    color: '#a78bfa',
+                    fontSize: '12px',
+                    fontWeight: 700,
+                    fontFamily: 'Outfit, sans-serif',
+                    cursor: 'pointer',
+                    letterSpacing: '0.01em',
+                    boxShadow: '0 0 14px rgba(121, 40, 202, 0.2)',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(121,40,202,0.28) 0%, rgba(0,112,243,0.28) 100%)';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(121, 40, 202, 0.7)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 22px rgba(121, 40, 202, 0.4)';
+                    (e.currentTarget as HTMLButtonElement).style.color = '#c4b5fd';
+                  }}
+                  onMouseLeave={e => {
+                    (e.currentTarget as HTMLButtonElement).style.background = 'linear-gradient(135deg, rgba(121,40,202,0.15) 0%, rgba(0,112,243,0.15) 100%)';
+                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(121, 40, 202, 0.4)';
+                    (e.currentTarget as HTMLButtonElement).style.boxShadow = '0 0 14px rgba(121, 40, 202, 0.2)';
+                    (e.currentTarget as HTMLButtonElement).style.color = '#a78bfa';
+                  }}
+                >
+                  ✦ Upgrade
+                </button>
+                <div className="avatar">{session?.user?.email?.charAt(0).toUpperCase() || 'DS'}</div>
+              </div>
+            </header>
+          </div>
 
+          <div className="dashboard-scroll-area">
           <div className="dashboard-content">
             {/* Title and Intro */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -1343,6 +1435,7 @@ export default function App() {
               </div>
             </div>
           )}
+          </div>{/* /dashboard-scroll-area */}
         </div>
       )}
 
@@ -1459,6 +1552,40 @@ export default function App() {
               )}
 
 
+
+              {/* Dynamic AI Tokens Widget */}
+              <div 
+                onClick={() => setShowUpgradeModal(true)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.15), rgba(0, 112, 243, 0.15))',
+                  border: '1px solid rgba(124, 58, 237, 0.3)',
+                  borderRadius: '16px',
+                  padding: '4px 12px',
+                  marginRight: '12px',
+                  cursor: 'pointer',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  color: '#a78bfa',
+                  boxShadow: '0 0 10px rgba(124, 58, 237, 0.1)',
+                  transition: 'transform 0.2s, box-shadow 0.2s',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'scale(1.03)';
+                  e.currentTarget.style.boxShadow = '0 0 14px rgba(124, 58, 237, 0.25)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'scale(1)';
+                  e.currentTarget.style.boxShadow = '0 0 10px rgba(124, 58, 237, 0.1)';
+                }}
+                title="Click to manage your AI credits & subscriptions"
+              >
+                <Sparkles size={11} style={{ color: '#c084fc' }} className="animate-pulse" />
+                <span>AI Credits: {tokens === 999999 ? 'Unlimited' : `${tokens} remaining`}</span>
+              </div>
 
               <button className="primary" style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }} onClick={() => handleUpdateProject({ stage: 'export' })}>
                 Compile Layouts
@@ -2345,6 +2472,9 @@ export default function App() {
                   onPresetSelect={handlePresetSelect}
                   onGenerate={triggerAiGeneration}
                   onHandoffToProduction={() => handleUpdateProject({ stage: 'studio', activeCanvasView: 'roster_previews' })}
+                  userId={session?.user?.id || 'anonymous-session'}
+                  onTokenExhausted={() => setShowUpgradeModal(true)}
+                  onUpdateTokens={(newAmount) => setTokens(newAmount)}
                 />
               )}
 
@@ -2400,6 +2530,11 @@ export default function App() {
 
         </div>
       )}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onSubscribe={handleSubscribe}
+      />
     </>
   );
 }

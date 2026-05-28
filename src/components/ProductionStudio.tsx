@@ -1935,7 +1935,92 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
   const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
   const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
-  const [configTab, setConfigTab] = useState<'workspace' | 'rules'>('workspace');
+  const [configTab, setConfigTab] = useState<'workspace' | 'rules' | 'ai'>('workspace');
+
+  // AI Sublimation Generator Cockpit States
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiMode, setAiMode] = useState('vector'); // 'recraft' | 'flux' | 'texture' | 'realistic'
+  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiCheckpoint, setAiCheckpoint] = useState('');
+
+  const handleEnhancePrompt = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsEnhancingPrompt(true);
+    try {
+      const res = await fetch('http://localhost:5000/api/ai/enhance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt })
+      });
+      const data = await res.json();
+      if (data.enhancedPrompt) {
+        setAiPrompt(data.enhancedPrompt);
+      }
+    } catch (e) {
+      console.error('Enhance API failed:', e);
+      alert('Prompt enhancement failed. Using original prompt.');
+    } finally {
+      setIsEnhancingPrompt(false);
+    }
+  };
+
+  const handleGenerateAiAsset = async () => {
+    if (!aiPrompt.trim()) {
+      alert('Please enter a prompt first!');
+      return;
+    }
+    
+    setIsGeneratingAi(true);
+    setAiCheckpoint('Connecting to DesignSync Secure Gateway...');
+
+    try {
+      // Sleek loading micro-checkpoint delays for visual immersion
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setAiCheckpoint('Synthesizing sublimation elements...');
+      
+      await new Promise(resolve => setTimeout(resolve, 600));
+      setAiCheckpoint('Applying active color palette hex values...');
+
+      const colors = [
+        project.baseColors.primary,
+        project.baseColors.secondary,
+        project.baseColors.accent || '#ffcc00'
+      ];
+
+      const res = await fetch('http://localhost:5000/api/ai/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          providerMode: aiMode,
+          baseColors: colors
+        })
+      });
+
+      if (!res.ok) throw new Error(`Gateway returned: ${res.statusText}`);
+      const data = await res.json();
+
+      setAiCheckpoint('Baking sublimation dimensions...');
+      await new Promise(resolve => setTimeout(resolve, 400));
+
+      if (data.url) {
+        // Stamp on canvas
+        fabricRef.current?.addImageFromUrl(data.url, `AI_${aiMode.toUpperCase()}`);
+        setAiCheckpoint('Layer auto-stamped successfully!');
+        await new Promise(resolve => setTimeout(resolve, 300));
+      } else {
+        throw new Error('No URL returned from generation gateway.');
+      }
+    } catch (e: any) {
+      console.error('Generation API failed:', e);
+      alert(`AI Generation failed: ${e.message}`);
+    } finally {
+      setIsGeneratingAi(false);
+      setAiCheckpoint('');
+    }
+  };
+
   const [showExportHUD, setShowExportHUD] = useState(false);
   const [isGeneratingBulk, setIsGeneratingBulk] = useState(false);
   const [bulkGenerateProgress, setBulkGenerateProgress] = useState(0);
@@ -3559,12 +3644,174 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                   }}
                   onClick={() => setConfigTab('rules')}
                 >
-                  Production Rules
+                  Rules
+                </button>
+                <button
+                  style={{
+                    padding: '10px 12px',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: configTab === 'ai' ? '#fff' : 'var(--text-disabled)',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: configTab === 'ai' ? '2px solid var(--accent-blue)' : '2px solid transparent',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s'
+                  }}
+                  onClick={() => setConfigTab('ai')}
+                >
+                  AI Generate ✨
                 </button>
               </div>
 
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {configTab === 'workspace' ? (
+                {configTab === 'ai' ? (
+                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                    <div style={{
+                      background: 'rgba(0, 112, 243, 0.04)',
+                      border: '1px solid rgba(0, 112, 243, 0.15)',
+                      borderRadius: '8px',
+                      padding: '12px',
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Sparkles size={13} style={{ color: 'var(--accent-blue)' }} />
+                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sublimation AI Cockpit</span>
+                      </div>
+                      <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: '1.4' }}>
+                        Running in <strong>Sandbox Simulator Mode</strong>. Generate high-quality sublimation pattern elements for free without needing any API keys yet!
+                      </p>
+                    </div>
+
+                    {/* Mode Selector */}
+                    <div>
+                      <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>SUBLIMATION ASSET ENGINE / MODE</label>
+                      <select
+                        value={aiMode}
+                        onChange={(e) => setAiMode(e.target.value)}
+                        className="inspector-input-dark"
+                        style={{ width: '100%', borderRadius: '6px', padding: '8px', fontSize: '11px', fontWeight: 'bold', background: '#0c0d12', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }}
+                      >
+                        <option value="pattern">Pattern Mode (Seamless Vector Fills)</option>
+                        <option value="texture">Texture Mode (Tech Carbon/Mesh Weaves)</option>
+                        <option value="overlay">Overlay Mode (Esport Flames & Cyber Vector Accents)</option>
+                        <option value="typography">Typography Mode (Jersey Print Technical Fonts)</option>
+                        <option value="logo">Logo Mode (Printable Shields & Sponsor Brand patches)</option>
+                      </select>
+                    </div>
+
+                    {/* Prompt input */}
+                    <div>
+                      <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>CREATIVE PROMPT</label>
+                        <button
+                          onClick={handleEnhancePrompt}
+                          disabled={isEnhancingPrompt || !aiPrompt.trim()}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: aiPrompt.trim() ? 'var(--accent-blue)' : 'var(--text-disabled)',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            cursor: aiPrompt.trim() ? 'pointer' : 'not-allowed',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: 0
+                          }}
+                        >
+                          {isEnhancingPrompt ? 'Enhancing...' : '✨ Enhance Prompt'}
+                        </button>
+                      </div>
+                      <textarea
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="Describe your design (e.g., 'esports cyberpunk neon red flames, tech hexagonal grid pattern')..."
+                        className="inspector-input-dark"
+                        rows={4}
+                        style={{
+                          width: '100%',
+                          borderRadius: '6px',
+                          padding: '8px',
+                          fontSize: '11px',
+                          lineHeight: '1.4',
+                          resize: 'vertical',
+                          fontFamily: 'inherit',
+                          boxSizing: 'border-box',
+                          background: '#0c0d12',
+                          color: '#fff',
+                          border: '1px solid rgba(255,255,255,0.08)'
+                        }}
+                      />
+                    </div>
+
+                    {/* Active Sublimation Colors HUD */}
+                    <div>
+                      <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>INJECTED SUBLIMATION COLORS</label>
+                      <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
+                          <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: project.baseColors.primary, border: '1px solid rgba(255,255,255,0.1)' }} />
+                          <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{project.baseColors.primary}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
+                          <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: project.baseColors.secondary, border: '1px solid rgba(255,255,255,0.1)' }} />
+                          <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{project.baseColors.secondary}</span>
+                        </div>
+                        {project.baseColors.accent && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
+                            <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: project.baseColors.accent, border: '1px solid rgba(255,255,255,0.1)' }} />
+                            <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{project.baseColors.accent}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* CTA Generation Trigger */}
+                    <button
+                      onClick={handleGenerateAiAsset}
+                      disabled={isGeneratingAi || !aiPrompt.trim()}
+                      style={{
+                        background: 'linear-gradient(90deg, #0070f3, #00c6ff)',
+                        border: 'none',
+                        color: '#fff',
+                        padding: '10px',
+                        borderRadius: '6px',
+                        fontSize: '11px',
+                        fontWeight: 'bold',
+                        cursor: aiPrompt.trim() ? 'pointer' : 'not-allowed',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        transition: 'opacity 0.2s',
+                        opacity: aiPrompt.trim() ? 1 : 0.5,
+                        boxShadow: '0 4px 14px rgba(0, 112, 243, 0.3)'
+                      }}
+                    >
+                      <Sparkles size={12} />
+                      <span>{isGeneratingAi ? 'Synthesizing...' : 'Generate Sublimation Element'}</span>
+                    </button>
+
+                    {/* Micro-checkpoint status feedback */}
+                    {isGeneratingAi && aiCheckpoint && (
+                      <div style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'rgba(0, 112, 243, 0.05)',
+                        border: '1px solid rgba(0, 112, 243, 0.15)',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        fontSize: '10px',
+                        color: 'var(--accent-blue)',
+                        fontWeight: 'bold',
+                        animation: 'pulse 1.5s infinite'
+                      }}>
+                        <RefreshCw size={11} className="animate-spin" />
+                        <span>{aiCheckpoint}</span>
+                      </div>
+                    )}
+                  </div>
+                ) : configTab === 'workspace' ? (
                   <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
                     
                     {/* Garment Selector */}

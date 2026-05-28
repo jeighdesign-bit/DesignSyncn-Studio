@@ -55,6 +55,7 @@ interface GeneratedConcept {
   accentColor: string;
   patternKey: string;
   timestamp: string;
+  patternUrl?: string;
 }
 
 interface AIDesignStudioProps {
@@ -65,6 +66,9 @@ interface AIDesignStudioProps {
   onPresetSelect: (id: string) => void;
   onGenerate: () => void;
   onHandoffToProduction: () => void;
+  userId?: string;
+  onTokenExhausted?: () => void;
+  onUpdateTokens?: (newAmount: number) => void;
 }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -181,40 +185,87 @@ const GarmentFlat: React.FC<{
   seamBleed: number;
   onPanelClick: (id: GarmentPanel) => void;
 }> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, onPanelClick }) => {
+  const [mockupSrc, setMockupSrc] = useState('/mockups/tshirt copy.png');
+  const [useSvgFallback, setUseSvgFallback] = useState(false);
+
+  const handleMockupError = () => {
+    if (mockupSrc === '/mockups/tshirt copy.png') {
+      setMockupSrc('/mockups/tshirt.png');
+    } else {
+      setUseSvgFallback(true);
+    }
+  };
 
   const getPanelConcept = (id: GarmentPanel) => concepts.find(c => c.panelId === id);
 
   const getPanelFill = (id: GarmentPanel) => {
+    if (concepts.length > 0) {
+      return 'transparent';
+    }
     const concept = getPanelConcept(id);
-    const dna = selectedDNA;
-    if (concept) return `url(#grad-${id})`;
-    if (dna) return `${dna.primaryColor}cc`;
-    return '#16161f';
+    if (concept) {
+      return concept.patternUrl ? `url(#pattern-${id})` : `url(#grad-${id})`;
+    }
+    // Default to a perfectly clean, blank white sublimation fabric canvas!
+    return '#ffffff';
   };
 
   const isActive = (id: GarmentPanel) => activePanel === id;
   const panelStatus = (id: GarmentPanel) => panels.find(p => p.id === id)?.status ?? 'empty';
 
+  const frontConcept = concepts.find(c => c.panelId === 'front');
+  const backConcept = concepts.find(c => c.panelId === 'back');
+
+  const frontFill = frontConcept?.patternUrl 
+    ? `url(${frontConcept.patternUrl})` 
+    : (selectedDNA ? `linear-gradient(135deg, ${selectedDNA.primaryColor}, ${selectedDNA.secondaryColor})` : '#ffffff');
+
+  const backFill = backConcept?.patternUrl 
+    ? `url(${backConcept.patternUrl})` 
+    : (selectedDNA ? `linear-gradient(135deg, ${selectedDNA.primaryColor}, ${selectedDNA.secondaryColor})` : '#ffffff');
+
   return (
-    <svg
-      viewBox="0 0 640 440"
-      className="ap-garment-flat-svg"
-      style={{ width: '100%', height: '100%', maxHeight: '420px' }}
-    >
+    <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '360px', maxWidth: '640px' } as any}>
+      {/* DYNAMIC SVG OUTLINE LAYOUT (Completely hidden when custom PNG mockup is used) */}
+      <svg
+        viewBox="0 0 640 440"
+        className="ap-garment-flat-svg"
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          maxHeight: '420px',
+          display: useSvgFallback ? 'block' : 'none',
+          zIndex: 10,
+          pointerEvents: 'auto'
+        }}
+      >
       <defs>
-        {/* Gradients per panel based on concepts / dna */}
+        {/* Render dynamic image pattern fills or linear gradient fallbacks */}
         {['front','back','left-sleeve','right-sleeve','collar'].map(pid => {
           const c = getPanelConcept(pid as GarmentPanel);
           const dna = selectedDNA;
           const p = c?.primaryColor ?? dna?.primaryColor ?? '#16161f';
           const s = c?.secondaryColor ?? dna?.secondaryColor ?? '#1e1e2e';
           const a = c?.accentColor ?? dna?.accentColor ?? '#0070f3';
+          
           return (
-            <linearGradient key={pid} id={`grad-${pid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor={p} />
-              <stop offset="60%" stopColor={s} />
-              <stop offset="100%" stopColor={a} stopOpacity={0.4} />
-            </linearGradient>
+            <React.Fragment key={pid}>
+              {/* Pattern fill utilizing actual generated AI url */}
+              {c?.patternUrl && (
+                <pattern id={`pattern-${pid}`} width="1" height="1" patternContentUnits="objectBoundingBox">
+                  <image href={c.patternUrl} width="1" height="1" preserveAspectRatio="xMidYMid slice" />
+                </pattern>
+              )}
+              {/* Gradient fallback */}
+              <linearGradient id={`grad-${pid}`} x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor={p} />
+                <stop offset="60%" stopColor={s} />
+                <stop offset="100%" stopColor={a} stopOpacity={0.4} />
+              </linearGradient>
+            </React.Fragment>
           );
         })}
 
@@ -438,6 +489,70 @@ const GarmentFlat: React.FC<{
         {showZones.design && <><rect x="225" y="0" width="8" height="8" fill="none" stroke="#00e676" strokeWidth="0.5" strokeDasharray="4 3" /><text x="236" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Design Area</text></>}
       </g>
     </svg>
+      {/* 🌟 1. BASE MOCKUP UNDERLAY (Provides the 3D shading, folds, and outlines) */}
+      {!useSvgFallback && (
+        <img
+          src={mockupSrc}
+          alt="Custom Sublimation Mockup"
+          onError={handleMockupError}
+          style={{
+            width: '100%',
+            maxHeight: '420px',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 12px 36px rgba(0,0,0,0.55))',
+            pointerEvents: 'none',
+            display: 'block'
+          }}
+        />
+      )}
+
+      {/* 🌟 2. 3D PHOTOREALISTIC MASKED AI PATTERN OVERLAY */}
+      {!useSvgFallback && concepts.length > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            pointerEvents: 'none',
+            mixBlendMode: 'multiply',
+            maskImage: `url("${mockupSrc}")`,
+            WebkitMaskImage: `url("${mockupSrc}")`,
+            maskSize: 'contain',
+            WebkitMaskSize: 'contain',
+            maskRepeat: 'no-repeat',
+            WebkitMaskRepeat: 'no-repeat',
+            maskPosition: 'center',
+            WebkitMaskPosition: 'center',
+          }}
+        >
+          {/* Left Half: Front Shirt Design Mask */}
+          <div
+            style={{
+              flex: 1,
+              height: '100%',
+              background: frontFill,
+              backgroundSize: frontConcept?.patternUrl ? '150px 150px' : 'cover',
+              backgroundRepeat: 'repeat',
+              opacity: 0.95,
+            }}
+          />
+          {/* Right Half: Back Shirt Design Mask */}
+          <div
+            style={{
+              flex: 1,
+              height: '100%',
+              background: backFill,
+              backgroundSize: backConcept?.patternUrl ? '150px 150px' : 'cover',
+              backgroundRepeat: 'repeat',
+              opacity: 0.95,
+            }}
+          />
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -448,6 +563,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   onUpdateProject,
   onGenerate,
   onHandoffToProduction,
+  userId = 'anonymous-session',
+  onTokenExhausted,
+  onUpdateTokens,
 }) => {
   // ── State ──────────────────────────────────────────────────────────────────
   const [activePanel, setActivePanel] = useState<GarmentPanel>('front');
@@ -508,7 +626,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     setPanels(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   };
 
-  const handleGenerate = () => {
+  const handleGenerate = async () => {
     const configuredPanels = panels.filter(p => p.prompt.trim() !== '' || selectedDNA !== null);
     if (configuredPanels.length === 0 && !selectedDNA) return;
 
@@ -519,10 +637,49 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     const dna = selectedDNA;
     const targetPanels: GarmentPanel[] = ['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'];
 
-    setTimeout(() => {
-      const newConcepts: GeneratedConcept[] = targetPanels.map(pid => {
+    try {
+      const newConcepts: GeneratedConcept[] = [];
+      const colors = [
+        project.baseColors.primary,
+        project.baseColors.secondary,
+        project.baseColors.accent || '#ffcc00'
+      ];
+
+      // Generate patterns for each panel asynchronously via DesignSync AI Gateway
+      for (const pid of targetPanels) {
         const panel = panels.find(p => p.id === pid);
-        return {
+        const basePrompt = panel?.prompt.trim() || (dna ? `${dna.name} sports style: ${dna.description}` : 'sports jersey technical pattern');
+        const refinedPrompt = `${basePrompt}, sublimated ${pid} panel jersey texture`;
+
+        pushLog(`[Secure AI Router] Routing ${pid} prompt to Replicate (Flux)...`);
+
+        const res = await fetch('http://localhost:5000/api/ai/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            prompt: refinedPrompt,
+            providerMode: 'flux', // will use Replicate Flux or fall back to beautiful Sandbox SVGs
+            baseColors: colors,
+            userId: userId
+          })
+        });
+
+        if (res.status === 403) {
+          const errData = await res.json();
+          if (errData.error === 'OUT_OF_TOKENS') {
+            if (onTokenExhausted) onTokenExhausted();
+            throw new Error('OUT_OF_TOKENS');
+          }
+        }
+
+        if (!res.ok) throw new Error(`Gateway returned: ${res.statusText}`);
+        const data = await res.json();
+
+        if (data.remainingTokens !== undefined && onUpdateTokens) {
+          onUpdateTokens(data.remainingTokens);
+        }
+
+        newConcepts.push({
           id: `c-${pid}-${Date.now()}`,
           panelId: pid,
           label: panel?.prompt || (dna ? dna.name : 'Base Concept'),
@@ -531,18 +688,27 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           accentColor: dna?.accentColor ?? project.baseColors.accent,
           patternKey: `${dna?.id ?? 'default'}-${pid}`,
           timestamp: new Date().toLocaleTimeString(),
-        };
-      });
+          patternUrl: data.url // Dynamic live AI-generated texture URL or sandbox mockup!
+        });
+      }
 
       setConcepts(newConcepts);
       setPanels(prev => prev.map(p => ({
         ...p,
         status: p.prompt.trim() !== '' || selectedDNA !== null ? 'generated' : 'configured'
       })));
-      setGenerating(false);
       pushLog(`✓ Panel layout generated — ${targetPanels.length} panels mapped successfully`);
       pushLog(`✓ Zone compliance: seam bleed ${seamBleed}", safe margin ${safeZoneRadius}"`);
-    }, 3200);
+    } catch (e: any) {
+      console.error(e);
+      if (e.message === 'OUT_OF_TOKENS') {
+        pushLog(`❌ AI Gateway Error: Credits exhausted. Upgrade to premium plan required!`);
+      } else {
+        pushLog(`❌ AI Gateway Error: ${e.message}`);
+      }
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const handleApprovePanel = (id: GarmentPanel) => {
