@@ -3516,6 +3516,54 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
                 </div>
               )}
 
+              {/* ── Bottom-Center Floating AI Prompt Bar ── */}
+              {currentView !== 'roster_previews' && (
+                <div className="ap-bottom-prompt-bar">
+                  <input
+                    type="text"
+                    className="ap-prompt-textarea"
+                    placeholder="Describe your design idea..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && aiPrompt.trim() && !isGeneratingAi) {
+                        handleGenerateAiAsset();
+                      }
+                    }}
+                  />
+
+                  <button
+                    className={`ap-prompt-generate-btn ${isGeneratingAi ? 'loading' : ''}`}
+                    onClick={handleGenerateAiAsset}
+                    disabled={isGeneratingAi || !aiPrompt.trim()}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      background: 'linear-gradient(135deg, var(--accent-blue, #0070f3), #0056cc)',
+                      border: 'none',
+                      color: '#fff',
+                      borderRadius: '12px',
+                      padding: '8px 16px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      cursor: (isGeneratingAi || !aiPrompt.trim()) ? 'not-allowed' : 'pointer',
+                      transition: 'all 0.2s',
+                      opacity: (isGeneratingAi || !aiPrompt.trim()) ? 0.6 : 1,
+                    }}
+                  >
+                    {isGeneratingAi ? (
+                      <RefreshCw size={13} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Sparkles size={13} />
+                        <span>Generate</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              )}
+
             </div>
           </div>
         </div>

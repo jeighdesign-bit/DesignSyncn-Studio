@@ -51,7 +51,7 @@ const initialProject: Project = {
   roster: [],
   measurementUnit: 'inches',
   activePlayerId: '',
-  activeCanvasView: 'roster_previews',
+  activeCanvasView: 'front',
   hiddenLayers: [],
   lockedLayers: [],
   selectedLayerId: 'template-front',
@@ -1645,7 +1645,7 @@ export default function App() {
                           </button>
                           <button 
                             className={`sidebar-nav-item ${project.stage === 'studio' ? 'active' : ''} ${studioLocked ? 'locked' : ''}`}
-                            onClick={() => !studioLocked && handleUpdateProject({ stage: 'studio', activeCanvasView: 'roster_previews' })}
+                            onClick={() => !studioLocked && handleUpdateProject({ stage: 'studio', activeCanvasView: 'front' })}
                             disabled={studioLocked}
                             style={buttonStyle}
                             title={studioLocked ? 'Complete the previous stages to unlock.' : ''}
@@ -2459,7 +2459,7 @@ export default function App() {
                   onUpdateProject={handleUpdateProject}
                   onPresetSelect={handlePresetSelect}
                   onGenerate={triggerAiGeneration}
-                  onHandoffToProduction={() => handleUpdateProject({ stage: 'studio', activeCanvasView: 'roster_previews' })}
+                  onHandoffToProduction={() => handleUpdateProject({ stage: 'studio', activeCanvasView: 'front' })}
                   userId={session?.user?.id || 'anonymous-session'}
                   onTokenExhausted={() => setShowUpgradeModal(true)}
                   onUpdateTokens={() => syncBillingState()}

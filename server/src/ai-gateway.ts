@@ -291,7 +291,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
     // --- REAL API LOGIC ---
     // Recraft AI Vector API integration (Official OpenAPI Spec)
-    if (mode === 'recraft' && hasRecraft) {
+    if ((mode === 'recraft' || mode === 'vector') && hasRecraft) {
       console.log(`[DesignSync AI Gateway] Routing to Recraft AI...`);
       const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
         method: 'POST',
