@@ -4,18 +4,26 @@ import dotenv from 'dotenv';
 import { exportQueue } from './queue.js';
 import { startWorker } from './worker.js';
 import { aiRouter } from './ai-gateway.js';
+import { subscriptionRouter } from './subscriptionRouter.js';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Enable JSON parser and CORS
-app.use(express.json({ limit: '10mb' }));
+// ── CORS ─────────────────────────────────────────────────────────────────────
 app.use(cors());
 
-// Mount the AI Gateway Router
+// ── Stripe Webhook (raw body MUST come before JSON parser) ───────────────────
+// Raw buffer required for Stripe signature verification
+app.use('/api/subscription/webhook', express.raw({ type: 'application/json' }));
+
+// ── JSON body parser for all other routes ────────────────────────────────────
+app.use(express.json({ limit: '10mb' }));
+
+// ── Routers ───────────────────────────────────────────────────────────────────
 app.use('/api/ai', aiRouter);
+app.use('/api/subscription', subscriptionRouter);
 
 
 // Health Check

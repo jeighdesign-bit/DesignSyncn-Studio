@@ -8,6 +8,7 @@ import { ProductionStudio } from './components/ProductionStudio';
 import { PreFlightPanel } from './components/PreFlightPanel';
 import { AIDesignStudio } from './components/AIDesignStudio';
 import { UpgradeModal } from './components/UpgradeModal';
+import { useBillingState } from './lib/useBillingState';
 import {
   Layers, FileText, Download,
   ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload, ChevronDown,
@@ -145,54 +146,38 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  // Tokens & Subscription state
-  const [tokens, setTokens] = useState<number>(10);
+  // ── Subscription & Billing State ────────────────────────────────────────────
   const [showUpgradeModal, setShowUpgradeModal] = useState<boolean>(false);
+  const userId = session?.user?.id || 'anonymous-session';
 
-  // Sync token balance with secure AI Gateway
-  const syncTokens = async () => {
-    try {
-      const uId = session?.user?.id || 'anonymous-session';
-      const res = await fetch(`http://localhost:5000/api/ai/tokens/balance?userId=${uId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setTokens(data.balance !== undefined ? data.balance : 10);
-      }
-    } catch (e) {
-      console.error('Error syncing tokens:', e);
-    }
-  };
+  const {
+    billingState,
+    checkoutLoading,
+    successPlan,
+    errorMessage,
+    syncBillingState,
+    initiateCheckout,
+    grantTokensDirect,
+  } = useBillingState(userId);
 
-  useEffect(() => {
-    syncTokens();
-  }, [session]);
+  // Convenience alias — keeps legacy references working
+  const tokens = billingState.tokensRemaining;
 
+  // Handle plan selection from LandingPage: show UpgradeModal directly (stays on landing page)
   const handleSubscribe = async (planName: string, tokenAmount: number) => {
-    try {
-      const uId = session?.user?.id || 'anonymous-session';
-      const res = await fetch('http://localhost:5000/api/ai/tokens/grant', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: uId, amount: tokenAmount })
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setTokens(data.balance);
-        setShowUpgradeModal(false);
-        alert(`🎉 Subscription to ${planName} activated successfully! Granted ${tokenAmount === 999999 ? 'Unlimited' : tokenAmount} credits.`);
-      }
-    } catch (e) {
-      console.error('Error upgrading plan:', e);
-    }
+    setShowUpgradeModal(true);
   };
 
-  // Grant pending subscription plan from landing page upon successful login
+  // Re-sync billing after login / session change
   useEffect(() => {
     if (session) {
+      syncBillingState();
+      // Handle pending plan from landing page: redirect to dashboard and open UpgradeModal
       const pendingPlan = localStorage.getItem('ds_pending_subscription_plan');
       const pendingTokens = localStorage.getItem('ds_pending_subscription_tokens');
       if (pendingPlan && pendingTokens) {
-        handleSubscribe(pendingPlan, Number(pendingTokens));
+        setView('dashboard');
+        setShowUpgradeModal(true);
         localStorage.removeItem('ds_pending_subscription_plan');
         localStorage.removeItem('ds_pending_subscription_tokens');
       }
@@ -1584,7 +1569,14 @@ export default function App() {
                 title="Click to manage your AI credits & subscriptions"
               >
                 <Sparkles size={11} style={{ color: '#c084fc' }} className="animate-pulse" />
-                <span>AI Credits: {tokens === 999999 ? 'Unlimited' : `${tokens} remaining`}</span>
+                <span>
+                  {billingState.planId !== 'free' && (
+                    <span style={{ color: billingState.planId === 'pro' ? '#0070f3' : '#7c3aed', marginRight: '4px', fontSize: '9px', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.06em' }}>
+                      {billingState.planId === 'pro' ? '⚡ Pro' : '🛡 Enterprise'} ·&nbsp;
+                    </span>
+                  )}
+                  AI Credits: {billingState.tokensRemaining >= 999999 ? '∞ Unlimited' : `${billingState.tokensRemaining} left`}
+                </span>
               </div>
 
               <button className="primary" style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }} onClick={() => handleUpdateProject({ stage: 'export' })}>
@@ -2474,7 +2466,7 @@ export default function App() {
                   onHandoffToProduction={() => handleUpdateProject({ stage: 'studio', activeCanvasView: 'roster_previews' })}
                   userId={session?.user?.id || 'anonymous-session'}
                   onTokenExhausted={() => setShowUpgradeModal(true)}
-                  onUpdateTokens={(newAmount) => setTokens(newAmount)}
+                  onUpdateTokens={() => syncBillingState()}
                 />
               )}
 
@@ -2534,6 +2526,20 @@ export default function App() {
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onSubscribe={handleSubscribe}
+        billingState={billingState}
+        checkoutLoading={checkoutLoading}
+        successPlan={successPlan}
+        errorMessage={errorMessage}
+        onCheckout={initiateCheckout}
+        onManageBilling={async () => {
+          try {
+            const res = await fetch(`http://localhost:5000/api/subscription/portal?userId=${encodeURIComponent(userId)}`);
+            if (res.ok) {
+              const { url } = await res.json();
+              if (url && url !== '#') window.open(url, '_blank');
+            }
+          } catch { /* silent */ }
+        }}
       />
     </>
   );

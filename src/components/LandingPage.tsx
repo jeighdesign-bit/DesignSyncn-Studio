@@ -2,8 +2,11 @@ import { useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import {
   ArrowRight, Play, Sparkles, Layers, Sliders, Download,
-  FileText, Zap, CheckCircle, ChevronDown, Star, Users, Cpu, Globe
+  FileText, Zap, CheckCircle, ChevronDown, Star, Users, Cpu, Globe,
+  Check, Flame, ShieldCheck, TrendingUp
 } from 'lucide-react';
+import { PLANS } from '../lib/subscriptionTypes';
+
 
 interface LandingPageProps {
   session: Session | null;
@@ -91,35 +94,253 @@ const faqs = [
   { q: 'Will CMYK export be fully supported?', a: 'CMYK color mode is already available for project setup. Full end-to-end CMYK export pipeline is on the Q3 roadmap.' },
 ];
 
-const plans = [
-  {
-    name: 'Free Trial',
-    price: '$0',
-    period: '/month',
-    desc: 'Perfect for trying out the platform.',
-    features: ['10 Free AI Generations', '3D creased mockup masking', 'Standard Sandbox Mode', 'Standard JPEG exports', '3 active projects'],
-    cta: 'Get Started Free',
-    highlight: false,
-  },
-  {
-    name: 'Pro Creator',
-    price: '$29',
-    period: '/month',
-    desc: 'For serious sublimation studios & custom creators.',
-    features: ['500 High-Fidelity AI generations/mo', 'Flux Schnell HD rendering', 'Recraft Infinite SVG vector outputs', 'Full custom sponsor logo slots', 'Priority generation speed', 'Pre-Flight compliance check access'],
-    cta: 'Upgrade to Pro',
-    highlight: true,
-  },
-  {
-    name: 'Enterprise Brand',
-    price: '$89',
-    period: '/month',
-    desc: 'For factories, shops & professional bulk orders.',
-    features: ['Unlimited AI generations', 'Dedicated custom sizing rules', 'Lossless 300 DPI SVG/PDF exports', 'Neon Sublimation ink checking', 'Dedicated server queue priority', 'Stripe checkout integration'],
-    cta: 'Contact Sales',
-    highlight: false,
-  },
-];
+const PLAN_ICONS: Record<string, React.ReactNode> = {
+  free: <Zap size={18} color="#6b7280" />,
+  pro: <Flame size={18} color="#f59e0b" style={{ filter: 'drop-shadow(0 0 6px #f59e0b)' }} />,
+  enterprise: <ShieldCheck size={18} color="#7c3aed" style={{ filter: 'drop-shadow(0 0 6px #7c3aed)' }} />,
+};
+
+interface LandingPricingCardProps {
+  plan: typeof PLANS[number];
+  onSelect: (planName: string) => void;
+}
+
+const LandingPricingCard: React.FC<LandingPricingCardProps> = ({ plan, onSelect }) => {
+  const [isHovered, setIsHovered] = useState(false);
+  const isPro = plan.id === 'pro';
+  const isEnterprise = plan.id === 'enterprise';
+  const isFree = plan.id === 'free';
+
+  const getBorder = () => {
+    if (isHovered) return `2px solid ${plan.accentColor}99`;
+    if (plan.isPopular) return `2px solid #0070f3`;
+    return '1px solid rgba(255, 255, 255, 0.06)';
+  };
+
+  const getBackground = () => {
+    if (isHovered) {
+      if (isPro) return 'linear-gradient(180deg, #091a36 0%, #060914 100%)';
+      if (isEnterprise) return 'linear-gradient(180deg, #12083a 0%, #060914 100%)';
+      return 'linear-gradient(180deg, #111820 0%, #090b14 100%)';
+    }
+    if (plan.isPopular) return 'linear-gradient(180deg, #091326 0%, #060914 100%)';
+    return '#090b14';
+  };
+
+  const getBoxShadow = () => {
+    if (isHovered) {
+      return `0 16px 48px ${plan.glowColor}, 0 0 0 1px ${plan.accentColor}22`;
+    }
+    if (plan.isPopular) return '0 12px 32px rgba(0, 112, 243, 0.12)';
+    return 'none';
+  };
+
+  const getCtaStyle = () => {
+    const base: React.CSSProperties = {
+      width: '100%',
+      padding: '12px 16px',
+      borderRadius: '8px',
+      fontSize: '13px',
+      fontWeight: 700,
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      gap: '7px',
+      letterSpacing: '0.01em',
+      border: 'none',
+      transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
+      transform: isHovered ? 'translateY(-1px) scale(1.01)' : 'none',
+      marginTop: 'auto',
+    };
+
+    if (isPro) {
+      return {
+        ...base,
+        background: isHovered
+          ? 'linear-gradient(135deg, #005ed6, #0099e6)'
+          : 'linear-gradient(135deg, #0070f3, #00bcd4)',
+        color: '#fff',
+        boxShadow: isHovered
+          ? '0 8px 24px rgba(0, 112, 243, 0.5), 0 0 0 1px rgba(0, 112, 243, 0.3)'
+          : '0 4px 14px rgba(0, 112, 243, 0.3)',
+      };
+    }
+
+    if (isFree) {
+      return {
+        ...base,
+        background: isHovered ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.04)',
+        color: '#fff',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: isHovered ? '0 4px 12px rgba(255, 255, 255, 0.05)' : 'none',
+      };
+    }
+
+    return {
+      ...base,
+      background: isHovered
+        ? `${plan.accentColor}cc`
+        : `${plan.accentColor}99`,
+      color: '#fff',
+      border: `1px solid ${plan.accentColor}66`,
+      boxShadow: isHovered
+        ? `0 8px 24px ${plan.accentColor}44`
+        : `0 4px 14px ${plan.accentColor}22`,
+    };
+  };
+
+  return (
+    <div
+      style={{
+        background: getBackground(),
+        border: getBorder(),
+        borderRadius: '14px',
+        padding: '32px 28px',
+        display: 'flex',
+        flexDirection: 'column',
+        position: 'relative',
+        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: getBoxShadow(),
+        transform: isHovered ? 'translateY(-5px)' : 'none',
+        cursor: 'pointer',
+        overflow: 'visible',
+        textAlign: 'left',
+        minHeight: '440px',
+      }}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+      onClick={() => onSelect(plan.name)}
+    >
+      {/* Most Popular badge */}
+      {plan.isPopular && (
+        <div style={{
+          position: 'absolute',
+          top: '-13px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          background: 'linear-gradient(90deg, #0070f3, #00bcd4)',
+          color: '#fff',
+          fontSize: '9px',
+          fontWeight: 800,
+          textTransform: 'uppercase',
+          padding: '4px 14px',
+          borderRadius: '12px',
+          letterSpacing: '0.1em',
+          boxShadow: '0 4px 12px rgba(0, 112, 243, 0.35)',
+          whiteSpace: 'nowrap',
+          zIndex: 2,
+        }}>
+          Most Popular
+        </div>
+      )}
+
+      {/* Plan Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        <span style={{ fontSize: '15px', fontWeight: 700, color: '#fff' }}>
+          {plan.name}
+        </span>
+        <div style={{
+          width: '34px',
+          height: '34px',
+          borderRadius: '10px',
+          background: `${plan.accentColor}18`,
+          border: `1px solid ${plan.accentColor}33`,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'all 0.25s ease',
+          boxShadow: isHovered ? `0 0 12px ${plan.glowColor}` : 'none',
+        }}>
+          {PLAN_ICONS[plan.id]}
+        </div>
+      </div>
+
+      {/* Price */}
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px', marginBottom: '4px' }}>
+        <span style={{
+          fontSize: '36px',
+          fontWeight: 800,
+          color: '#fff',
+          lineHeight: 1,
+          letterSpacing: '-0.02em',
+          fontFamily: 'Outfit, sans-serif',
+        }}>
+          ${plan.price}
+        </span>
+        <span style={{ fontSize: '12px', color: '#8899a6', fontWeight: 500 }}>
+          / {plan.period}
+        </span>
+      </div>
+
+      {/* Token label */}
+      <div style={{
+        fontSize: '10.5px',
+        color: plan.id === 'free' ? '#6b7280' : plan.accentColor,
+        fontWeight: 700,
+        fontFamily: 'monospace',
+        textTransform: 'uppercase',
+        letterSpacing: '0.06em',
+        marginBottom: '14px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '4px',
+      }}>
+        {plan.tokens}
+      </div>
+
+      {/* Description */}
+      <p style={{
+        fontSize: '12px',
+        color: '#8899a6',
+        marginBottom: '16px',
+        lineHeight: '1.5',
+        minHeight: '36px',
+      }}>
+        {plan.description}
+      </p>
+
+      <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', marginBottom: '16px' }} />
+
+      {/* Features */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '9px', marginBottom: '22px', flex: 1 }}>
+        {plan.features.map((feat, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+            <div style={{
+              width: '14px',
+              height: '14px',
+              borderRadius: '50%',
+              background: `${plan.accentColor}22`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginTop: '1px',
+            }}>
+              <Check size={9} color={plan.id === 'free' ? '#6b7280' : '#00e676'} strokeWidth={3} />
+            </div>
+            <span style={{ fontSize: '11.5px', color: '#b3c3d2', lineHeight: '1.45' }}>
+              {feat.trim()}
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* CTA */}
+      <button style={getCtaStyle()}>
+        {isFree ? (
+          'Get Started Free'
+        ) : (
+          <>
+            <TrendingUp size={14} style={{ flexShrink: 0 }} />
+            {isPro ? 'Upgrade to Pro' : 'Go Unlimited'}
+          </>
+        )}
+      </button>
+    </div>
+  );
+};
+
 
 // ─── Feature Preview Components ────────────────────────────────────────────────
 
@@ -196,8 +417,8 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth, onSignOut, 
     if (!session) {
       localStorage.setItem('ds_pending_subscription_plan', planName);
       localStorage.setItem('ds_pending_subscription_tokens', String(tokenAmount));
+      handlePrimary();
     }
-    handlePrimary();
   };
 
   return (
@@ -435,26 +656,12 @@ export function LandingPage({ session, onEnterWorkspace, onShowAuth, onSignOut, 
           <p className="lp-section-sub">Start free. Scale as your production volume grows.</p>
         </div>
         <div className="lp-pricing-grid">
-          {plans.map((p, i) => (
-            <div className={`lp-pricing-card ${p.highlight ? 'highlighted' : ''}`} key={i}>
-              {p.highlight && <div className="lp-pricing-badge">Most Popular</div>}
-              <div className="lp-pricing-name">{p.name}</div>
-              <div className="lp-pricing-price">
-                {p.price}<span className="lp-pricing-period">{p.period}</span>
-              </div>
-              <p className="lp-pricing-desc">{p.desc}</p>
-              <ul className="lp-pricing-features">
-                {p.features.map((feat, j) => (
-                  <li key={j}><CheckCircle size={12} color={p.highlight ? '#0070f3' : '#00e676'} />{feat}</li>
-                ))}
-              </ul>
-              <button 
-                className={p.highlight ? 'lp-btn-primary' : 'lp-btn-outline'} 
-                onClick={() => handleSelectPlanCard(p.name)}
-              >
-                {p.cta}
-              </button>
-            </div>
+          {PLANS.map((p) => (
+            <LandingPricingCard
+              key={p.id}
+              plan={p}
+              onSelect={handleSelectPlanCard}
+            />
           ))}
         </div>
       </section>

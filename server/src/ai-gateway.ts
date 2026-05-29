@@ -222,13 +222,13 @@ aiRouter.post('/enhance', async (req: any, res: any) => {
       throw new Error(`OpenRouter API error: ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = (await response.json()) as any;
     const enhancedPrompt = data.choices?.[0]?.message?.content?.trim() || prompt;
     return res.json({ enhancedPrompt });
   } catch (error: any) {
     console.error('❌ Error enhancing prompt:', error);
     // Graceful fallback to sandbox response if API fails
-    const enhanced = `Premium dye-sublimation sports pattern: "${prompt}", featuring ultra-sharp vector details, clean technical graphics, and professional jersey aesthetics.`;
+    const enhanced = `Premium dye-sublimation sports pattern: "${req.body.prompt || ''}", featuring ultra-sharp vector details, clean technical graphics, and professional jersey aesthetics.`;
     return res.json({ enhancedPrompt: enhanced, note: 'Fallback prompt enhancement applied.' });
   }
 });
@@ -290,10 +290,10 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     }
 
     // --- REAL API LOGIC ---
-    // Recraft AI Vector API integration
+    // Recraft AI Vector API integration (Official OpenAPI Spec)
     if (mode === 'recraft' && hasRecraft) {
       console.log(`[DesignSync AI Gateway] Routing to Recraft AI...`);
-      const response = await fetch('https://external.api.recraft.ai/v1/images/generations', {
+      const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -301,14 +301,14 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         },
         body: JSON.stringify({
           prompt: optimizedPrompt,
+          model: 'recraftv3_vector',
           style: 'vector_illustration',
-          substyle: 'linocut',
           colors: colors.map((c: string) => ({ hex: c })),
         })
       });
 
       if (!response.ok) throw new Error(`Recraft API error: ${response.statusText}`);
-      const data = await response.json();
+      const data = (await response.json()) as any;
       setUserTokens(cleanUserId, currentBalance - 1);
       return res.json({
         url: data.data?.[0]?.url,
@@ -341,17 +341,17 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       });
 
       if (!response.ok) throw new Error(`Replicate API error: ${response.statusText}`);
-      const data = await response.json();
+      const data = (await response.json()) as any;
 
       // Poll Replicate prediction endpoint
-      let prediction = data;
+      let prediction: any = data;
       let attempts = 0;
       while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 10) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const check = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
           headers: { 'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}` }
         });
-        prediction = await check.json();
+        prediction = (await check.json()) as any;
         attempts++;
       }
 
