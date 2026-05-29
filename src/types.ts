@@ -105,4 +105,5 @@ export interface Project {
     collar?: string;
   };
   maxUnlockedStage?: Stage;
+  panels?: any[];
 }

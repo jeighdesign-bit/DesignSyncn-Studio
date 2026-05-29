@@ -326,6 +326,7 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   const baseColors = activeProj.baseColors || {};
   const rules = activeProj.rules || {};
   const logos = activeProj.logos || [];
+  const panels = (activeProj as any).panels || [];
 
   const prim = baseColors.primary || '#09090b';
   const sec = baseColors.secondary || '#111115';
@@ -336,10 +337,34 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   const primaryLogo = logos && logos.length > 0 ? logos[0] : null;
   const sponsorLogo = logos && logos.length > 1 ? logos[1] : null;
 
+  // Identify panel textures
+  const frontPanel = panels.find((p: any) => p.id === 'front');
+  const backPanel = panels.find((p: any) => p.id === 'back');
+  const leftSleevePanel = panels.find((p: any) => p.id === 'left-sleeve');
+  const rightSleevePanel = panels.find((p: any) => p.id === 'right-sleeve');
+  const collarPanel = panels.find((p: any) => p.id === 'collar');
+
+  const sleeveTextureUrl = leftSleevePanel?.patternUrl || rightSleevePanel?.patternUrl || frontPanel?.patternUrl;
+
   // ─── 1. FRONT PANEL STATE ───
-  const frontObjects: any[] = [
-    // Background Rect
-    {
+  const frontObjects: any[] = [];
+  
+  if (frontPanel && frontPanel.patternUrl) {
+    frontObjects.push({
+      type: 'image',
+      version: '6.0.0-beta.7',
+      src: frontPanel.patternUrl,
+      left: 0,
+      top: 0,
+      width: 1120,
+      height: 1360,
+      selectable: false,
+      evented: false,
+      __id: 'bg-front-texture',
+      __layerName: 'AI Background Texture'
+    });
+  } else {
+    frontObjects.push({
       type: 'rect',
       version: '6.0.0-beta.7',
       originX: 'left',
@@ -353,8 +378,8 @@ export function generateProductionCanvasStates(project: Project): Record<string,
       evented: true,
       __id: 'bg-front',
       __layerName: 'Front Background'
-    }
-  ];
+    });
+  }
 
   // Add decorative AI-generated elements based on Style DNA
   const dna = project.selectedPresetId || 'cyber-hex';
@@ -503,9 +528,24 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   }
 
   // ─── 2. BACK PANEL STATE ───
-  const backObjects: any[] = [
-    // Background Rect
-    {
+  const backObjects: any[] = [];
+  
+  if (backPanel && backPanel.patternUrl) {
+    backObjects.push({
+      type: 'image',
+      version: '6.0.0-beta.7',
+      src: backPanel.patternUrl,
+      left: 0,
+      top: 0,
+      width: 1120,
+      height: 1360,
+      selectable: false,
+      evented: false,
+      __id: 'bg-back-texture',
+      __layerName: 'AI Background Texture'
+    });
+  } else {
+    backObjects.push({
       type: 'rect',
       version: '6.0.0-beta.7',
       originX: 'left',
@@ -519,8 +559,8 @@ export function generateProductionCanvasStates(project: Project): Record<string,
       evented: true,
       __id: 'bg-back',
       __layerName: 'Back Background'
-    }
-  ];
+    });
+  }
 
   if (dna === 'cyber-hex' || dna === 'esports-pro') {
     backObjects.push(
@@ -601,9 +641,24 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   });
 
   // ─── 3. SLEEVES PANEL STATE ───
-  const sleevesObjects: any[] = [
-    // Background Rect
-    {
+  const sleevesObjects: any[] = [];
+  
+  if (sleeveTextureUrl) {
+    sleevesObjects.push({
+      type: 'image',
+      version: '6.0.0-beta.7',
+      src: sleeveTextureUrl,
+      left: 0,
+      top: 0,
+      width: 960,
+      height: 640,
+      selectable: false,
+      evented: false,
+      __id: 'bg-sleeves-texture',
+      __layerName: 'AI Background Texture'
+    });
+  } else {
+    sleevesObjects.push({
       type: 'rect',
       version: '6.0.0-beta.7',
       originX: 'left',
@@ -617,8 +672,8 @@ export function generateProductionCanvasStates(project: Project): Record<string,
       evented: true,
       __id: 'bg-sleeves',
       __layerName: 'Sleeves Background'
-    }
-  ];
+    });
+  }
 
   // Add Sleeve Sponsor Logo if present
   const sleeveLogo = sponsorLogo || primaryLogo;
@@ -650,9 +705,24 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   }
 
   // ─── 4. COLLAR PANEL STATE ───
-  const collarObjects: any[] = [
-    // Background Rect
-    {
+  const collarObjects: any[] = [];
+  
+  if (collarPanel && collarPanel.patternUrl) {
+    collarObjects.push({
+      type: 'image',
+      version: '6.0.0-beta.7',
+      src: collarPanel.patternUrl,
+      left: 0,
+      top: 0,
+      width: 560,
+      height: 320,
+      selectable: false,
+      evented: false,
+      __id: 'bg-collar-texture',
+      __layerName: 'AI Background Texture'
+    });
+  } else {
+    collarObjects.push({
       type: 'rect',
       version: '6.0.0-beta.7',
       originX: 'left',
@@ -666,8 +736,8 @@ export function generateProductionCanvasStates(project: Project): Record<string,
       evented: true,
       __id: 'bg-collar',
       __layerName: 'Collar Background'
-    }
-  ];
+    });
+  }
 
   return {
     front: JSON.stringify({ version: '6.0.0-beta.7', objects: frontObjects }),

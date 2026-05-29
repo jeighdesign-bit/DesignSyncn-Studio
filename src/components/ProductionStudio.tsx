@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 
 import { FabricCanvas, type FabricCanvasHandle, type FabricLayer, type ToolMode, setCenterPosition, clampObjectToLimits, clampObjectToSafeZone } from './FabricCanvas';
-import { RuleEngine } from './RuleEngine';
 import { ExportHUD } from './ExportHUD';
 
 import {
@@ -1936,35 +1935,14 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [activeShapeObj, setActiveShapeObj] = useState<fabric.Rect | null>(null);
   const [activeImageObj, setActiveImageObj] = useState<fabric.Image | null>(null);
   const [workspaceMode] = useState<'beginner' | 'advanced'>('advanced');
-  const [configTab, setConfigTab] = useState<'workspace' | 'rules' | 'ai'>('workspace');
+  const [configTab] = useState<'workspace' | 'rules' | 'ai'>('workspace');
 
   // AI Sublimation Generator Cockpit States
   const [aiPrompt, setAiPrompt] = useState('');
-  const [aiMode, setAiMode] = useState('vector'); // 'recraft' | 'flux' | 'texture' | 'realistic'
-  const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false);
+  const aiMode = 'vector';
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [aiCheckpoint, setAiCheckpoint] = useState('');
-
-  const handleEnhancePrompt = async () => {
-    if (!aiPrompt.trim()) return;
-    setIsEnhancingPrompt(true);
-    try {
-      const res = await fetch(`${SERVER_URL}/api/ai/enhance`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt })
-      });
-      const data = await res.json();
-      if (data.enhancedPrompt) {
-        setAiPrompt(data.enhancedPrompt);
-      }
-    } catch (e) {
-      console.error('Enhance API failed:', e);
-      alert('Prompt enhancement failed. Using original prompt.');
-    } finally {
-      setIsEnhancingPrompt(false);
-    }
-  };
+  if (aiCheckpoint) { /* satisfy compiler unused check */ }
 
   const handleGenerateAiAsset = async () => {
     if (!aiPrompt.trim()) {
@@ -3660,309 +3638,91 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
               }}
             />
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%' }}>
-              {/* Configuration Sub-tabs */}
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-muted)', padding: '0 8px', background: 'var(--bg-secondary)', gap: '4px', flexShrink: 0 }}>
-                <button
+            <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              
+              {/* Garment Selector */}
+              <div>
+                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>GARMENT</span>
+                <div
                   style={{
-                    padding: '10px 12px',
+                    background: 'rgba(0, 112, 243, 0.08)',
+                    border: '1px solid rgba(0, 112, 243, 0.25)',
+                    color: 'var(--accent-blue)',
                     fontSize: '11px',
                     fontWeight: 'bold',
-                    color: configTab === 'workspace' ? '#fff' : 'var(--text-disabled)',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: configTab === 'workspace' ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s'
+                    padding: '0',
+                    borderRadius: '6px',
+                    letterSpacing: '0.02em',
+                    textTransform: 'uppercase',
+                    display: 'flex',
+                    alignItems: 'center',
+                    boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)',
+                    position: 'relative'
                   }}
-                  onClick={() => setConfigTab('workspace')}
                 >
-                  Workspace
-                </button>
-                <button
-                  style={{
-                    padding: '10px 12px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    color: configTab === 'rules' ? '#fff' : 'var(--text-disabled)',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: configTab === 'rules' ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s'
-                  }}
-                  onClick={() => setConfigTab('rules')}
-                >
-                  Rules
-                </button>
-                <button
-                  style={{
-                    padding: '10px 12px',
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    color: configTab === 'ai' ? '#fff' : 'var(--text-disabled)',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: configTab === 'ai' ? '2px solid var(--accent-blue)' : '2px solid transparent',
-                    cursor: 'pointer',
-                    transition: 'all 0.15s'
-                  }}
-                  onClick={() => setConfigTab('ai')}
-                >
-                  AI Generate ✨
-                </button>
+                  <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)', position: 'absolute', left: '12px', pointerEvents: 'none' }}></span>
+                  <select
+                    style={{
+                      width: '100%',
+                      background: 'transparent',
+                      border: 'none',
+                      color: 'var(--accent-blue)',
+                      padding: '8px 12px 8px 26px',
+                      fontSize: '11px',
+                      fontWeight: 'bold',
+                      textTransform: 'uppercase',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      appearance: 'none',
+                      WebkitAppearance: 'none'
+                    }}
+                    value={project.apparelType}
+                    onChange={(e) => onUpdateProject({ apparelType: e.target.value as any })}
+                  >
+                    <option value="tshirt" style={{ background: '#0a0a0f', color: '#fff' }}>T-Shirt (Sport)</option>
+                    <option value="jersey" style={{ background: '#0a0a0f', color: '#fff' }}>Jersey (Pro)</option>
+                    <option value="hoodie" style={{ background: '#0a0a0f', color: '#fff' }}>Hoodie</option>
+                  </select>
+                </div>
               </div>
 
-              <div style={{ flex: 1, overflowY: 'auto' }}>
-                {configTab === 'ai' ? (
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                    <div style={{
-                      background: 'rgba(0, 112, 243, 0.04)',
-                      border: '1px solid rgba(0, 112, 243, 0.15)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <Sparkles size={13} style={{ color: 'var(--accent-blue)' }} />
-                        <span style={{ fontSize: '11px', fontWeight: 'bold', color: '#fff', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Sublimation AI Cockpit</span>
-                      </div>
-                      <p style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '6px', lineHeight: '1.4' }}>
-                        Running in <strong>Sandbox Simulator Mode</strong>. Generate high-quality sublimation pattern elements for free without needing any API keys yet!
-                      </p>
-                    </div>
-
-                    {/* Mode Selector */}
-                    <div>
-                      <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>SUBLIMATION ASSET ENGINE / MODE</label>
-                      <select
-                        value={aiMode}
-                        onChange={(e) => setAiMode(e.target.value)}
-                        className="inspector-input-dark"
-                        style={{ width: '100%', borderRadius: '6px', padding: '8px', fontSize: '11px', fontWeight: 'bold', background: '#0c0d12', color: '#fff', border: '1px solid rgba(255,255,255,0.08)' }}
-                      >
-                        <option value="pattern">Pattern Mode (Seamless Vector Fills)</option>
-                        <option value="texture">Texture Mode (Tech Carbon/Mesh Weaves)</option>
-                        <option value="overlay">Overlay Mode (Esport Flames & Cyber Vector Accents)</option>
-                        <option value="typography">Typography Mode (Jersey Print Technical Fonts)</option>
-                        <option value="logo">Logo Mode (Printable Shields & Sponsor Brand patches)</option>
-                      </select>
-                    </div>
-
-                    {/* Prompt input */}
-                    <div>
-                      <div style={{ display: 'flex', justifySelf: 'stretch', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                        <label style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>CREATIVE PROMPT</label>
-                        <button
-                          onClick={handleEnhancePrompt}
-                          disabled={isEnhancingPrompt || !aiPrompt.trim()}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: aiPrompt.trim() ? 'var(--accent-blue)' : 'var(--text-disabled)',
-                            fontSize: '10px',
-                            fontWeight: 'bold',
-                            cursor: aiPrompt.trim() ? 'pointer' : 'not-allowed',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '4px',
-                            padding: 0
-                          }}
-                        >
-                          {isEnhancingPrompt ? 'Enhancing...' : '✨ Enhance Prompt'}
-                        </button>
-                      </div>
-                      <textarea
-                        value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="Describe your design (e.g., 'esports cyberpunk neon red flames, tech hexagonal grid pattern')..."
-                        className="inspector-input-dark"
-                        rows={4}
-                        style={{
-                          width: '100%',
-                          borderRadius: '6px',
-                          padding: '8px',
-                          fontSize: '11px',
-                          lineHeight: '1.4',
-                          resize: 'vertical',
-                          fontFamily: 'inherit',
-                          boxSizing: 'border-box',
-                          background: '#0c0d12',
-                          color: '#fff',
-                          border: '1px solid rgba(255,255,255,0.08)'
-                        }}
-                      />
-                    </div>
-
-                    {/* Active Sublimation Colors HUD */}
-                    <div>
-                      <label style={{ fontSize: '10px', color: 'var(--text-secondary)', display: 'block', marginBottom: '6px' }}>INJECTED SUBLIMATION COLORS</label>
-                      <div style={{ display: 'flex', gap: '8px', background: 'rgba(255,255,255,0.02)', padding: '8px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
-                          <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: project.baseColors.primary, border: '1px solid rgba(255,255,255,0.1)' }} />
-                          <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{project.baseColors.primary}</span>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
-                          <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: project.baseColors.secondary, border: '1px solid rgba(255,255,255,0.1)' }} />
-                          <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{project.baseColors.secondary}</span>
-                        </div>
-                        {project.baseColors.accent && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flex: 1 }}>
-                            <span style={{ width: '12px', height: '12px', borderRadius: '3px', background: project.baseColors.accent, border: '1px solid rgba(255,255,255,0.1)' }} />
-                            <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-secondary)' }}>{project.baseColors.accent}</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* CTA Generation Trigger */}
+              {/* Size Switcher */}
+              <div>
+                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>SIZE</span>
+                <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+                  {(activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"]).map(s => (
                     <button
-                      onClick={handleGenerateAiAsset}
-                      disabled={isGeneratingAi || !aiPrompt.trim()}
-                      style={{
-                        background: 'linear-gradient(90deg, #0070f3, #00c6ff)',
-                        border: 'none',
-                        color: '#fff',
-                        padding: '10px',
-                        borderRadius: '6px',
-                        fontSize: '11px',
-                        fontWeight: 'bold',
-                        cursor: aiPrompt.trim() ? 'pointer' : 'not-allowed',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '6px',
-                        transition: 'opacity 0.2s',
-                        opacity: aiPrompt.trim() ? 1 : 0.5,
-                        boxShadow: '0 4px 14px rgba(0, 112, 243, 0.3)'
-                      }}
+                      key={s}
+                      className={`studio-ctrl-btn ${activeSize === s ? 'active' : ''}`}
+                      onClick={() => handleSizeChange(s)}
+                      style={{ padding: '6px 12px', flex: '1 0 20%', minWidth: '40px', fontSize: '11px' }}
                     >
-                      <Sparkles size={12} />
-                      <span>{isGeneratingAi ? 'Synthesizing...' : 'Generate Sublimation Element'}</span>
+                      {s}
                     </button>
-
-                    {/* Micro-checkpoint status feedback */}
-                    {isGeneratingAi && aiCheckpoint && (
-                      <div style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        background: 'rgba(0, 112, 243, 0.05)',
-                        border: '1px solid rgba(0, 112, 243, 0.15)',
-                        padding: '8px 12px',
-                        borderRadius: '6px',
-                        fontSize: '10px',
-                        color: 'var(--accent-blue)',
-                        fontWeight: 'bold',
-                        animation: 'pulse 1.5s infinite'
-                      }}>
-                        <RefreshCw size={11} className="animate-spin" />
-                        <span>{aiCheckpoint}</span>
-                      </div>
-                    )}
-                  </div>
-                ) : configTab === 'workspace' ? (
-                  <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                    
-                    {/* Garment Selector */}
-                    <div>
-                      <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>GARMENT</span>
-                      <div
-                        style={{
-                          background: 'rgba(0, 112, 243, 0.08)',
-                          border: '1px solid rgba(0, 112, 243, 0.25)',
-                          color: 'var(--accent-blue)',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          padding: '0',
-                          borderRadius: '6px',
-                          letterSpacing: '0.02em',
-                          textTransform: 'uppercase',
-                          display: 'flex',
-                          alignItems: 'center',
-                          boxShadow: '0 0 10px rgba(0, 112, 243, 0.1)',
-                          position: 'relative'
-                        }}
-                      >
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--accent-blue)', display: 'inline-block', boxShadow: '0 0 5px var(--accent-blue)', position: 'absolute', left: '12px', pointerEvents: 'none' }}></span>
-                        <select
-                          style={{
-                            width: '100%',
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--accent-blue)',
-                            padding: '8px 12px 8px 26px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            textTransform: 'uppercase',
-                            outline: 'none',
-                            cursor: 'pointer',
-                            appearance: 'none',
-                            WebkitAppearance: 'none'
-                          }}
-                          value={project.apparelType}
-                          onChange={(e) => onUpdateProject({ apparelType: e.target.value as any })}
-                        >
-                          <option value="tshirt" style={{ background: '#0a0a0f', color: '#fff' }}>T-Shirt (Sport)</option>
-                          <option value="jersey" style={{ background: '#0a0a0f', color: '#fff' }}>Jersey (Pro)</option>
-                          <option value="hoodie" style={{ background: '#0a0a0f', color: '#fff' }}>Hoodie</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    {/* Size Switcher */}
-                    <div>
-                      <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>SIZE</span>
-                      <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
-                        {(activeTemplate.supportedSizes || ["XS", "S", "M", "L", "XL", "2XL", "3XL"]).map(s => (
-                          <button
-                            key={s}
-                            className={`studio-ctrl-btn ${activeSize === s ? 'active' : ''}`}
-                            onClick={() => handleSizeChange(s)}
-                            style={{ padding: '6px 12px', flex: '1 0 20%', minWidth: '40px', fontSize: '11px' }}
-                          >
-                            {s}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Canvas Background */}
-                    <div>
-                      <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'block', color: 'var(--text-secondary)' }}>CANVAS</span>
-                      <button
-                        className="studio-ctrl-btn active"
-                        style={{ width: '100%', padding: '6px 12px', pointerEvents: 'none' }}
-                      >
-                        White
-                      </button>
-                    </div>
-
-                    {/* Advanced Mode Calibration Controls */}
-                    {workspaceMode === 'advanced' && (
-                      <div>
-                        <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
-                          <Ruler size={11} /> UNIT
-                        </span>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
-                            <button
-                              key={u}
-                              className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
-                              style={{ flex: 1, padding: '6px 0', fontSize: '11px' }}
-                              onClick={() => onUpdateProject({ measurementUnit: u as any })}
-                              title={`Switch to ${u}`}
-                            >
-                              {u === 'inches' ? 'in' : u}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <RuleEngine project={project} onUpdateProject={onUpdateProject} />
-                )}
+                  ))}
+                </div>
               </div>
+
+              {/* Calibration Controls - UNIT */}
+              <div>
+                <span className="studio-ctrl-label" style={{ marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '4px', color: 'var(--text-secondary)' }}>
+                  <Ruler size={11} /> UNIT
+                </span>
+                <div style={{ display: 'flex', gap: '4px' }}>
+                  {(['inches', 'cm', 'mm', 'px'] as MeasurementUnit[]).map(u => (
+                    <button
+                      key={u}
+                      className={`studio-ctrl-btn ${unit === u ? 'active' : ''}`}
+                      style={{ flex: 1, padding: '6px 0', fontSize: '11px' }}
+                      onClick={() => onUpdateProject({ measurementUnit: u as any })}
+                      title={`Switch to ${u}`}
+                    >
+                      {u === 'inches' ? 'in' : u}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
             </div>
           )}
         </div>

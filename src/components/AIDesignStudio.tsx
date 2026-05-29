@@ -2,11 +2,11 @@ import React, { useState, useEffect } from 'react';
 import type { Project } from '../types';
 import {
   Sparkles, RefreshCw,
-  Check, Clock, AlertTriangle,
-  Shield, Shirt, Layers, Settings,
-  TriangleAlert, CircleCheck, Info, ArrowRight,
-  Ruler, Palette, Cpu, Eye,
-  ChevronDown, ChevronUp, Paperclip, PanelRight
+  Check,
+  Shirt,
+  ArrowRight,
+  Cpu,
+  ChevronDown, Paperclip
 } from 'lucide-react';
 import { generateProductionCanvasStates } from '../lib/measurements';
 
@@ -16,7 +16,7 @@ import { generateProductionCanvasStates } from '../lib/measurements';
 type GarmentPanel = 'front' | 'back' | 'left-sleeve' | 'right-sleeve' | 'collar';
 type PanelStatus = 'empty' | 'configured' | 'generated' | 'approved';
 type ZoneType = 'seam' | 'safe' | 'sponsor' | 'design';
-type InkMode = 'cmyk' | 'rgb' | 'neon';
+export type InkMode = 'cmyk' | 'rgb' | 'neon';
 
 interface PanelConfig {
   id: GarmentPanel;
@@ -25,6 +25,7 @@ interface PanelConfig {
   prompt: string;
   status: PanelStatus;
   zones: ZoneType[];
+  patternUrl?: string;
 }
 
 interface StyleDNA {
@@ -39,7 +40,7 @@ interface StyleDNA {
   description: string;
 }
 
-interface ZoneCompliance {
+export interface ZoneCompliance {
   id: string;
   label: string;
   status: 'ok' | 'warn' | 'error' | 'info';
@@ -73,7 +74,7 @@ interface AIDesignStudioProps {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-const STYLE_DNA: StyleDNA[] = [
+export const STYLE_DNA: StyleDNA[] = [
   {
     id: 'esports-pro',
     name: 'Esports Pro',
@@ -165,7 +166,7 @@ const STATUS_COLOR: Record<PanelStatus, string> = {
   approved: '#00e676',
 };
 
-const ZONE_COLORS: Record<ZoneType, { fill: string; stroke: string; label: string }> = {
+export const ZONE_COLORS: Record<ZoneType, { fill: string; stroke: string; label: string }> = {
   seam: { fill: 'rgba(239,68,68,0.08)', stroke: '#ef4444', label: 'Seam Danger Zone' },
   safe: { fill: 'rgba(234,179,8,0.08)', stroke: '#eab308', label: 'Name/# Safe Zone' },
   sponsor: { fill: 'rgba(0,112,243,0.1)', stroke: '#0070f3', label: 'Sponsor Logo Zone' },
@@ -565,31 +566,43 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 }) => {
   // ── State ──────────────────────────────────────────────────────────────────
   const [activePanel, setActivePanel] = useState<GarmentPanel>('front');
-  const [panels, setPanels] = useState<PanelConfig[]>(INITIAL_PANELS);
-  const [selectedDNA, setSelectedDNA] = useState<StyleDNA | null>(null);
-  const [concepts, setConcepts] = useState<GeneratedConcept[]>([]);
-  const [showZones, setShowZones] = useState<Record<ZoneType, boolean>>({
-    seam: true, safe: true, sponsor: true, design: true
+  const [panels, setPanels] = useState<PanelConfig[]>(() => {
+    if (project.panels && project.panels.length > 0) {
+      return project.panels;
+    }
+    return INITIAL_PANELS;
   });
-  const [sponsorZone, setSponsorZone] = useState(true);
-  const [safeZoneRadius, setSafeZoneRadius] = useState(0.5);
-  const [seamBleed, setSeamBleed] = useState<0.25 | 0.5 | 0.75>(0.5);
-  const [inkMode, setInkMode] = useState<InkMode>('cmyk');
+  const [selectedDNA] = useState<StyleDNA | null>(null);
+  const [concepts, setConcepts] = useState<GeneratedConcept[]>(() => {
+    if (project.panels && project.panels.length > 0) {
+      return project.panels
+        .filter(p => p.patternUrl)
+        .map(p => ({
+          id: `c-${p.id}`,
+          panelId: p.id,
+          label: p.prompt || 'Base Concept',
+          primaryColor: project.baseColors?.primary || '#09090b',
+          secondaryColor: project.baseColors?.secondary || '#111115',
+          accentColor: project.baseColors?.accent || '#0070f3',
+          patternKey: `default-${p.id}`,
+          timestamp: new Date().toLocaleTimeString(),
+          patternUrl: p.patternUrl
+        }));
+    }
+    return [];
+  });
+  const showZones = { seam: true, safe: true, sponsor: true, design: true };
+  const sponsorZone = true;
+  const safeZoneRadius = 0.5;
+  const seamBleed = 0.5;
+  
   const [actionLog, setActionLog] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
   const [handoffProcessing, setHandoffProcessing] = useState(false);
   const [handoffDone, setHandoffDone] = useState(false);
 
-  const [rightPanelExpanded, setRightPanelExpanded] = useState(true);
   const [activePanelDropdown, setActivePanelDropdown] = useState(false);
-  const [accordions, setAccordions] = useState({
-    dna: true,
-    constraints: false,
-    status: false,
-    compliance: false,
-    logs: false
-  });
 
   const LOADING_MSGS = [
     '[PANEL AI] Mapping front body layout zones...',
@@ -601,6 +614,29 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     '[COMPLIANCE] Running zone conflict check...',
     '[ENGINE] Finalizing production layout data...',
   ];
+
+  useEffect(() => {
+    if (project.panels && project.panels.length > 0) {
+      setPanels(project.panels);
+      setConcepts(project.panels
+        .filter(p => p.patternUrl)
+        .map(p => ({
+          id: `c-${p.id}-${Date.now()}`,
+          panelId: p.id,
+          label: p.prompt || 'Base Concept',
+          primaryColor: project.baseColors?.primary || '#09090b',
+          secondaryColor: project.baseColors?.secondary || '#111115',
+          accentColor: project.baseColors?.accent || '#0070f3',
+          patternKey: `default-${p.id}`,
+          timestamp: new Date().toLocaleTimeString(),
+          patternUrl: p.patternUrl
+        }))
+      );
+    } else {
+      setPanels(INITIAL_PANELS);
+      setConcepts([]);
+    }
+  }, [project.id, project.name]);
 
   useEffect(() => {
     if (!generating) return;
@@ -619,7 +655,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const activeConfig = panels.find(p => p.id === activePanel)!;
 
   const updatePanel = (id: GarmentPanel, updates: Partial<PanelConfig>) => {
-    setPanels(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+    const next = panels.map(p => p.id === id ? { ...p, ...updates } : p);
+    setPanels(next);
+    onUpdateProject({ panels: next });
   };
 
   const handleGenerate = async () => {
@@ -689,10 +727,18 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       }
 
       setConcepts(newConcepts);
-      setPanels(prev => prev.map(p => ({
-        ...p,
-        status: p.prompt.trim() !== '' || selectedDNA !== null ? 'generated' : 'configured'
-      })));
+      const updatedPanels = panels.map(p => {
+        const concept = newConcepts.find(c => c.panelId === p.id);
+        return {
+          ...p,
+          status: p.prompt.trim() !== '' || selectedDNA !== null ? 'generated' as const : 'configured' as const,
+          patternUrl: concept?.patternUrl || p.patternUrl
+        };
+      });
+      setPanels(updatedPanels);
+      onUpdateProject({
+        panels: updatedPanels
+      });
       pushLog(`✓ Panel layout generated — ${targetPanels.length} panels mapped successfully`);
       pushLog(`✓ Zone compliance: seam bleed ${seamBleed}", safe margin ${safeZoneRadius}"`);
     } catch (e: any) {
@@ -707,10 +753,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     }
   };
 
-  const handleApprovePanel = (id: GarmentPanel) => {
-    updatePanel(id, { status: 'approved' });
-    pushLog(`✓ Panel "${panels.find(p => p.id === id)?.label}" approved for production`);
-  };
+
 
   const handleHandoff = () => {
     setHandoffProcessing(true);
@@ -734,7 +777,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
         clearInterval(interval);
         
         // Generate Fabric JSON canvas states based on project parameters
-        const generatedStates = generateProductionCanvasStates(project);
+        const generatedStates = generateProductionCanvasStates({
+          ...project,
+          panels
+        });
         
         // Save back to project state
         onUpdateProject({
@@ -749,59 +795,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     }, 600);
   };
 
-  // ── Zone Compliance ────────────────────────────────────────────────────────
-  const configuredCount = panels.filter(p => p.status !== 'empty').length;
-  const approvedCount = panels.filter(p => p.status === 'approved').length;
-  const hasFrontConfig = panels.find(p => p.id === 'front')?.status !== 'empty';
-  const hasBackConfig = panels.find(p => p.id === 'back')?.status !== 'empty';
 
-  const zoneCompliance: ZoneCompliance[] = [
-    {
-      id: 'seam',
-      label: 'Seam Bleed',
-      status: 'ok',
-      detail: `${seamBleed}" bleed applied to all panels`
-    },
-    {
-      id: 'safe',
-      label: 'Name / # Safe Zone',
-      status: safeZoneRadius >= 0.4 ? 'ok' : 'warn',
-      detail: safeZoneRadius >= 0.4 ? `${safeZoneRadius}" margin — adequate clearance` : 'Margin may clip player names'
-    },
-    {
-      id: 'sponsor',
-      label: 'Sponsor Zone',
-      status: sponsorZone ? (hasFrontConfig ? 'ok' : 'warn') : 'info',
-      detail: sponsorZone ? (hasFrontConfig ? 'Reserved — front chest clear' : 'Reserved but front panel not configured') : 'Sponsor zone not reserved'
-    },
-    {
-      id: 'ink',
-      label: 'Ink Mode',
-      status: inkMode === 'cmyk' ? 'ok' : inkMode === 'neon' ? 'warn' : 'ok',
-      detail: inkMode === 'cmyk' ? 'CMYK — print-safe' : inkMode === 'rgb' ? 'RGB — check printer profile' : 'Neon — verify fluorescent ink stock'
-    },
-    {
-      id: 'panels',
-      label: 'Panel Coverage',
-      status: configuredCount >= 4 ? 'ok' : configuredCount >= 2 ? 'warn' : 'error',
-      detail: `${configuredCount}/5 panels configured`
-    },
-    {
-      id: 'front-back',
-      label: 'Front & Back',
-      status: hasFrontConfig && hasBackConfig ? 'ok' : 'warn',
-      detail: hasFrontConfig && hasBackConfig ? 'Both main panels configured' : 'Front and/or back panel missing'
-    },
-  ];
-
-  const complianceIcon = (status: ZoneCompliance['status']) => {
-    if (status === 'ok') return <CircleCheck size={11} style={{ color: '#00e676' }} />;
-    if (status === 'warn') return <TriangleAlert size={11} style={{ color: '#f59e0b' }} />;
-    if (status === 'error') return <AlertTriangle size={11} style={{ color: '#ef4444' }} />;
-    return <Info size={11} style={{ color: '#0070f3' }} />;
-  };
-
-  const allCompliant = zoneCompliance.every(z => z.status === 'ok' || z.status === 'info');
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -811,19 +805,41 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       <div className="ap-center-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: '#06060c' }}>
         
         {/* Minimal top breadcrumb bar */}
-        <div className="ap-center-topbar">
+        <div className="ap-center-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
           <div className="ap-topbar-breadcrumb">
             <Sparkles size={13} style={{ color: 'var(--accent-blue)' }} />
             <span className="ap-topbar-stage">Generate</span>
             <span className="ap-topbar-sep">·</span>
             <span className="ap-topbar-project">{project.name}</span>
           </div>
+          
           <button
-            onClick={() => setRightPanelExpanded(!rightPanelExpanded)}
-            className="ap-topbar-toggle"
-            title="Toggle Settings Panel"
+            className={`ap-handoff-btn ${handoffProcessing ? 'processing' : ''} ${handoffDone ? 'done' : ''}`}
+            onClick={handleHandoff}
+            disabled={handoffProcessing || handoffDone}
+            style={{
+              width: 'auto',
+              padding: '6px 16px',
+              fontSize: '11px',
+              fontWeight: 'bold',
+              borderRadius: '8px',
+              background: handoffDone ? 'rgba(0,230,118,0.1)' : 'var(--accent-blue)',
+              color: '#fff',
+              border: handoffDone ? '1px solid rgba(0,230,118,0.3)' : 'none',
+              boxShadow: handoffDone ? 'none' : '0 4px 12px rgba(0,112,243,0.3)',
+              cursor: handoffProcessing || handoffDone ? 'default' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px'
+            }}
           >
-            <PanelRight size={16} style={{ color: rightPanelExpanded ? 'var(--accent-blue)' : '#ffffff' }} />
+            {handoffDone ? (
+              <><Check size={12} /> Staged for Studio</>
+            ) : handoffProcessing ? (
+              <><RefreshCw size={11} className="animate-spin" /> Staging...</>
+            ) : (
+              <><ArrowRight size={12} /> Send to Refine / Studio</>
+            )}
           </button>
         </div>
 
@@ -981,342 +997,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
       </div>
 
-      {/* ═══ COLLAPSIBLE RIGHT PANEL (Inspector) ═══════════════════════════════ */}
-      <div 
-        className="ap-right-panel"
-        style={{
-          width: rightPanelExpanded ? '320px' : '0px',
-          minWidth: rightPanelExpanded ? '320px' : '0px',
-          borderLeft: rightPanelExpanded ? '1px solid rgba(255,255,255,0.06)' : 'none',
-          transition: 'all 0.3s cubic-bezier(0.25, 1, 0.5, 1)',
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          background: 'rgba(10,10,15,0.45)',
-          backdropFilter: 'blur(16px)',
-          height: '100%',
-          zIndex: 10
-        }}
-      >
-        <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-          
-          {/* HEADER */}
-          <div className="ap-right-header">
-            <span style={{ fontSize: '12px', fontWeight: '700', color: 'rgba(255,255,255,0.85)', fontFamily: 'Outfit, sans-serif' }}>Design Settings</span>
-            <span className="ap-right-count" style={{ background: approvedCount === 5 ? 'rgba(0,230,118,0.1)' : 'rgba(255,255,255,0.04)', color: approvedCount === 5 ? '#00e676' : 'rgba(255,255,255,0.4)' }}>
-              {approvedCount}/5
-            </span>
-          </div>
 
-          {/* ACCORDION 1: STYLE DNA LIBRARY */}
-          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <button 
-              className="ap-accordion-header"
-              onClick={() => setAccordions(p => ({ ...p, dna: !p.dna }))}
-              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
-                <Palette size={13} style={{ color: 'var(--accent-blue)' }} /> Styles
-              </span>
-              {accordions.dna ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
-            </button>
-            
-            {accordions.dna && (
-              <div className="ap-accordion-content" style={{ padding: '4px 16px 16px' }}>
-                <div className="ap-style-dna-grid">
-                  {STYLE_DNA.map(dna => (
-                    <div
-                      key={dna.id}
-                      className={`ap-dna-card ${selectedDNA?.id === dna.id ? 'active' : ''}`}
-                      onClick={() => {
-                        setSelectedDNA(selectedDNA?.id === dna.id ? null : dna);
-                        if (selectedDNA?.id !== dna.id) {
-                          onUpdateProject({
-                            baseColors: {
-                              ...project.baseColors,
-                              primary: dna.primaryColor,
-                              secondary: dna.secondaryColor,
-                              accent: dna.accentColor,
-                            }
-                          });
-                          pushLog(`Style DNA: "${dna.name}" selected`);
-                        }
-                      }}
-                      style={{ padding: '8px', borderRadius: '10px', minHeight: '44px' }}
-                    >
-                      <div className="ap-dna-swatch" style={{ width: '28px', height: '22px' }}>
-                        <div style={{ background: dna.primaryColor, flex: 2 }} />
-                        <div style={{ background: dna.secondaryColor, flex: 1.5 }} />
-                        <div style={{ background: dna.accentColor, flex: 0.5 }} />
-                      </div>
-                      <div className="ap-dna-info">
-                        <div className="ap-dna-name" style={{ fontSize: '10px' }}>{dna.name}</div>
-                        <div className="ap-dna-tag" style={{ fontSize: '7px' }}>{dna.tag}</div>
-                      </div>
-                      {selectedDNA?.id === dna.id && <div className="ap-dna-check" style={{ width: '12px', height: '12px' }}><Check size={6} /></div>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ACCORDION 2: GARMENT PRODUCTION CONSTRAINTS */}
-          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <button 
-              className="ap-accordion-header"
-              onClick={() => setAccordions(p => ({ ...p, constraints: !p.constraints }))}
-              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
-                <Settings size={13} style={{ color: 'var(--accent-blue)' }} /> Constraints
-              </span>
-              {accordions.constraints ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
-            </button>
-            
-            {accordions.constraints && (
-              <div className="ap-accordion-content" style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                
-                <div className="ap-constraint-block">
-                  <div className="ap-constraint-row">
-                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
-                      <Shield size={11} /> Sponsor Safe Margin
-                    </label>
-                    <button
-                      className={`ap-toggle ${sponsorZone ? 'on' : ''}`}
-                      onClick={() => setSponsorZone(v => !v)}
-                    >
-                      <span className="ap-toggle-knob" />
-                    </button>
-                  </div>
-                  <div className="ap-constraint-hint" style={{ fontSize: '8px' }}>Reserve chest bounds for team placement</div>
-                </div>
-
-                <div className="ap-constraint-block">
-                  <div className="ap-constraint-row">
-                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
-                      <Ruler size={11} /> Name/# Clearance
-                    </label>
-                    <span className="ap-constraint-value" style={{ fontSize: '10px' }}>{safeZoneRadius}"</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.25" max="1.0" step="0.05"
-                    value={safeZoneRadius}
-                    onChange={e => setSafeZoneRadius(parseFloat(e.target.value))}
-                    className="ap-range-slider"
-                  />
-                  <div className="ap-range-labels" style={{ fontSize: '8px' }}><span>0.25"</span><span>0.5"</span><span>1.0"</span></div>
-                </div>
-
-                <div className="ap-constraint-block">
-                  <div className="ap-constraint-row" style={{ marginBottom: '6px' }}>
-                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
-                      <Layers size={11} /> Flat Seam Bleed
-                    </label>
-                  </div>
-                  <div className="ap-bleed-options">
-                    {([0.25, 0.5, 0.75] as const).map(val => (
-                      <button
-                        key={val}
-                        className={`ap-bleed-opt ${seamBleed === val ? 'active' : ''}`}
-                        onClick={() => setSeamBleed(val)}
-                        style={{ padding: '4px', fontSize: '9px' }}
-                      >
-                        {val}"
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ap-constraint-block">
-                  <div className="ap-constraint-row" style={{ marginBottom: '6px' }}>
-                    <label className="ap-constraint-label" style={{ fontSize: '10px' }}>
-                      <Palette size={11} /> Ink Settings
-                    </label>
-                  </div>
-                  <div className="ap-ink-options">
-                    {(['cmyk', 'rgb', 'neon'] as const).map(mode => (
-                      <button
-                        key={mode}
-                        className={`ap-ink-opt ${inkMode === mode ? 'active' : ''}`}
-                        onClick={() => setInkMode(mode)}
-                        style={{ padding: '4px', fontSize: '9px' }}
-                      >
-                        {mode.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="ap-constraint-block" style={{ borderBottom: 'none' }}>
-                  <div className="ap-section-label" style={{ marginBottom: '8px', fontSize: '9px' }}><Eye size={11} /> Overlay visibility</div>
-                  {(Object.keys(showZones) as ZoneType[]).map(zone => (
-                    <div key={zone} className="ap-constraint-row" style={{ marginBottom: '6px' }}>
-                      <label className="ap-constraint-label" style={{ color: ZONE_COLORS[zone].stroke, fontSize: '9.5px' }}>
-                        <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '1.5px', border: `1px solid ${ZONE_COLORS[zone].stroke}`, marginRight: '4px' }} />
-                        {ZONE_COLORS[zone].label.replace(' Zone', '').replace(' Area', '')}
-                      </label>
-                      <button
-                        className={`ap-toggle ${showZones[zone] ? 'on' : ''}`}
-                        onClick={() => setShowZones(prev => ({ ...prev, [zone]: !prev[zone] }))}
-                      >
-                        <span className="ap-toggle-knob" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-              </div>
-            )}
-          </div>
-
-          {/* ACCORDION 3: INTERACTIVE PANEL STATUS BOARD */}
-          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <button 
-              className="ap-accordion-header"
-              onClick={() => setAccordions(p => ({ ...p, status: !p.status }))}
-              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
-                <Shirt size={13} style={{ color: 'var(--accent-blue)' }} /> Panels
-              </span>
-              {accordions.status ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
-            </button>
-            
-            {accordions.status && (
-              <div className="ap-accordion-content" style={{ padding: '0 12px 16px' }}>
-                <div className="ap-panel-status-board" style={{ padding: 0, borderBottom: 'none' }}>
-                  {panels.map(p => (
-                    <div
-                      key={p.id}
-                      className={`ap-panel-status-item ${activePanel === p.id ? 'active' : ''}`}
-                      onClick={() => setActivePanel(p.id)}
-                      style={{ padding: '5px 8px' }}
-                    >
-                      <div className="ap-panel-status-dot" style={{ background: STATUS_COLOR[p.status], width: '6px', height: '6px' }} />
-                      <div className="ap-panel-status-info">
-                        <div className="ap-panel-status-name" style={{ fontSize: '10.5px' }}>{p.label}</div>
-                        <div className="ap-panel-status-state" style={{ fontSize: '7.5px' }}>{p.status}</div>
-                      </div>
-                      <div className="ap-panel-status-actions">
-                        {p.status === 'generated' && (
-                          <button className="ap-status-approve" onClick={e => { e.stopPropagation(); handleApprovePanel(p.id); }} style={{ width: '18px', height: '18px' }}>
-                            <Check size={8} />
-                          </button>
-                        )}
-                        {p.status === 'approved' && <CircleCheck size={12} style={{ color: '#00e676' }} />}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ACCORDION 4: ZONE COMPLIANCE REPORT */}
-          <div className="ap-accordion-section" style={{ borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <button 
-              className="ap-accordion-header"
-              onClick={() => setAccordions(p => ({ ...p, compliance: !p.compliance }))}
-              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
-                <Shield size={13} style={{ color: 'var(--accent-blue)' }} /> Design Checks
-              </span>
-              {accordions.compliance ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
-            </button>
-            
-            {accordions.compliance && (
-              <div className="ap-accordion-content" style={{ padding: '0 16px 16px' }}>
-                <div className="ap-compliance-list">
-                  {zoneCompliance.map(item => (
-                    <div key={item.id} className="ap-compliance-item" style={{ padding: '4px 6px' }}>
-                      <div className="ap-compliance-icon">{complianceIcon(item.status)}</div>
-                      <div className="ap-compliance-text">
-                        <div className="ap-compliance-label" style={{ fontSize: '9.5px' }}>{item.label}</div>
-                        <div className="ap-compliance-detail" style={{ fontSize: '8.5px' }}>{item.detail}</div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* ACCORDION 5: LOGS */}
-          <div className="ap-accordion-section">
-            <button 
-              className="ap-accordion-header"
-              onClick={() => setAccordions(p => ({ ...p, logs: !p.logs }))}
-              style={{ width: '100%', background: 'none', border: 'none', padding: '14px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', color: '#fff' }}
-            >
-              <span style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'rgba(255,255,255,0.7)' }}>
-                <Clock size={13} style={{ color: 'var(--accent-blue)' }} /> Activity
-              </span>
-              {accordions.logs ? <ChevronUp size={14} style={{ opacity: 0.6 }} /> : <ChevronDown size={14} style={{ opacity: 0.6 }} />}
-            </button>
-            
-            {accordions.logs && (
-              <div className="ap-accordion-content" style={{ padding: '0 16px 16px' }}>
-                <div className="ap-log-entries" style={{ maxHeight: '140px' }}>
-                  {actionLog.length === 0 ? (
-                    <div className="ap-log-empty" style={{ fontSize: '9px' }}>Empty audit trail.</div>
-                  ) : (
-                    actionLog.slice(0, 10).map((entry, i) => (
-                      <div key={i} className="ap-log-entry" style={{ fontSize: '8.5px', padding: '2px 0' }}>{entry}</div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-
-        </div>
-
-        {/* PRODUCTION HANDOFF SUBMIT FOOTER */}
-        <div className="ap-handoff-section" style={{ padding: '16px 20px', background: 'rgba(15,15,20,0.85)', borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-          <div className="ap-handoff-summary" style={{ marginBottom: '8px' }}>
-            <div className="ap-handoff-stat" style={{ padding: '4px' }}>
-              <span className="ap-handoff-stat-val" style={{ color: configuredCount >= 2 ? '#00e676' : '#f59e0b', fontSize: '12px' }}>{configuredCount}</span>
-              <span className="ap-handoff-stat-label" style={{ fontSize: '7px' }}>Panels</span>
-            </div>
-            <div className="ap-handoff-stat" style={{ padding: '4px' }}>
-              <span className="ap-handoff-stat-val" style={{ color: approvedCount > 0 ? '#00e676' : '#555', fontSize: '12px' }}>{approvedCount}</span>
-              <span className="ap-handoff-stat-label" style={{ fontSize: '7px' }}>Approved</span>
-            </div>
-            <div className="ap-handoff-stat" style={{ padding: '4px' }}>
-              <span className="ap-handoff-stat-val" style={{ color: allCompliant ? '#00e676' : '#f59e0b', fontSize: '12px' }}>{allCompliant ? '✓' : '⚠'}</span>
-              <span className="ap-handoff-stat-label" style={{ fontSize: '7px' }}>Compliant</span>
-            </div>
-          </div>
-          
-          <button
-            className={`ap-handoff-btn ${handoffProcessing ? 'processing' : ''} ${handoffDone ? 'done' : ''}`}
-            onClick={handleHandoff}
-            disabled={handoffProcessing || handoffDone}
-            style={{
-              padding: '12px',
-              fontSize: '12px',
-              borderRadius: '10px',
-              background: handoffDone ? 'rgba(0,230,118,0.1)' : 'var(--accent-blue)',
-              color: '#fff',
-              border: handoffDone ? '1px solid rgba(0,230,118,0.3)' : 'none',
-              boxShadow: handoffDone ? 'none' : '0 4px 16px rgba(0,112,243,0.3)',
-              cursor: handoffProcessing || handoffDone ? 'default' : 'pointer'
-            }}
-          >
-            {handoffDone ? (
-              <><Check size={14} /> Sent to Production</>
-            ) : handoffProcessing ? (
-              <><RefreshCw size={13} className="animate-spin" /> Mapped vector meshes...</>
-            ) : (
-              <><ArrowRight size={14} /> Send to Refine / Studio</>
-            )}
-          </button>
-        </div>
-
-      </div>
 
     </div>
   );

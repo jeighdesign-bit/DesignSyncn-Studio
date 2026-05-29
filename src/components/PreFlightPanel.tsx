@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import type { Project, RosterPlayer } from '../types';
 import {
-  CheckCircle, AlertTriangle, AlertCircle, FileText, Download, Check,
+  CheckCircle, AlertTriangle, FileText, Download, Check,
   ZoomIn, ZoomOut, Printer, Layers, Settings2, Package,
-  ChevronDown, Shield
+  ChevronDown
 } from 'lucide-react';
 import * as fabric from 'fabric';
 
@@ -37,19 +37,6 @@ const EXPORT_PRESETS = [
   { id: 'photo',     label: 'Photo',     dpi: 600, desc: 'Max quality' },
 ];
 
-// ─── Toggle Switch Component ───────────────────────────────────────────────────
-const ToggleSwitch: React.FC<{ checked: boolean; onChange: (v: boolean) => void; label: string; subtitle?: string }> = ({ checked, onChange, label, subtitle }) => (
-  <div className="export-toggle-row" onClick={() => onChange(!checked)}>
-    <div style={{ flex: 1 }}>
-      <div style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)' }}>{label}</div>
-      {subtitle && <div style={{ fontSize: '9px', color: 'var(--text-disabled)', marginTop: '1px' }}>{subtitle}</div>}
-    </div>
-    <div className={`export-toggle-switch ${checked ? 'on' : ''}`}>
-      <div className="export-toggle-knob" />
-    </div>
-  </div>
-);
-
 export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdateProject }) => {
   // ─── Export & Layout Settings ──────────────────────────────────────────────
   const [exportMode, setExportMode] = useState<'sheet' | 'nesting'>('sheet');
@@ -59,12 +46,17 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   const [bleedInches, setBleedInches] = useState<number>(project.rules.bleedInches || 0.5);
   const [panelSpacingInches, setPanelSpacingInches] = useState<number>(0.5);
   const [maxRollLengthYards, setMaxRollLengthYards] = useState<number>(50);
-  const [exportFormat, setExportFormat] = useState<'JPG' | 'PNG' | 'TIFF' | 'PSD'>('PNG');
+  const [exportFormat, setExportFormat] = useState<'JPG' | 'PNG' | 'TIFF' | 'PSD'>('JPG');
   const [sheetLayoutType, setSheetLayoutType] = useState<'all_panels' | 'front_only' | 'back_only' | 'sleeves_only' | 'collars_only'>('all_panels');
-  const [showSafeZones, setShowSafeZones] = useState<boolean>(true);
-  const [includeCollar, setIncludeCollar] = useState<boolean>(true);
-  const [includeSleeves, setIncludeSleeves] = useState<boolean>(true);
+  const showSafeZones = true;
+  const includeCollar = true;
+  const includeSleeves = true;
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>(project.activePlayerId || (project.roster[0]?.id || ''));
+  const [selectedPlayerIds, setSelectedPlayerIds] = useState<string[]>(project.roster.map(p => p.id));
+
+  useEffect(() => {
+    setSelectedPlayerIds(project.roster.map(p => p.id));
+  }, [project.roster]);
 
   const [advancedExpanded, setAdvancedExpanded] = useState<boolean>(false);
 
@@ -210,7 +202,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     const printerWidthPx = printerWidthInches * 40;
     const items: PackedPiece[] = [];
 
-    project.roster.forEach(player => {
+    project.roster.filter(p => selectedPlayerIds.includes(p.id)).forEach(player => {
       const dims = getGarmentDimensions(player.size);
       const addNestItem = (panel: string) => {
         const fileKey = panel === 'sleeves_right' ? 'right-sleeve' : panel === 'sleeves' ? 'left-sleeve' : panel;
@@ -282,6 +274,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     runNestingPacking();
   }, [
     project.roster,
+    selectedPlayerIds,
     printerWidthInches,
     bleedInches,
     panelSpacingInches,
@@ -293,7 +286,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
   ]);
 
   // Total panels helper
-  const totalPanels = project.roster.length * (2 + (includeSleeves ? 2 : 0) + (includeCollar ? 1 : 0));
+  const totalPanels = selectedPlayerIds.length * (2 + (includeSleeves ? 2 : 0) + (includeCollar ? 1 : 0));
   const bleedPx = bleedInches * 40;
   const spacingPx = panelSpacingInches * 40;
 
@@ -327,7 +320,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     if (!canvas) return;
     canvas.clear();
     canvas.set({ backgroundColor: '#0a0a0c' });
-    const selectedPlayer = project.roster.find(p => p.id === selectedPlayerId) || project.roster[0];
+    const selectedPlayer = project.roster.find(p => p.id === selectedPlayerId) || project.roster.find(p => selectedPlayerIds.includes(p.id)) || project.roster[0];
     if (!selectedPlayer) { canvas.requestRenderAll(); return; }
     const shadow = new fabric.Shadow({ color: 'rgba(0,0,0,0.4)', blur: 24, offsetX: 0, offsetY: 8 });
 
@@ -427,11 +420,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       const printerWidthPx = printerWidthInches * 40;
       const rollHeightPx = Math.max(800, totalNestLengthInches * 40);
       canvas.setDimensions({ width: printerWidthPx, height: rollHeightPx });
-      const rollBg = new fabric.Rect({ left: 0, top: 0, width: printerWidthPx, height: rollHeightPx, fill: '#1e1e24', stroke: '#2d2d3f', strokeWidth: 2, selectable: false, evented: false });
+      const rollBg = new fabric.Rect({ left: 0, top: 0, width: printerWidthPx, height: rollHeightPx, fill: '#ffffff', stroke: '#cccccc', strokeWidth: 1, selectable: false, evented: false, shadow });
       canvas.add(rollBg);
 
       for (let y = 160; y < rollHeightPx; y += 160) {
-        canvas.add(new fabric.Line([0, y, printerWidthPx, y], { stroke: '#2d2d38', strokeWidth: 1, strokeDasharray: [4, 4], selectable: false, evented: false }));
+        canvas.add(new fabric.Line([0, y, printerWidthPx, y], { stroke: '#e2e8f0', strokeWidth: 1, strokeDasharray: [4, 4], selectable: false, evented: false }));
       }
 
       const spacingOffset = spacingPx / 2;
@@ -459,7 +452,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
           top: printTop,
           width: printW,
           height: printH,
-          fill: '#ffffff',
+          fill: 'transparent',
           stroke: 'rgba(0, 112, 243, 0.4)',
           strokeWidth: 1,
           strokeDasharray: [3, 3],
@@ -573,6 +566,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     includeCollar,
     includeSleeves,
     selectedPlayerId,
+    selectedPlayerIds,
     sheetLayoutType,
     panelTemplates,
     loadingTemplates
@@ -587,43 +581,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
     return () => { if (fabricCanvasRef.current) { fabricCanvasRef.current.dispose(); fabricCanvasRef.current = null; } };
   }, []);
 
-  // ─── Diagnostics ────────────────────────────────────────────────────────────
-  const runDiagnostics = () => {
-    const checks = [];
-    const lowResLogos = project.logos.filter(l => l.dpi < 300);
-    if (project.logos.length === 0) {
-      checks.push({ status: 'warning', title: 'No Sponsor Logos Uploaded', desc: 'Graphics will export correctly, but no logo components are mapped.' });
-    } else if (lowResLogos.length > 0) {
-      checks.push({ status: 'error', title: 'Low Resolution Graphics', desc: `${lowResLogos.map(l => l.name).join(', ')} is under 300 DPI. Sublimation may blur.` });
-    } else {
-      checks.push({ status: 'success', title: 'Graphics Production Ready', desc: 'All graphic elements are fully calibrated at high resolution.' });
-    }
-    const squeezed = project.roster.filter(p => p.nameScale < 0.7);
-    if (project.roster.length === 0) {
-      checks.push({ status: 'warning', title: 'Empty Team Roster', desc: 'Please populate roster database variants to create production batches.' });
-    } else if (squeezed.length > 0) {
-      checks.push({ status: 'warning', title: 'Font Compression Limit Warning', desc: `${squeezed.map(p => p.name).join(', ')} names are squeezed under 70% bounds.` });
-    } else {
-      checks.push({ status: 'success', title: 'Roster Safe Zones Cleared', desc: 'All player typography sizes fit safe print-zones.' });
-    }
-    if (bleedInches < 0.25) {
-      checks.push({ status: 'warning', title: 'Bleed Safety Margin Suboptimal', desc: `Standard sublimation requires at least 0.25" bleed. Currently: ${bleedInches.toFixed(2)}"` });
-    } else {
-      checks.push({ status: 'success', title: 'Seam & Bleed Calibration Verified', desc: `Bleed margin correctly set at +${bleedInches.toFixed(2)}".` });
-    }
-    // Check roll length limit
-    if (exportMode === 'nesting' && (totalNestLengthInches / 36) > maxRollLengthYards) {
-      checks.push({ status: 'error', title: 'Roll Length Limit Exceeded', desc: `Nesting layout requires ${(totalNestLengthInches / 36).toFixed(1)} yards, which exceeds the max roll length of ${maxRollLengthYards} yards.` });
-    } else if (exportMode === 'nesting') {
-      checks.push({ status: 'success', title: 'Roll Length Within Safety Limits', desc: `Nesting fits within maximum roll length constraint of ${maxRollLengthYards} yards.` });
-    }
-    return checks;
-  };
 
-  const diagnostics = runDiagnostics();
-  const criticalErrorsCount = diagnostics.filter(c => c.status === 'error').length;
-  const warningCount = diagnostics.filter(c => c.status === 'warning').length;
-  const readinessScore = Math.max(0, 100 - criticalErrorsCount * 35 - warningCount * 15);
 
   // ─── Export Compiler ────────────────────────────────────────────────────────
   const triggerExport = () => {
@@ -712,37 +670,11 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
 
         <div className="export-panel-body">
 
-          {/* ── Focused Pre-Flight Audits Checklist ── */}
-          <div className="export-section">
-            <div className="export-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-                <Shield size={11} style={{ color: 'var(--accent-blue)' }} />
-                <span>Pre-Flight Checklist</span>
-              </div>
-              <span style={{ fontSize: '9px', color: readinessScore >= 80 ? '#00e676' : readinessScore >= 50 ? '#ffb300' : '#ff4458', fontWeight: 800, fontFamily: 'monospace', background: readinessScore >= 80 ? 'rgba(0,230,118,0.1)' : 'rgba(255,179,0,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
-                {readinessScore}% READY
-              </span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '6px' }}>
-              {diagnostics.map((c, idx) => (
-                <div key={idx} className={`export-diag-item export-diag-${c.status}`} style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', padding: '8px', borderRadius: '6px', background: c.status === 'success' ? 'rgba(0, 230, 118, 0.04)' : c.status === 'warning' ? 'rgba(255, 179, 0, 0.04)' : 'rgba(255, 68, 88, 0.04)', border: `1px solid ${c.status === 'success' ? 'rgba(0, 230, 118, 0.1)' : c.status === 'warning' ? 'rgba(255, 179, 0, 0.1)' : 'rgba(255, 68, 88, 0.1)'}` }}>
-                  <div style={{ display: 'flex', color: c.status === 'success' ? '#00e676' : c.status === 'warning' ? '#ffb300' : '#ff4458', marginTop: '1px' }}>
-                    {c.status === 'success' ? <CheckCircle size={12} /> : c.status === 'warning' ? <AlertTriangle size={12} /> : <AlertCircle size={12} />}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '1px', textTransform: 'uppercase', letterSpacing: '0.02em' }}>{c.title}</div>
-                    <div style={{ fontSize: '9px', color: 'var(--text-secondary)', lineHeight: 1.3 }}>{c.desc}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* ── Print Mode ── */}
+          {/* ── Print Layout Mode ── */}
           <div className="export-section">
             <div className="export-section-header">
-              <Printer size={11} />
-              Print Layout Mode
+              <Printer size={12} />
+              <span>Print Layout Mode</span>
             </div>
             <div className="export-mode-toggle">
               <button
@@ -762,12 +694,12 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             </div>
           </div>
 
-          {/* ── Sheet Separation Mode (sheet mode) ── */}
+          {/* ── Sheet Layout Type (if sheet mode) ── */}
           {exportMode === 'sheet' && (
             <div className="export-section">
               <div className="export-section-header">
-                <Layers size={11} />
-                Sheet Separation Mode
+                <Layers size={12} />
+                <span>Sheet Layout Type</span>
               </div>
               <div className="export-select-wrapper">
                 <select
@@ -786,29 +718,197 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             </div>
           )}
 
-          {/* ── Player Variant (sheet mode) ── */}
-          {exportMode === 'sheet' && project.roster.length > 0 && (
+          {/* ── Printer Roll Width (if nesting mode) ── */}
+          {exportMode === 'nesting' && (
             <div className="export-section">
               <div className="export-section-header">
-                <Layers size={11} />
-                Preview Variant
+                <Settings2 size={12} />
+                <span>Sublimation Roll Width</span>
               </div>
-              <div className="export-select-wrapper">
-                <select
-                  value={selectedPlayerId}
-                  onChange={e => setSelectedPlayerId(e.target.value)}
-                  className="export-select"
-                >
-                  {project.roster.map(p => (
-                    <option key={p.id} value={p.id}>{p.name} #{p.number} [{p.size}]</option>
-                  ))}
-                </select>
-                <ChevronDown size={12} className="export-select-chevron" />
+              <div style={{ display: 'flex', gap: '6px' }}>
+                <div className="export-select-wrapper" style={{ flex: 1 }}>
+                  <select value={printerWidthInches} onChange={e => setPrinterWidthInches(Number(e.target.value))} className="export-select">
+                    <option value="24">24" — Small / Plotter</option>
+                    <option value="36">36" — Standard Roll</option>
+                    <option value="44">44" — Medium Industrial</option>
+                    <option value="60">60" — Wide Industrial</option>
+                    <option value="72">72" — Super Wide</option>
+                  </select>
+                  <ChevronDown size={12} className="export-select-chevron" />
+                </div>
+                <input
+                  type="number"
+                  value={printerWidthInches}
+                  onChange={e => setPrinterWidthInches(Math.max(12, Math.min(120, Number(e.target.value) || 36)))}
+                  style={{ width: '65px', padding: '6px 4px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', textAlign: 'center', outline: 'none', height: '30px', boxSizing: 'border-box', borderRadius: '6px' }}
+                  title="Custom width in inches"
+                />
               </div>
             </div>
           )}
 
-          {/* ── COLLAPSIBLE ACCORDION: ADVANCED PRODUCTION CONTROLS ── */}
+          {/* ── Selective Player Checklist ── */}
+          <div className="export-section">
+            <div className="export-section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <CheckCircle size={12} style={{ color: 'var(--accent-blue)' }} />
+                <span>Roster Players to Export</span>
+              </div>
+              <span style={{ fontSize: '9px', color: 'var(--text-disabled)', fontFamily: 'monospace' }}>
+                {selectedPlayerIds.length} / {project.roster.length} Selected
+              </span>
+            </div>
+            
+            <div className="player-checklist-container" style={{
+              maxHeight: '160px',
+              overflowY: 'auto',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '8px',
+              background: 'rgba(0, 0, 0, 0.2)',
+              marginTop: '8px',
+              padding: '4px'
+            }}>
+              {project.roster.length === 0 ? (
+                <div style={{ padding: '12px', fontSize: '10px', color: 'var(--text-disabled)', textAlign: 'center' }}>
+                  No players in roster.
+                </div>
+              ) : (
+                project.roster.map(p => {
+                  const isSelected = selectedPlayerIds.includes(p.id);
+                  const isActive = selectedPlayerId === p.id;
+                  return (
+                    <div
+                      key={p.id}
+                      className={`player-checklist-row ${isActive ? 'active-row' : ''}`}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        background: isActive ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                        border: `1px solid ${isActive ? 'rgba(0, 112, 243, 0.3)' : 'transparent'}`,
+                        transition: 'all 0.15s ease',
+                        marginBottom: '2px'
+                      }}
+                      onClick={() => {
+                        setSelectedPlayerId(p.id);
+                      }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onClick={(e) => e.stopPropagation()}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedPlayerIds(prev => [...prev, p.id]);
+                          } else {
+                            setSelectedPlayerIds(prev => prev.filter(id => id !== p.id));
+                          }
+                        }}
+                        style={{ cursor: 'pointer' }}
+                      />
+                      <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: isSelected ? 600 : 400, color: isSelected ? '#fff' : 'var(--text-secondary)' }}>
+                          {p.name}
+                        </span>
+                        <span style={{ fontSize: '9px', fontFamily: 'monospace', color: 'var(--text-disabled)' }}>
+                          #{p.number} ({p.size})
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {exportMode === 'sheet' && (
+              <div style={{ fontSize: '9px', color: 'var(--text-disabled)', marginTop: '4px', textAlign: 'right' }}>
+                * Click player row to preview sheet layout
+              </div>
+            )}
+          </div>
+
+          {/* ── Export Format (High Visibility) ── */}
+          <div className="export-section">
+            <div className="export-section-header">
+              <Layers size={12} />
+              <span>Export Format</span>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginTop: '6px' }}>
+              {(['JPG', 'PNG', 'TIFF', 'PSD'] as const).map(fmt => (
+                <button
+                  key={fmt}
+                  className={`export-preset-btn ${exportFormat === fmt ? 'active' : ''}`}
+                  onClick={() => setExportFormat(fmt)}
+                  style={{
+                    padding: '8px 0',
+                    fontSize: '10px',
+                    fontWeight: 'bold',
+                    borderRadius: '6px',
+                    background: exportFormat === fmt ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.03)',
+                    border: `1px solid ${exportFormat === fmt ? 'var(--accent-blue)' : 'rgba(255, 255, 255, 0.08)'}`,
+                    color: exportFormat === fmt ? '#fff' : 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {fmt}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* ── Export Resolution (DPI - High Visibility) ── */}
+          <div className="export-section">
+            <label className="export-field-label" style={{ marginBottom: '6px', display: 'block', fontWeight: 600 }}>
+              Export Resolution (DPI)
+            </label>
+            <div className="export-preset-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', marginBottom: '8px' }}>
+              {EXPORT_PRESETS.map(preset => (
+                <button
+                  key={preset.id}
+                  className={`export-preset-btn ${activePreset === preset.id ? 'active' : ''}`}
+                  onClick={() => { setActivePreset(preset.id); setTargetDpi(preset.dpi); }}
+                  style={{
+                    fontSize: '9px',
+                    padding: '6px 0',
+                    borderRadius: '4px',
+                    background: activePreset === preset.id ? 'rgba(0, 112, 243, 0.15)' : 'rgba(255, 255, 255, 0.02)',
+                    border: `1px solid ${activePreset === preset.id ? 'rgba(0, 112, 243, 0.3)' : 'rgba(255, 255, 255, 0.05)'}`,
+                    color: activePreset === preset.id ? 'var(--accent-blue)' : 'var(--text-secondary)',
+                    cursor: 'pointer'
+                  }}
+                >
+                  {preset.dpi} DPI
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              value={targetDpi}
+              onChange={e => {
+                const val = Math.max(72, Math.min(1200, Number(e.target.value) || 300));
+                setTargetDpi(val);
+                setActivePreset('custom');
+              }}
+              className="tech-text-input"
+              style={{
+                width: '100%',
+                padding: '8px 10px',
+                fontSize: '11px',
+                background: '#111118',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                color: '#fff',
+                outline: 'none',
+                height: '32px',
+                boxSizing: 'border-box',
+                borderRadius: '6px'
+              }}
+            />
+          </div>
+
+          {/* ── ADVANCED COLLAPSIBLE CALIBRATION CONTROLS ── */}
           <div className="export-section" style={{ borderBottom: 'none' }}>
             <button
               onClick={() => setAdvancedExpanded(!advancedExpanded)}
@@ -833,7 +933,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Settings2 size={13} style={{ color: 'var(--accent-blue)' }} />
-                <span>Advanced Production Controls</span>
+                <span>Machine & Calibration Sliders</span>
               </div>
               <ChevronDown size={13} style={{ transform: advancedExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', opacity: 0.6 }} />
             </button>
@@ -852,132 +952,43 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                   animation: 'accordionFade 0.2s ease-out'
                 }}
               >
-                
-                {/* ── Export Resolution (DPI) ── */}
                 <div>
-                  <label className="export-field-label">Export Resolution (DPI)</label>
-                  <div className="export-preset-grid" style={{ marginBottom: '8px' }}>
-                    {EXPORT_PRESETS.map(preset => (
-                      <button
-                        key={preset.id}
-                        className={`export-preset-btn ${activePreset === preset.id ? 'active' : ''}`}
-                        onClick={() => { setActivePreset(preset.id); setTargetDpi(preset.dpi); }}
-                        style={{ fontSize: '9px', padding: '4px 0' }}
-                      >
-                        {preset.dpi} DPI
-                      </button>
-                    ))}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label className="export-field-label">Sewing Bleed Margin</label>
+                    <span style={{ fontSize: '9px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700 }}>{bleedInches.toFixed(2)}"</span>
                   </div>
                   <input
+                    type="range" min="0" max="1.5" step="0.05" value={bleedInches}
+                    onChange={e => { const val = Number(e.target.value); setBleedInches(val); onUpdateProject({ rules: { ...project.rules, bleedInches: val } }); }}
+                    className="export-range"
+                  />
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                    <label className="export-field-label">Panel Spacing / Gap</label>
+                    <span style={{ fontSize: '9px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700 }}>{panelSpacingInches.toFixed(2)}"</span>
+                  </div>
+                  <input
+                    type="range" min="0.1" max="2.0" step="0.1" value={panelSpacingInches}
+                    onChange={e => setPanelSpacingInches(Number(e.target.value))}
+                    className="export-range"
+                  />
+                </div>
+
+                <div>
+                  <label className="export-field-label">Max Roll Length (Yards)</label>
+                  <input
                     type="number"
-                    value={targetDpi}
-                    onChange={e => {
-                      const val = Math.max(72, Math.min(1200, Number(e.target.value) || 300));
-                      setTargetDpi(val);
-                      setActivePreset('custom');
-                    }}
+                    value={maxRollLengthYards}
+                    onChange={e => setMaxRollLengthYards(Math.max(1, Number(e.target.value) || 50))}
                     className="tech-text-input"
                     style={{ width: '100%', padding: '6px 8px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', outline: 'none', height: '28px', boxSizing: 'border-box', borderRadius: '4px' }}
                   />
                 </div>
-
-                {/* ── Machine & Sublimation Config ── */}
-                <div>
-                  <label className="export-field-label" style={{ marginBottom: '6px', display: 'block' }}>Machine Config</label>
-                  
-                  {exportMode === 'nesting' && (
-                    <>
-                      <div style={{ marginBottom: '10px' }}>
-                        <label className="export-field-label">Sublimation Roll Width</label>
-                        <div style={{ display: 'flex', gap: '6px' }}>
-                          <div className="export-select-wrapper" style={{ flex: 1 }}>
-                            <select value={printerWidthInches} onChange={e => setPrinterWidthInches(Number(e.target.value))} className="export-select">
-                              <option value="24">24" — Small / Plotter</option>
-                              <option value="36">36" — Standard Roll</option>
-                              <option value="44">44" — Medium Industrial</option>
-                              <option value="60">60" — Wide Industrial</option>
-                              <option value="72">72" — Super Wide</option>
-                            </select>
-                            <ChevronDown size={12} className="export-select-chevron" />
-                          </div>
-                          <input
-                            type="number"
-                            value={printerWidthInches}
-                            onChange={e => setPrinterWidthInches(Math.max(12, Math.min(120, Number(e.target.value) || 36)))}
-                            style={{ width: '60px', padding: '6px 4px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', textAlign: 'center', outline: 'none', height: '30px', boxSizing: 'border-box', borderRadius: '6px' }}
-                            title="Custom width in inches"
-                          />
-                        </div>
-                      </div>
-                      <div style={{ marginBottom: '10px' }}>
-                        <label className="export-field-label">Max Roll Length (Yards)</label>
-                        <input
-                          type="number"
-                          value={maxRollLengthYards}
-                          onChange={e => setMaxRollLengthYards(Math.max(1, Number(e.target.value) || 50))}
-                          className="tech-text-input"
-                          style={{ width: '100%', padding: '6px 8px', fontSize: '11px', background: '#111118', border: '1px solid #1e1e2a', color: '#fff', outline: 'none', height: '28px', boxSizing: 'border-box', borderRadius: '4px' }}
-                        />
-                      </div>
-                    </>
-                  )}
-                  
-                  <div style={{ marginBottom: '10px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <label className="export-field-label">Sewing Bleed Margin</label>
-                      <span style={{ fontSize: '9px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700 }}>{bleedInches.toFixed(2)}"</span>
-                    </div>
-                    <input
-                      type="range" min="0" max="1.5" step="0.05" value={bleedInches}
-                      onChange={e => { const val = Number(e.target.value); setBleedInches(val); onUpdateProject({ rules: { ...project.rules, bleedInches: val } }); }}
-                      className="export-range"
-                    />
-                  </div>
-
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                      <label className="export-field-label">Panel Spacing / Gap</label>
-                      <span style={{ fontSize: '9px', color: 'var(--accent-blue)', fontFamily: 'monospace', fontWeight: 700 }}>{panelSpacingInches.toFixed(2)}"</span>
-                    </div>
-                    <input
-                      type="range" min="0.1" max="2.0" step="0.1" value={panelSpacingInches}
-                      onChange={e => setPanelSpacingInches(Number(e.target.value))}
-                      className="export-range"
-                    />
-                  </div>
-                </div>
-
-                {/* ── Export Format ── */}
-                <div>
-                  <label className="export-field-label">Export Format</label>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px' }}>
-                    {(['PNG', 'JPG', 'TIFF', 'PSD'] as const).map(fmt => (
-                      <button
-                        key={fmt}
-                        className={`export-preset-btn ${exportFormat === fmt ? 'active' : ''}`}
-                        onClick={() => setExportFormat(fmt)}
-                        style={{ padding: '4px 0', fontSize: '9px', fontWeight: 'bold' }}
-                      >
-                        {fmt}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* ── Output Layers ── */}
-                <div>
-                  <label className="export-field-label" style={{ marginBottom: '6px', display: 'block' }}>Output Layers</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <ToggleSwitch checked={includeSleeves} onChange={setIncludeSleeves} label="Include Sleeves" subtitle="Left + Right sleeve panels" />
-                    <ToggleSwitch checked={includeCollar} onChange={setIncludeCollar} label="Include Collar" subtitle="Neckline / collar panel" />
-                    <ToggleSwitch checked={showSafeZones} onChange={setShowSafeZones} label="Safe Zone Overlays" subtitle="Print-safe boundary guides" />
-                  </div>
-                </div>
-
               </div>
             )}
           </div>
-
         </div>
 
         {/* Compile Action (bottom of left panel) */}
@@ -988,17 +999,17 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
               <span>Add players to roster first</span>
             </div>
           )}
-          {criticalErrorsCount > 0 && (
-            <div className="export-error-banner">
-              <AlertCircle size={12} />
-              <span>Fix critical errors before compiling</span>
+          {project.roster.length > 0 && selectedPlayerIds.length === 0 && (
+            <div className="export-warning-banner">
+              <AlertTriangle size={12} />
+              <span>Select players to export</span>
             </div>
           )}
           {!exporting && !downloadReady && (
             <button
               className="export-compile-btn"
               onClick={triggerExport}
-              disabled={project.roster.length === 0 || criticalErrorsCount > 0}
+              disabled={selectedPlayerIds.length === 0}
             >
               <FileText size={14} />
               Compile Production Files

@@ -11,7 +11,7 @@ import { UpgradeModal } from './components/UpgradeModal';
 import { useBillingState } from './lib/useBillingState';
 import {
   Layers, FileText, Download,
-  ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload, ChevronDown,
+  ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload,
   Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy,
   AlertTriangle
 } from 'lucide-react';
@@ -262,7 +262,6 @@ export default function App() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newProjectName, setNewProjectName] = useState('');
   const [newTeamName, setNewTeamName] = useState('');
-  const [showAdvancedSettings, setShowAdvancedSettings] = useState(false);
   const [newGarmentType, setNewGarmentType] = useState<ApparelType>('esports_jersey');
   const [newTemplateChoice, setNewTemplateChoice] = useState('Pro Athletic Fit');
   const [newCanvasSize, setNewCanvasSize] = useState('2400 x 2400 px');
@@ -283,7 +282,6 @@ export default function App() {
       setNewCanvasSize('2400 x 2400 px');
       setNewDpi(300);
       setNewColorMode('CMYK');
-      setShowAdvancedSettings(false);
     }
   }, [isModalOpen]);
 
@@ -486,7 +484,6 @@ export default function App() {
     // Reset Form
     setNewProjectName('');
     setNewTeamName('');
-    setShowAdvancedSettings(false);
     setNewGarmentType('esports_jersey');
     setNewTemplateChoice('Pro Athletic Fit');
     setNewCanvasSize('2400 x 2400 px');
@@ -959,7 +956,7 @@ export default function App() {
                         <div className="modal-stepper-line"></div>
                         <div 
                           className="modal-stepper-progress" 
-                          style={{ width: modalStep === 1 ? '0%' : modalStep === 2 ? '50%' : '100%' }}
+                          style={{ width: modalStep === 1 ? '0%' : '100%' }}
                         ></div>
                         
                         <div className={`modal-step-node ${modalStep >= 1 ? 'completed' : ''} ${modalStep === 1 ? 'active' : ''}`}>
@@ -969,10 +966,6 @@ export default function App() {
                         <div className={`modal-step-node ${modalStep >= 2 ? 'completed' : ''} ${modalStep === 2 ? 'active' : ''}`}>
                           2
                           <span className="modal-step-label">Apparel & Style</span>
-                        </div>
-                        <div className={`modal-step-node ${modalStep >= 3 ? 'completed' : ''} ${modalStep === 3 ? 'active' : ''}`}>
-                          3
-                          <span className="modal-step-label">Settings</span>
                         </div>
                       </div>
 
@@ -1088,143 +1081,6 @@ export default function App() {
                             </div>
                           </>
                         )}
-
-                        {modalStep === 3 && (
-                          <>
-                            <div>
-                              <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 4px 0' }}>Configure Production Specs</h3>
-                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Advanced print-safe templates configured automatically.</p>
-                            </div>
-
-                            {/* Template Choice (Fit) */}
-                            <div className="form-group">
-                              <label className="form-label">Template / Pattern Fit</label>
-                              <div className="selector-card-grid">
-                                <div 
-                                  className={`selector-card ${newTemplateChoice === 'Pro Athletic Fit' ? 'active' : ''}`}
-                                  onClick={() => setNewTemplateChoice('Pro Athletic Fit')}
-                                  style={{ padding: '10px 14px', background: '#0e0e13' }}
-                                >
-                                  <div className="selector-card-info">
-                                    <span className="selector-card-title" style={{ fontSize: '12px' }}>Pro Athletic Fit</span>
-                                    <span className="selector-card-desc" style={{ fontSize: '9px' }}>Contoured, premium athletic seamlines</span>
-                                  </div>
-                                </div>
-
-                                <div 
-                                  className={`selector-card ${newTemplateChoice === 'Standard Fit' ? 'active' : ''}`}
-                                  onClick={() => setNewTemplateChoice('Standard Fit')}
-                                  style={{ padding: '10px 14px', background: '#0e0e13' }}
-                                >
-                                  <div className="selector-card-info">
-                                    <span className="selector-card-title" style={{ fontSize: '12px' }}>Standard Fit</span>
-                                    <span className="selector-card-desc" style={{ fontSize: '9px' }}>Relaxed silhouette, straight patterns</span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Automation Default Indicator */}
-                            <div style={{ display: 'flex', gap: '8px', background: 'rgba(0, 229, 255, 0.04)', border: '1px solid rgba(0, 229, 255, 0.15)', padding: '10px 12px', borderRadius: '8px', alignItems: 'center' }}>
-                              <span className="recommended-badge">Auto Calibrated</span>
-                              <span style={{ fontSize: '11px', color: '#fff', fontWeight: '600' }}>
-                                Recommended for sublimation production
-                              </span>
-                            </div>
-
-                            {/* Expandable Advanced Accordion */}
-                            <div 
-                              className="advanced-accordion-trigger" 
-                              onClick={() => setShowAdvancedSettings(!showAdvancedSettings)}
-                              style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', padding: '10px 14px' }}
-                            >
-                              <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'rgba(255, 255, 255, 0.6)' }}>Advanced Calibration Settings</span>
-                              <ChevronDown size={14} style={{ transform: showAdvancedSettings ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-                            </div>
-
-                            {showAdvancedSettings && (
-                              <div className="advanced-accordion-content" style={{ background: '#09090c', border: '1px solid rgba(255,255,255,0.05)', borderRadius: '8px', marginTop: '4px' }}>
-                                {/* Canvas Size */}
-                                <div className="form-group">
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                    <label className="form-label">Canvas Size</label>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-disabled)' }}>
-                                      {newCanvasSize === '2400 x 2400 px' ? 'Standard Square layout' : 'High-definition blueprint'}
-                                    </span>
-                                  </div>
-                                  <div className="segmented-selector" style={{ background: '#0e0e13', borderColor: 'rgba(255,255,255,0.06)' }}>
-                                    <div 
-                                      className={`segmented-option ${newCanvasSize === '2400 x 2400 px' ? 'active' : ''}`}
-                                      onClick={() => setNewCanvasSize('2400 x 2400 px')}
-                                      style={{ padding: '6px 10px', fontSize: '11px' }}
-                                    >
-                                      2400px {newGarmentType === 'esports_jersey' && '⭐'}
-                                    </div>
-                                    <div 
-                                      className={`segmented-option ${newCanvasSize === '3000 x 3000 px' ? 'active' : ''}`}
-                                      onClick={() => setNewCanvasSize('3000 x 3000 px')}
-                                      style={{ padding: '6px 10px', fontSize: '11px' }}
-                                    >
-                                      3000px {newGarmentType === 'crewneck_sweatshirt' && '⭐'}
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* DPI */}
-                                <div className="form-group">
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                    <label className="form-label">Print Resolution</label>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-disabled)' }}>
-                                      {newDpi === 300 ? 'Best for professional printing' : 'Good for quick drafts'}
-                                    </span>
-                                  </div>
-                                  <div className="segmented-selector" style={{ background: '#0e0e13', borderColor: 'rgba(255,255,255,0.06)' }}>
-                                    <div 
-                                      className={`segmented-option ${newDpi === 150 ? 'active' : ''}`}
-                                      onClick={() => setNewDpi(150)}
-                                      style={{ padding: '6px 10px', fontSize: '11px' }}
-                                    >
-                                      150 DPI (Fast Concept)
-                                    </div>
-                                    <div 
-                                      className={`segmented-option ${newDpi === 300 ? 'active' : ''}`}
-                                      onClick={() => setNewDpi(300)}
-                                      style={{ padding: '6px 10px', fontSize: '11px' }}
-                                    >
-                                      300 DPI (Production) ⭐
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Color Space */}
-                                <div className="form-group">
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
-                                    <label className="form-label">Color Space Calibration</label>
-                                    <span style={{ fontSize: '9px', color: 'var(--text-disabled)' }}>
-                                      {newColorMode === 'CMYK' ? 'Optimal ink match' : 'Vibrant screen graphics'}
-                                    </span>
-                                  </div>
-                                  <div className="segmented-selector" style={{ background: '#0e0e13', borderColor: 'rgba(255,255,255,0.06)' }}>
-                                    <div 
-                                      className={`segmented-option ${newColorMode === 'CMYK' ? 'active' : ''}`}
-                                      onClick={() => setNewColorMode('CMYK')}
-                                      style={{ padding: '6px 10px', fontSize: '11px' }}
-                                    >
-                                      CMYK (Physical Print) ⭐
-                                    </div>
-                                    <div 
-                                      className={`segmented-option ${newColorMode === 'RGB' ? 'active' : ''}`}
-                                      onClick={() => setNewColorMode('RGB')}
-                                      style={{ padding: '6px 10px', fontSize: '11px' }}
-                                    >
-                                      RGB (Web & Digital)
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-                          </>
-                        )}
                       </div>
                     </div>
 
@@ -1248,7 +1104,7 @@ export default function App() {
                         </button>
                       )}
 
-                      {modalStep < 3 ? (
+                      {modalStep < 2 ? (
                         <button 
                           className="primary" 
                           onClick={() => setModalStep(modalStep + 1)}
@@ -1433,9 +1289,14 @@ export default function App() {
               <button className="ghost" onClick={() => setView('dashboard')} style={{ padding: '4px', borderRadius: '4px' }}>
                 <ChevronLeft size={16} />
               </button>
-              <div className="topbar-brand">
-                <div style={{ width: '10px', height: '10px', background: 'var(--accent-blue)', borderRadius: '2px' }} />
-                DesignSync
+              <div className="topbar-brand" onClick={() => setView('dashboard')} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}>
+                <img
+                  src="/DesignSync Logo.png"
+                  alt="DesignSync"
+                  width="32"
+                  height="32"
+                  style={{ objectFit: 'contain', filter: 'drop-shadow(0 0 4px rgba(255, 78, 48, 0.4))' }}
+                />
               </div>
               <div className="topbar-breadcrumbs">
                 <span className="topbar-breadcrumb-separator">/</span>
@@ -1575,9 +1436,11 @@ export default function App() {
                 </span>
               </div>
 
-              <button className="primary" style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }} onClick={() => handleUpdateProject({ stage: 'export' })}>
-                Compile Layouts
-              </button>
+              {project.stage === 'studio' && (
+                <button className="primary" style={{ padding: '6px 12px', fontSize: '12px', fontWeight: '600' }} onClick={() => handleUpdateProject({ stage: 'export' })}>
+                  Compile Layouts
+                </button>
+              )}
               <div className="avatar">DS</div>
             </div>
 
@@ -1715,9 +1578,8 @@ export default function App() {
                     </div>
                     <div className="wizard-steps-timeline" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
                       {[
-                        { step: 1, label: '1. Project Info' },
-                        { step: 2, label: '2. Select Garment' },
-                        { step: 3, label: '3. Upload Assets' }
+                        { step: 1, label: '1. Specs & Colors' },
+                        { step: 3, label: '2. Upload Assets' }
                       ].map(node => (
                         <div 
                           key={node.step}
@@ -1760,87 +1622,97 @@ export default function App() {
                       {wizardStep === 1 && (
                         <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                           <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                            
+                            {/* Visual confirmation of linked project details */}
+                            <div style={{ marginBottom: '24px' }}>
+                              <span style={{ fontSize: '9px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>LINKED PROJECT IDENTITY</span>
+                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                <div style={{ background: 'rgba(0, 112, 243, 0.08)', border: '1px solid rgba(0, 112, 243, 0.2)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>PROJECT:</span> {project.name}
+                                </div>
+                                {project.teamName && (
+                                  <div style={{ background: 'rgba(121, 40, 202, 0.08)', border: '1px solid rgba(121, 40, 202, 0.2)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <span style={{ color: '#a855f7', fontWeight: 'bold' }}>CLIENT:</span> {project.teamName}
+                                  </div>
+                                )}
+                                <div style={{ background: 'rgba(0, 230, 118, 0.08)', border: '1px solid rgba(0, 230, 118, 0.2)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>GARMENT:</span> <span style={{ textTransform: 'uppercase' }}>{project.apparelType}</span>
+                                </div>
+                              </div>
+                            </div>
+
                             <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
                               <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
-                              Project Specifications
+                              Team Color Palette
                             </h3>
-                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '28px', lineHeight: '1.5' }}>
-                              Establish the creative details and naming for your custom dye-sublimation project.
+                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '24px', lineHeight: '1.5' }}>
+                              Define the core dye-sublimation color scheme. These colors will instantly calibrate your active template aesthetics.
                             </p>
                             
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                              <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label htmlFor="project-name" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                                  Project Name
-                                </label>
-                                <input
-                                  id="project-name"
-                                  type="text"
-                                  className="tech-text-input"
-                                  value={project.name}
-                                  onChange={(e) => handleUpdateProject({ name: e.target.value })}
-                                  placeholder="e.g. Neon Strike Esports Jersey 2026"
-                                  style={{
-                                    width: '100%',
-                                    background: 'rgba(255, 255, 255, 0.02)',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    borderRadius: '12px',
-                                    padding: '14px 18px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    transition: 'all 0.2s',
-                                    boxSizing: 'border-box'
-                                  }}
-                                  onFocus={(e) => {
-                                    e.target.style.borderColor = 'var(--accent-blue)';
-                                    e.target.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.2)';
-                                    e.target.style.background = 'rgba(255,255,255,0.03)';
-                                  }}
-                                  onBlur={(e) => {
-                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                                    e.target.style.boxShadow = 'none';
-                                    e.target.style.background = 'rgba(255,255,255,0.02)';
-                                  }}
-                                />
-                              </div>
-                              
-                              <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label htmlFor="team-name" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                                  Client / Team Name
-                                </label>
-                                <input
-                                  id="team-name"
-                                  type="text"
-                                  className="tech-text-input"
-                                  value={project.teamName || ''}
-                                  onChange={(e) => handleUpdateProject({ teamName: e.target.value })}
-                                  placeholder="e.g. Apex Predators Gaming"
-                                  style={{
-                                    width: '100%',
-                                    background: 'rgba(255, 255, 255, 0.02)',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    borderRadius: '12px',
-                                    padding: '14px 18px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    transition: 'all 0.2s',
-                                    boxSizing: 'border-box'
-                                  }}
-                                  onFocus={(e) => {
-                                    e.target.style.borderColor = 'var(--accent-blue)';
-                                    e.target.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.2)';
-                                    e.target.style.background = 'rgba(255,255,255,0.03)';
-                                  }}
-                                  onBlur={(e) => {
-                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                                    e.target.style.boxShadow = 'none';
-                                    e.target.style.background = 'rgba(255,255,255,0.02)';
-                                  }}
-                                />
+                              {/* Color palette picker row */}
+                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+                                
+                                {/* Primary Color */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <label style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Primary Color</label>
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input 
+                                      type="color" 
+                                      value={project.baseColors?.primary || '#1a1a24'} 
+                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, primary: e.target.value } })} 
+                                      style={{ width: '42px', height: '40px', border: 'none', borderRadius: '8px', background: 'transparent', cursor: 'pointer', padding: 0 }} 
+                                    />
+                                    <input 
+                                      type="text" 
+                                      value={project.baseColors?.primary || '#1a1a24'} 
+                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, primary: e.target.value } })} 
+                                      style={{ flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', textTransform: 'uppercase' }} 
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Secondary Color */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <label style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Secondary Color</label>
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input 
+                                      type="color" 
+                                      value={project.baseColors?.secondary || '#0070f3'} 
+                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, secondary: e.target.value } })} 
+                                      style={{ width: '42px', height: '40px', border: 'none', borderRadius: '8px', background: 'transparent', cursor: 'pointer', padding: 0 }} 
+                                    />
+                                    <input 
+                                      type="text" 
+                                      value={project.baseColors?.secondary || '#0070f3'} 
+                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, secondary: e.target.value } })} 
+                                      style={{ flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', textTransform: 'uppercase' }} 
+                                    />
+                                  </div>
+                                </div>
+
+                                {/* Accent Color */}
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  <label style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Accent Color</label>
+                                  <div style={{ display: 'flex', gap: '8px' }}>
+                                    <input 
+                                      type="color" 
+                                      value={project.baseColors?.accent || '#00ff88'} 
+                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, accent: e.target.value } })} 
+                                      style={{ width: '42px', height: '40px', border: 'none', borderRadius: '8px', background: 'transparent', cursor: 'pointer', padding: 0 }} 
+                                    />
+                                    <input 
+                                      type="text" 
+                                      value={project.baseColors?.accent || '#00ff88'} 
+                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, accent: e.target.value } })} 
+                                      style={{ flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', textTransform: 'uppercase' }} 
+                                    />
+                                  </div>
+                                </div>
+
                               </div>
 
+                              {/* Project notes / prompt */}
                               <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                                 <label htmlFor="project-notes" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                                   Optional Project Notes
@@ -1884,181 +1756,6 @@ export default function App() {
                       )}
 
                       {wizardStep === 2 && (
-                        <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                          <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                            <h3 className="wizard-section-title" style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
-                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-blue)' }} />
-                              Select Garment Silhouette
-                            </h3>
-                            <p className="wizard-section-desc" style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '28px' }}>
-                              Choose a premium base pattern outline. Your selection will immediately set up the active design workspace and guides.
-                            </p>
-                            
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '20px' }}>
-                              {[
-                                { id: 'esports_jersey', name: 'Esports Jersey', panels: '8 Panels', cuff: 'Raglan Athletic Fit', primary: '#0070f3', secondary: '#111115', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="jerseyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#1e293b" />
-                                        <stop offset="100%" stopColor="#0f172a" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 20,20 C 35,10 65,10 80,20 L 92,48 L 80,51 L 81,95 C 60,99 40,99 19,95 L 20,51 L 8,48 Z" fill="url(#jerseyGrad)" stroke="#0070f3" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 20,20 C 28,26 38,28 42,48 L 42,97 M 80,20 C 72,26 62,28 58,48 L 58,97" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
-                                  </svg>
-                                )},
-                                { id: 'tshirt', name: 'Standard T-Shirt', panels: '4 Panels', cuff: 'Classic Streetwear Fit', primary: '#ff0055', secondary: '#0e0e12', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="tshirtGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#2e1065" />
-                                        <stop offset="100%" stopColor="#0f052d" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 15,22 C 30,14 70,14 85,22 L 96,46 L 82,49 L 80,95 L 20,95 L 18,49 L 4,46 Z" fill="url(#tshirtGrad)" stroke="#ff0055" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 18,22 Q 33,32 50,22 Q 67,32 82,22" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
-                                  </svg>
-                                )},
-                                { id: 'hoodie', name: 'Premium Hoodie', panels: '6 Panels', cuff: 'Modern Loose Street Fit', primary: '#00ff88', secondary: '#111827', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="hoodieGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#064e3b" />
-                                        <stop offset="100%" stopColor="#022c22" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 18,30 C 30,22 70,22 80,30 L 95,58 L 84,61 L 80,96 L 20,96 L 16,61 L 5,58 Z" fill="url(#hoodieGrad)" stroke="#00ff88" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 32,29 Q 50,8 68,29 Z" fill="url(#hoodieGrad)" stroke="#00ff88" strokeWidth="1.5" />
-                                    <path d="M 38,65 L 62,65 C 65,65 67,78 62,82 L 38,82 C 33,78 35,65 38,65 Z" fill="rgba(255,255,255,0.04)" stroke="rgba(255,255,255,0.06)" strokeWidth="1.0" />
-                                  </svg>
-                                )},
-                                { id: 'polo_shirt', name: 'Golf Polo Shirt', panels: '5 Panels', cuff: 'Collared Athletic Fit', primary: '#38bdf8', secondary: '#0f172a', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="poloGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#1e3a8a" />
-                                        <stop offset="100%" stopColor="#172554" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,95 L 20,95 L 18,47 L 8,45 Z" fill="url(#poloGrad)" stroke="#38bdf8" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 38,20 L 50,34 L 62,20 M 50,34 L 50,52" fill="none" stroke="#38bdf8" strokeWidth="1.5" />
-                                  </svg>
-                                )},
-                                { id: 'longsleeve', name: 'Long Sleeve Shirt', panels: '6 Panels', cuff: 'Ribbed Sleeve Cuff Fit', primary: '#ec4899', secondary: '#180815', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="longGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#701a75" />
-                                        <stop offset="100%" stopColor="#4a044e" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,82 L 88,85 L 78,95 L 22,95 L 12,85 L 5,82 Z" fill="url(#longGrad)" stroke="#ec4899" strokeWidth="2.0" strokeLinecap="round" />
-                                  </svg>
-                                )},
-                                { id: 'cycling_jersey', name: 'Cycling Jersey', panels: '7 Panels', cuff: 'Aerodynamic Race Cut', primary: '#f59e0b', secondary: '#1c1917', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="cyclingGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#78350f" />
-                                        <stop offset="100%" stopColor="#451a03" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,95 L 22,95 L 20,48 L 8,45 Z" fill="url(#cyclingGrad)" stroke="#f59e0b" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 50,18 L 50,55 M 22,48 L 78,48" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" strokeDasharray="3,3" />
-                                  </svg>
-                                )},
-                                { id: 'compression_wear', name: 'Compression Armor', panels: '10 Panels', cuff: 'Ultra Elastic Athletic Tight', primary: '#a855f7', secondary: '#090514', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="compressGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#581c87" />
-                                        <stop offset="100%" stopColor="#3b0764" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 24,18 C 34,14 66,14 76,18 L 82,88 L 18,88 Z" fill="url(#compressGrad)" stroke="#a855f7" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 32,18 L 36,88 M 68,18 L 64,88" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
-                                  </svg>
-                                )},
-                                { id: 'basketball_jersey', name: 'Basketball Jersey', panels: '4 Panels', cuff: 'Sleeveless Loose Cut', primary: '#3b82f6', secondary: '#0c1a30', svg: (
-                                  <svg viewBox="0 0 100 110" style={{ width: '100px', height: '105px', filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.4))' }}>
-                                    <defs>
-                                      <linearGradient id="basketGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                        <stop offset="0%" stopColor="#1e3a8a" />
-                                        <stop offset="100%" stopColor="#1e1b4b" />
-                                      </linearGradient>
-                                    </defs>
-                                    <path d="M 26,18 C 36,10 64,10 74,18 L 82,38 L 77,93 C 60,96 40,96 23,93 L 18,38 Z" fill="url(#basketGrad)" stroke="#3b82f6" strokeWidth="2.0" strokeLinecap="round" />
-                                    <path d="M 26,18 C 30,22 34,35 34,44 M 74,18 C 70,22 66,35 66,44" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1.2" />
-                                  </svg>
-                                )}
-                              ].map(g => {
-                                const isActive = project.apparelType === g.id;
-                                return (
-                                  <div 
-                                    key={g.id}
-                                    onClick={() => handleUpdateProject({ 
-                                      apparelType: g.id,
-                                      baseColors: {
-                                        ...project.baseColors,
-                                        accent: g.primary,
-                                        secondary: g.secondary
-                                      }
-                                    })}
-                                    style={{
-                                      background: isActive ? 'rgba(255, 255, 255, 0.02)' : 'rgba(255, 255, 255, 0.01)',
-                                      border: isActive ? `2px solid ${g.primary}` : '1px solid rgba(255, 255, 255, 0.05)',
-                                      borderRadius: '20px',
-                                      padding: '28px 24px',
-                                      cursor: 'pointer',
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'center',
-                                      gap: '16px',
-                                      textAlign: 'center',
-                                      transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                      position: 'relative',
-                                      boxShadow: isActive ? `0 0 25px ${g.primary}20` : 'none',
-                                      overflow: 'hidden'
-                                    }}
-                                    onMouseEnter={(e) => {
-                                      if (!isActive) {
-                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                                        e.currentTarget.style.transform = 'translateY(-4px)';
-                                        e.currentTarget.style.boxShadow = '0 12px 24px rgba(0,0,0,0.5)';
-                                      }
-                                    }}
-                                    onMouseLeave={(e) => {
-                                      if (!isActive) {
-                                        e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.05)';
-                                        e.currentTarget.style.background = 'rgba(255, 255, 255, 0.01)';
-                                        e.currentTarget.style.transform = 'translateY(0)';
-                                        e.currentTarget.style.boxShadow = 'none';
-                                      }
-                                    }}
-                                  >
-                                    {isActive && (
-                                      <div style={{ position: 'absolute', top: '16px', right: '16px', background: g.primary, borderRadius: '50%', padding: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 0 12px ${g.primary}` }}>
-                                        <Check size={12} style={{ color: '#fff' }} />
-                                      </div>
-                                    )}
-                                    <div style={{ color: isActive ? g.primary : 'rgba(255,255,255,0.4)', transition: 'color 0.2s', filter: isActive ? `drop-shadow(0 0 12px ${g.primary}4a)` : 'none' }}>
-                                      {g.svg}
-                                    </div>
-                                    <div>
-                                      <h4 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: isActive ? '#fff' : 'rgba(255,255,255,0.85)', letterSpacing: '-0.01em' }}>{g.name}</h4>
-                                      <span style={{ fontSize: '11px', color: 'var(--text-disabled)', marginTop: '6px', display: 'block', opacity: 0.8 }}>{g.panels} · {g.cuff}</span>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {wizardStep === 3 && (
                         <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
                           <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
                             <h3 className="wizard-section-title" style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
@@ -2409,7 +2106,7 @@ export default function App() {
                       {wizardStep > 1 ? (
                         <button 
                           className="premium-ghost-btn" 
-                          onClick={() => setWizardStep(wizardStep - 1)}
+                          onClick={() => setWizardStep(1)}
                           style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}
                         >
                           <ArrowLeft size={14} /> Back
@@ -2426,7 +2123,7 @@ export default function App() {
                       {wizardStep < 3 ? (
                         <button 
                           className="continue-btn-premium"
-                          onClick={() => setWizardStep(wizardStep + 1)}
+                          onClick={() => setWizardStep(3)}
                           style={{ cursor: 'pointer', background: 'var(--accent-blue)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 10px rgba(0, 112, 243, 0.3)' }}
                         >
                           Next Step <ArrowRight size={14} />
