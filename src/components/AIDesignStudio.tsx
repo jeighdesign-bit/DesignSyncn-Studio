@@ -185,15 +185,11 @@ const GarmentFlat: React.FC<{
   seamBleed: number;
   onPanelClick: (id: GarmentPanel) => void;
 }> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, onPanelClick }) => {
-  const [mockupSrc, setMockupSrc] = useState('/mockups/tshirt copy.png');
+  const mockupSrc = '/mockups/tshirt.png';
   const [useSvgFallback, setUseSvgFallback] = useState(false);
 
   const handleMockupError = () => {
-    if (mockupSrc === '/mockups/tshirt copy.png') {
-      setMockupSrc('/mockups/tshirt.png');
-    } else {
-      setUseSvgFallback(true);
-    }
+    setUseSvgFallback(true);
   };
 
   const getPanelConcept = (id: GarmentPanel) => concepts.find(c => c.panelId === id);
