@@ -157,14 +157,10 @@ export default function App() {
     errorMessage,
     syncBillingState,
     initiateCheckout,
-    grantTokensDirect,
   } = useBillingState(userId);
 
-  // Convenience alias — keeps legacy references working
-  const tokens = billingState.tokensRemaining;
-
   // Handle plan selection from LandingPage: show UpgradeModal directly (stays on landing page)
-  const handleSubscribe = async (planName: string, tokenAmount: number) => {
+  const handleSubscribe = async () => {
     setShowUpgradeModal(true);
   };
 
