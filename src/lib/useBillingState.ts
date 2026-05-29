@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { BillingState, PlanId, CheckoutResult } from './subscriptionTypes';
 
-const SERVER_URL = 'http://localhost:5000';
+const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const DEFAULT_BILLING_STATE: BillingState = {
   planId: 'free',

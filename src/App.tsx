@@ -2529,7 +2529,8 @@ export default function App() {
         onCheckout={initiateCheckout}
         onManageBilling={async () => {
           try {
-            const res = await fetch(`http://localhost:5000/api/subscription/portal?userId=${encodeURIComponent(userId)}`);
+            const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+            const res = await fetch(`${SERVER_URL}/api/subscription/portal?userId=${encodeURIComponent(userId)}`);
             if (res.ok) {
               const { url } = await res.json();
               if (url && url !== '#') window.open(url, '_blank');

@@ -1928,6 +1928,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   pan,
   setPan,
 }) => {
+  const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [toolMode, setToolMode] = useState<ToolMode>('select');
   const [panelSelectorOpen, setPanelSelectorOpen] = useState(false);
   const [canvasBg] = useState<'white' | 'dark' | 'transparent' | 'checkerboard'>('white');
@@ -1948,7 +1949,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
     if (!aiPrompt.trim()) return;
     setIsEnhancingPrompt(true);
     try {
-      const res = await fetch('http://localhost:5000/api/ai/enhance', {
+      const res = await fetch(`${SERVER_URL}/api/ai/enhance`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: aiPrompt })
@@ -1988,7 +1989,7 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         project.baseColors.accent || '#ffcc00'
       ];
 
-      const res = await fetch('http://localhost:5000/api/ai/generate', {
+      const res = await fetch(`${SERVER_URL}/api/ai/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
