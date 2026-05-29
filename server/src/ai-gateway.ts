@@ -74,7 +74,7 @@ function generateSandboxSvg(prompt: string, mode: string, colors: string[]): str
 
   // 1. Pattern Mode
   if (mode === 'pattern' || cleanPrompt.includes('pattern') || cleanPrompt.includes('grid')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="100%" height="100%">
+    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
       <rect width="400" height="400" fill="${backgroundColor}"/>
       <defs>
         <pattern id="dotGrid" width="20" height="20" patternUnits="userSpaceOnUse">
@@ -89,7 +89,7 @@ function generateSandboxSvg(prompt: string, mode: string, colors: string[]): str
 
   // 2. Texture Mode
   if (mode === 'texture' || cleanPrompt.includes('texture') || cleanPrompt.includes('mesh')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
       <rect width="500" height="500" fill="${backgroundColor}"/>
       <defs>
         <pattern id="carbonMesh" width="10" height="10" patternUnits="userSpaceOnUse">
@@ -108,7 +108,7 @@ function generateSandboxSvg(prompt: string, mode: string, colors: string[]): str
 
   // 3. Overlay Mode (Flames/Wings Accents)
   if (mode === 'overlay' || cleanPrompt.includes('flame') || cleanPrompt.includes('wing') || cleanPrompt.includes('accent')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
       <defs>
         <linearGradient id="overlayGrad" x1="0%" y1="100%" x2="100%" y2="0%">
           <stop offset="0%" stop-color="${primaryColor}"/>
@@ -127,7 +127,7 @@ function generateSandboxSvg(prompt: string, mode: string, colors: string[]): str
 
   // 4. Typography Mode
   if (mode === 'typography' || cleanPrompt.includes('text') || cleanPrompt.includes('number')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
       <defs>
         <linearGradient id="typoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
           <stop offset="0%" stop-color="${primaryColor}"/>
@@ -145,7 +145,7 @@ function generateSandboxSvg(prompt: string, mode: string, colors: string[]): str
 
   // 5. Logo Mode
   if (mode === 'logo' || cleanPrompt.includes('logo') || cleanPrompt.includes('badge')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
       <defs>
         <linearGradient id="logoGrad" x1="0%" y1="0%" x2="0%" y2="100%">
           <stop offset="0%" stop-color="${accentColor}"/>
@@ -163,7 +163,7 @@ function generateSandboxSvg(prompt: string, mode: string, colors: string[]): str
   }
 
   // Default Synthwave Sunset/Synth element
-  return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="100%" height="100%">
+  return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
     <defs>
       <linearGradient id="sunGrad" x1="0%" y1="0%" x2="0%" y2="100%">
         <stop offset="0%" stop-color="${accentColor}"/>
@@ -274,7 +274,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       await new Promise((resolve) => setTimeout(resolve, 800));
 
       const svgData = generateSandboxSvg(prompt, mode, colors);
-      const dataUri = `data:${svgData}`;
+      const rawSvg = svgData.replace('svg+xml;utf8,', '');
+      const dataUri = `data:image/svg+xml;base64,${Buffer.from(rawSvg).toString('base64')}`;
 
       setUserTokens(cleanUserId, currentBalance - 1);
 
@@ -371,10 +372,11 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     throw new Error('Unsupported mode or unconfigured provider');
   } catch (error: any) {
     console.error('❌ Generation Gateway Error:', error);
-    // Fail-safe fall back to Sandbox rather than throwing an error to client
     const svgData = generateSandboxSvg(req.body.prompt || 'esports', req.body.providerMode || 'vector', req.body.baseColors || []);
+    const rawSvg = svgData.replace('svg+xml;utf8,', '');
+    const dataUri = `data:image/svg+xml;base64,${Buffer.from(rawSvg).toString('base64')}`;
     return res.json({
-      url: `data:${svgData}`,
+      url: dataUri,
       type: 'vector',
       isSandbox: true,
       errorOccurred: true,

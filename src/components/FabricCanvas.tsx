@@ -2149,10 +2149,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       const canvas = fabricRef.current;
       if (!canvas) return;
       const center = canvas.getVpCenter();
-      const sceneCenter = canvas.getScenePoint({ clientX: center.x, clientY: center.y } as any);
       const text = new fabric.Textbox('New Text', {
-        left: sceneCenter.x,
-        top: sceneCenter.y,
+        left: center.x,
+        top: center.y,
         width: 250,
         fontFamily: 'Outfit, sans-serif',
         fontSize: 48,
@@ -2174,10 +2173,9 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       const canvas = fabricRef.current;
       if (!canvas) return;
       const center = canvas.getVpCenter();
-      const sceneCenter = canvas.getScenePoint({ clientX: center.x, clientY: center.y } as any);
       const rect = new fabric.Rect({
-        left: sceneCenter.x,
-        top: sceneCenter.y,
+        left: center.x,
+        top: center.y,
         width: 120,
         height: 80,
         fill: options?.fill ?? '#0070f3',
@@ -2197,15 +2195,20 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       const canvas = fabricRef.current;
       if (!canvas) return;
       const center = canvas.getVpCenter();
-      const sceneCenter = canvas.getScenePoint({ clientX: center.x, clientY: center.y } as any);
-      fabric.FabricImage.fromURL(url, { crossOrigin: 'anonymous' }).then((img) => {
-        img.scaleToWidth(Math.min(img.width ?? 200, 300));
-        img.set({ left: sceneCenter.x, top: sceneCenter.y, originX: 'center', originY: 'center' });
+      const isDataUrl = url.startsWith('data:');
+      fabric.FabricImage.fromURL(url, isDataUrl ? {} : { crossOrigin: 'anonymous' }).then((img) => {
+        img.scaleToWidth(Math.min(img.width || 200, 300));
+        img.set({ left: center.x, top: center.y, originX: 'center', originY: 'center' });
         (img as any).__id = `image-${Date.now()}`;
         (img as any).__layerName = name || `Image ${imageCounter++}`;
         canvas.add(img);
         canvas.setActiveObject(img);
         canvas.requestRenderAll();
+        // Trigger parent state history changes so that canvas updates are registered
+        saveHistory();
+      }).catch((err) => {
+        console.error('Failed to load image on Fabric canvas:', err);
+        alert('Failed to render the generated AI image on the canvas. Please check browser console.');
       });
     },
     getCanvas() {

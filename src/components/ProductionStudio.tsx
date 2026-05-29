@@ -222,6 +222,9 @@ interface ProductionStudioProps {
   setZoom: React.Dispatch<React.SetStateAction<number>>;
   pan: { x: number; y: number };
   setPan: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
+  userId?: string;
+  onTokenExhausted?: () => void;
+  onUpdateTokens?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -1926,6 +1929,9 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   setZoom,
   pan,
   setPan,
+  userId,
+  onTokenExhausted,
+  onUpdateTokens,
 }) => {
   const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [toolMode, setToolMode] = useState<ToolMode>('select');
@@ -1944,17 +1950,27 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const [aiCheckpoint, setAiCheckpoint] = useState('');
   if (aiCheckpoint) { /* satisfy compiler unused check */ }
 
+  // Canvas ref — declared here so handleGenerateAiAsset can access it
+  const fabricRef = useRef<FabricCanvasHandle | null>(null);
+
   const handleGenerateAiAsset = async () => {
     if (!aiPrompt.trim()) {
       alert('Please enter a prompt first!');
       return;
     }
+
+    // ── DIAGNOSTIC ─────────────────────────────────────────────────────────────
+    console.log('[DesignSync AI] 🔍 Generate clicked');
+    console.log('[DesignSync AI] fabricRef.current:', fabricRef.current);
+    console.log('[DesignSync AI] SERVER_URL:', SERVER_URL);
+    console.log('[DesignSync AI] userId:', userId);
+    console.log('[DesignSync AI] prompt:', aiPrompt);
+    // ───────────────────────────────────────────────────────────────────────────
     
     setIsGeneratingAi(true);
     setAiCheckpoint('Connecting to DesignSync Secure Gateway...');
 
     try {
-      // Sleek loading micro-checkpoint delays for visual immersion
       await new Promise(resolve => setTimeout(resolve, 500));
       setAiCheckpoint('Synthesizing sublimation elements...');
       
@@ -1967,33 +1983,63 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
         project.baseColors.accent || '#ffcc00'
       ];
 
+      console.log('[DesignSync AI] 📡 Fetching from:', `${SERVER_URL}/api/ai/generate`);
+
       const res = await fetch(`${SERVER_URL}/api/ai/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt: aiPrompt,
           providerMode: aiMode,
-          baseColors: colors
+          baseColors: colors,
+          userId: userId || 'anonymous-session'
         })
       });
 
+      console.log('[DesignSync AI] 📥 Response status:', res.status, res.ok);
+
+      if (res.status === 403) {
+        const errData = await res.json();
+        console.log('[DesignSync AI] ❌ 403 error:', errData);
+        if (errData.error === 'OUT_OF_TOKENS') {
+          if (onTokenExhausted) onTokenExhausted();
+          throw new Error('OUT_OF_TOKENS');
+        }
+      }
+
       if (!res.ok) throw new Error(`Gateway returned: ${res.statusText}`);
       const data = await res.json();
+
+      console.log('[DesignSync AI] ✅ Data received:', { hasUrl: !!data.url, urlType: data.url?.substring(0, 40), isSandbox: data.isSandbox, remaining: data.remainingTokens });
+
+      if (data.remainingTokens !== undefined && onUpdateTokens) {
+        onUpdateTokens();
+      }
 
       setAiCheckpoint('Baking sublimation dimensions...');
       await new Promise(resolve => setTimeout(resolve, 400));
 
       if (data.url) {
-        // Stamp on canvas
-        fabricRef.current?.addImageFromUrl(data.url, `AI_${aiMode.toUpperCase()}`);
+        console.log('[DesignSync AI] 🎨 Stamping on canvas. fabricRef.current:', fabricRef.current);
+        if (!fabricRef.current) {
+          console.error('[DesignSync AI] ❌ fabricRef.current is NULL - canvas not mounted!');
+          alert('Canvas not ready. Please wait for the canvas to fully load, then try again.');
+          return;
+        }
+        fabricRef.current.addImageFromUrl(data.url, `AI_${aiMode.toUpperCase()}`);
+        console.log('[DesignSync AI] ✅ addImageFromUrl called successfully');
         setAiCheckpoint('Layer auto-stamped successfully!');
         await new Promise(resolve => setTimeout(resolve, 300));
       } else {
         throw new Error('No URL returned from generation gateway.');
       }
     } catch (e: any) {
-      console.error('Generation API failed:', e);
-      alert(`AI Generation failed: ${e.message}`);
+      console.error('[DesignSync AI] ❌ Generation failed:', e);
+      if (e.message === 'OUT_OF_TOKENS') {
+        alert('You have exhausted your free generation credits. Please subscribe to a premium plan to continue generating.');
+      } else {
+        alert(`AI Generation failed: ${e.message}`);
+      }
     } finally {
       setIsGeneratingAi(false);
       setAiCheckpoint('');
@@ -2536,7 +2582,6 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const currentView = project.activeCanvasView;
   const masterCanvasState = useRef<string>('{"objects":[]}');
 
-  const fabricRef = useRef<FabricCanvasHandle | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // ── Artboard dimensions (in pixels at 40px/in) ────────────────────────────

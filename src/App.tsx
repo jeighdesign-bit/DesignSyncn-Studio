@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { Project, SponsorLogo, ApparelType } from './types';
 import { supabase } from './lib/supabase';
 import type { Session } from '@supabase/supabase-js';
@@ -299,31 +299,87 @@ export default function App() {
   const [zoom, setZoom] = useState<number>(0.85);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  const lastProjectIdRef = useRef<string | null>(null);
+  const lastSavedStageRef = useRef<string | null>(null);
+  const lastSavedProjectDataRef = useRef<string | null>(null);
+
   // Sync current project edits back to projects list and Supabase
   useEffect(() => {
     if (project && project.id && !isLoading) {
       // Optimistic local update
       setProjects(prev => prev.map(p => p.id === project.id ? project : p));
       
-      // Debounced Supabase sync
-      const timer = setTimeout(async () => {
-        // Ignore default projects that haven't been saved yet
-        if (project.id?.startsWith('project-')) return; 
+      const criticalFields = {
+        name: project.name,
+        apparelType: project.apparelType,
+        stage: project.stage,
+        templateChoice: project.templateChoice,
+        canvasSize: project.canvasSize,
+        dpi: project.dpi,
+        colorMode: project.colorMode,
+        isArchived: project.isArchived,
+        baseColors: project.baseColors,
+        logos: project.logos,
+        prompt: project.prompt,
+        selectedPresetId: project.selectedPresetId,
+        rules: project.rules,
+        roster: project.roster,
+        measurementUnit: project.measurementUnit,
+        activePlayerId: project.activePlayerId,
+        canvasStates: project.canvasStates,
+        maxUnlockedStage: project.maxUnlockedStage,
+        panels: project.panels
+      };
+      const criticalJson = JSON.stringify(criticalFields);
+
+      // If switching projects, just initialize the refs to avoid writing immediately
+      if (project.id !== lastProjectIdRef.current) {
+        lastProjectIdRef.current = project.id;
+        lastSavedStageRef.current = project.stage;
+        lastSavedProjectDataRef.current = criticalJson;
+        return;
+      }
+
+      // If no critical fields have changed, skip the Supabase write entirely
+      if (criticalJson === lastSavedProjectDataRef.current) {
+        return;
+      }
+
+      // Helper function to perform the actual update
+      const saveProjectToDb = async () => {
+        if (project.id?.startsWith('project-')) return;
 
         const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = project;
         const { error } = await supabase.from('projects').update({
-          name, 
-          apparel_type: apparelType, 
-          stage, 
-          template_choice: templateChoice, 
-          canvas_size: canvasSize, 
-          dpi, 
-          color_mode: colorMode, 
-          is_archived: isArchived, 
+          name,
+          apparel_type: apparelType,
+          stage,
+          template_choice: templateChoice,
+          canvas_size: canvasSize,
+          dpi,
+          color_mode: colorMode,
+          is_archived: isArchived,
           project_data: projectData
         }).eq('id', id);
 
-        if (error) console.error('Error auto-saving project:', error);
+        if (error) {
+          console.error('Error auto-saving project:', error);
+        } else {
+          // Successfully saved, update the comparison refs
+          lastSavedStageRef.current = stage;
+          lastSavedProjectDataRef.current = criticalJson;
+        }
+      };
+
+      // If the stage changed, save immediately to prevent routing sync race conditions
+      if (project.stage !== lastSavedStageRef.current) {
+        saveProjectToDb();
+        return;
+      }
+
+      // Otherwise, debounce critical field saves by 1.5 seconds as usual
+      const timer = setTimeout(() => {
+        saveProjectToDb();
       }, 1500);
 
       return () => clearTimeout(timer);
@@ -2174,6 +2230,9 @@ export default function App() {
                   setZoom={setZoom}
                   pan={pan}
                   setPan={setPan}
+                  userId={session?.user?.id || 'anonymous-session'}
+                  onTokenExhausted={() => setShowUpgradeModal(true)}
+                  onUpdateTokens={() => syncBillingState()}
                 />
               )}
 
