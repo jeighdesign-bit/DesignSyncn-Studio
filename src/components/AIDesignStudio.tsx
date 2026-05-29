@@ -687,7 +687,8 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
         pushLog(`[Secure AI Router] Routing ${pid} prompt to Replicate (Flux)...`);
 
-        const res = await fetch('http://localhost:5000/api/ai/generate', {
+        const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+        const res = await fetch(`${SERVER_URL}/api/ai/generate`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

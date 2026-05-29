@@ -29,6 +29,7 @@ export const ExportHUD: React.FC<ExportHUDProps> = ({
   getCanvasElements,
   onClose,
 }) => {
+  const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [activeJobId, setActiveJobId] = useState<string | null>(null);
   const [jobState, setJobState] = useState<'idle' | 'queued' | 'active' | 'completed' | 'failed'>('idle');
   const [progressDetails, setProgressDetails] = useState<JobProgress | null>(null);
@@ -43,7 +44,7 @@ export const ExportHUD: React.FC<ExportHUDProps> = ({
 
     const checkStatus = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/export/status/${activeJobId}`);
+        const response = await fetch(`${SERVER_URL}/api/export/status/${activeJobId}`);
         if (!response.ok) {
           throw new Error('Failed to fetch job status');
         }
@@ -109,7 +110,7 @@ export const ExportHUD: React.FC<ExportHUDProps> = ({
 
       console.log('Sending export queue payload to server:', payload);
 
-      const response = await fetch('http://localhost:5000/api/export', {
+      const response = await fetch(`${SERVER_URL}/api/export`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -128,7 +129,7 @@ export const ExportHUD: React.FC<ExportHUDProps> = ({
       console.error(err);
       setJobState('failed');
       setErrorMessage(
-        err.message || 'Failed to connect to http://localhost:5000. Please start the Redis/BullMQ worker.'
+        err.message || `Failed to connect to ${SERVER_URL}. Please start the Redis/BullMQ worker.`
       );
     }
   };
