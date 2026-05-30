@@ -455,6 +455,15 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     throw new Error('Unsupported mode or unconfigured provider');
   } catch (error: any) {
     console.error('❌ Generation Gateway Error:', error);
+    
+    // If credentials are configured, we want to know if it failed instead of silently falling back to sandbox!
+    if (process.env.RECRAFT_API_KEY || process.env.REPLICATE_API_TOKEN) {
+      return res.status(500).json({
+        error: 'GENERATION_FAILED',
+        message: `AI Generation failed: ${error.message}`
+      });
+    }
+
     const svgData = generateSandboxSvg(req.body.prompt || 'esports', req.body.providerMode || 'vector', req.body.baseColors || []);
     const rawSvg = svgData.replace('svg+xml;utf8,', '');
     const dataUri = `data:image/svg+xml;base64,${Buffer.from(rawSvg).toString('base64')}`;
