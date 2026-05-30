@@ -1189,14 +1189,7 @@ export default function App() {
                     {/* Render dynamic SVG Silhouette & Details */}
                     {(() => {
                       const isJersey = newGarmentType === 'esports_jersey';
-                      const styleColors = {
-                        Esports: { primary: '#0070f3', secondary: '#111115', accent: '#00e5ff' },
-                        Streetwear: { primary: '#ff0055', secondary: '#1e1e24', accent: '#ffff00' },
-                        Minimalist: { primary: '#33333b', secondary: '#0e0e12', accent: '#718096' },
-                        Aggressive: { primary: '#e53e3e', secondary: '#1a1a24', accent: '#ffffff' },
-                        Luxury: { primary: '#d4af37', secondary: '#111115', accent: '#aa7c11' },
-                        Futuristic: { primary: '#00e5ff', secondary: '#09090c', accent: '#7000ff' }
-                      }[newStylePreference as 'Esports' | 'Streetwear' | 'Minimalist' | 'Aggressive' | 'Luxury' | 'Futuristic'] || { primary: '#0070f3', secondary: '#111115', accent: '#00e5ff' };
+
 
                       return (
                         <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>

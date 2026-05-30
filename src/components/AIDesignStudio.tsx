@@ -159,12 +159,6 @@ const INITIAL_PANELS: PanelConfig[] = [
   { id: 'collar', label: 'Collar', shortLabel: 'Collar', prompt: '', status: 'empty', zones: ['seam'] },
 ];
 
-const STATUS_COLOR: Record<PanelStatus, string> = {
-  empty: '#444',
-  configured: '#f59e0b',
-  generated: '#0070f3',
-  approved: '#00e676',
-};
 
 export const ZONE_COLORS: Record<ZoneType, { fill: string; stroke: string; label: string }> = {
   seam: { fill: 'rgba(239,68,68,0.08)', stroke: '#ef4444', label: 'Seam Danger Zone' },
@@ -173,20 +167,11 @@ export const ZONE_COLORS: Record<ZoneType, { fill: string; stroke: string; label
   design: { fill: 'rgba(0,230,118,0.05)', stroke: '#00e676', label: 'Free Design Zone' },
 };
 
-// ─── Panel Garment SVG Component ──────────────────────────────────────────────
-
 const GarmentFlat: React.FC<{
-  panels: PanelConfig[];
-  activePanel: GarmentPanel;
   concepts: GeneratedConcept[];
-  showZones: Record<ZoneType, boolean>;
   selectedDNA: StyleDNA | null;
-  sponsorZone: boolean;
-  safeZone: number;
-  seamBleed: number;
-  onPanelClick: (id: GarmentPanel) => void;
   apparelType?: string;
-}> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, onPanelClick, apparelType }) => {
+}> = ({ concepts, selectedDNA, apparelType }) => {
   const mockupSrc = 
     apparelType === 'esports_jersey' ? '/mockups/jersey_round_neck.png' :
     apparelType === 'crewneck_sweatshirt' ? '/mockups/hoodie.png' :
@@ -195,32 +180,7 @@ const GarmentFlat: React.FC<{
     apparelType === 'pants' ? '/mockups/pants.png' :
     apparelType === 'shorts' ? '/mockups/shorts.png' :
     '/mockups/tshirt.png';
-  const [useSvgFallback, setUseSvgFallback] = useState(false);
 
-  useEffect(() => {
-    setUseSvgFallback(false);
-  }, [mockupSrc]);
-
-  const handleMockupError = () => {
-    setUseSvgFallback(true);
-  };
-
-  const getPanelConcept = (id: GarmentPanel) => concepts.find(c => c.panelId === id);
-
-  const getPanelFill = (id: GarmentPanel) => {
-    if (concepts.length > 0) {
-      return 'transparent';
-    }
-    const concept = getPanelConcept(id);
-    if (concept) {
-      return concept.patternUrl ? `url(#pattern-${id})` : `url(#grad-${id})`;
-    }
-    // Default to a perfectly clean, blank white sublimation fabric canvas!
-    return '#ffffff';
-  };
-
-  const isActive = (id: GarmentPanel) => activePanel === id;
-  const panelStatus = (id: GarmentPanel) => panels.find(p => p.id === id)?.status ?? 'empty';
 
   const frontConcept = concepts.find(c => c.panelId === 'front');
   const backConcept = concepts.find(c => c.panelId === 'back');
@@ -316,7 +276,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   onUpdateTokens,
 }) => {
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activePanel, setActivePanel] = useState<GarmentPanel>('front');
+  const [activePanel] = useState<GarmentPanel>('front');
   const [panels, setPanels] = useState<PanelConfig[]>(() => {
     if (project.panels && project.panels.length > 0) {
       return project.panels;
@@ -342,8 +302,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     }
     return [];
   });
-  const showZones = { seam: true, safe: true, sponsor: true, design: true };
-  const sponsorZone = true;
+
   const safeZoneRadius = 0.5;
   const seamBleed = 0.5;
   
@@ -403,7 +362,6 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const pushLog = (msg: string) =>
     setActionLog(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 19)]);
 
-  const activeConfig = panels.find(p => p.id === activePanel)!;
 
   const updatePanel = (id: GarmentPanel, updates: Partial<PanelConfig>) => {
     const next = panels.map(p => p.id === id ? { ...p, ...updates } : p);
@@ -641,17 +599,8 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           {/* Actual Flat Garment SVG Blueprint preview */}
           <div style={{ transform: 'scale(1.02)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <GarmentFlat
-              panels={panels}
-              activePanel={activePanel}
               concepts={concepts}
-              showZones={showZones}
               selectedDNA={selectedDNA}
-              sponsorZone={sponsorZone}
-              safeZone={safeZoneRadius}
-              seamBleed={seamBleed}
-              onPanelClick={(id) => {
-                setActivePanel(id);
-              }}
               apparelType={project.apparelType}
             />
           </div>
