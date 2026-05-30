@@ -261,44 +261,73 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     // We analyze the PATTERN specifically (not the jersey silhouette) for accurate vector generation
     let patternDescription = '';
     const openRouterKey = process.env.OPENROUTER_API_KEY;
-    if (referenceImage && openRouterKey) {
+    const geminiApiKey = process.env.GEMINI_API_KEY;
+
+    if (referenceImage && (geminiApiKey || openRouterKey)) {
       try {
         console.log(`[DesignSync AI Gateway] Extracting pattern description from reference image via Gemini Vision...`);
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
-        
-        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${openRouterKey}`,
-            'HTTP-Referer': 'https://designsync.studio',
-            'X-Title': 'DesignSync Studio',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-flash-1.5',
-            messages: [
-              {
+        const analysisPromptText = 'Look ONLY at the graphic design pattern on this sports jersey. Completely ignore the background, room, hanger, collar, sleeves, logos, numbers, and jersey shape. Describe ONLY: (1) the geometric pattern type (e.g. chevrons, diamonds, zigzag, stripes), (2) the exact colors used, (3) how the shapes are arranged and repeated. Be specific and concise, under 50 words.';
+
+        let analysisResponse: Response | null = null;
+
+        // Try native Gemini API first (free, direct)
+        if (geminiApiKey) {
+          console.log(`[DesignSync AI Gateway] Using native Gemini API for pattern analysis...`);
+          analysisResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+            {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [{
+                  parts: [
+                    { text: analysisPromptText },
+                    { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
+                  ]
+                }]
+              })
+            }
+          );
+
+          if (analysisResponse.ok) {
+            const data = (await analysisResponse.json()) as any;
+            patternDescription = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+          } else {
+            console.warn(`[DesignSync AI Gateway] Native Gemini API failed (${analysisResponse.status}), trying OpenRouter...`);
+            analysisResponse = null;
+          }
+        }
+
+        // Fallback to OpenRouter if native Gemini failed or not configured
+        if (!patternDescription && openRouterKey) {
+          console.log(`[DesignSync AI Gateway] Using OpenRouter for pattern analysis...`);
+          const orResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${openRouterKey}`,
+              'HTTP-Referer': 'https://designsync.studio',
+              'X-Title': 'DesignSync Studio',
+            },
+            body: JSON.stringify({
+              model: 'google/gemini-flash-1.5',
+              messages: [{
                 role: 'user',
                 content: [
-                  {
-                    type: 'text',
-                    text: 'Look ONLY at the graphic design pattern on this sports jersey. Completely ignore the background, room, hanger, collar, sleeves, logos, numbers, and jersey shape. Describe ONLY: (1) the geometric pattern type (e.g. chevrons, diamonds, zigzag, stripes), (2) the exact colors used, (3) how the shapes are arranged and repeated. Be specific and concise, under 50 words.'
-                  },
-                  {
-                    type: 'image_url',
-                    image_url: {
-                      url: `data:image/jpeg;base64,${base64Data}`
-                    }
-                  }
+                  { type: 'text', text: analysisPromptText },
+                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
                 ]
-              }
-            ]
-          })
-        });
+              }]
+            })
+          });
+          if (orResponse.ok) {
+            const data = (await orResponse.json()) as any;
+            patternDescription = data.choices?.[0]?.message?.content?.trim() || '';
+          }
+        }
 
-        if (response.ok) {
-          const data = (await response.json()) as any;
-          patternDescription = data.choices?.[0]?.message?.content?.trim() || '';
+        if (patternDescription) {
           console.log(`[DesignSync AI Gateway] Pattern extracted: "${patternDescription}"`);
         }
       } catch (err) {
@@ -481,14 +510,15 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           });
         }
 
-        // ── PATH C: Final fallback — Image-to-Image ──
-        const i2iPrompt = `Flat vector sports sublimation graphic pattern inspired by the colors and shapes in this reference image. Abstract geometric panels, bold angular curves, clean isolated graphic asset on white background. Crisp print-ready vector art.`;
-        console.log(`[DesignSync AI Gateway] PATH C: Image-to-Image fallback (strength 0.75)...`);
+        // ── PATH C: Final fallback — Vector Image-to-Image ──
+        // strength 0.4: preserve 60% design structure, convert to vector style
+        const i2iPrompt = `Convert to flat vector illustration. Preserve the geometric pattern, colors, and shapes from the reference. Crisp clean lines, print-ready sports sublimation graphic, isolated on white background.`;
+        console.log(`[DesignSync AI Gateway] PATH C: Vector Image-to-Image fallback (strength 0.4)...`);
         const imgFormData = new FormData();
         imgFormData.append('image', blob, 'reference.png');
         imgFormData.append('prompt', i2iPrompt);
         imgFormData.append('style', 'vector_illustration');
-        imgFormData.append('strength', '0.75');
+        imgFormData.append('strength', '0.4');
 
         const imgResponse = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
           method: 'POST',
