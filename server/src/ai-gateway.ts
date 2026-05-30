@@ -369,11 +369,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       cleanedPrompt = cleanedPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
 
       // Determine Recraft style
-      let recraftStyle = 'vector_illustration';
-      const promptLower = cleanedPrompt.toLowerCase();
-      if (promptLower.includes('pattern') || promptLower.includes('seamless') || promptLower.includes('texture') || promptLower.includes('tileable')) {
-        recraftStyle = 'seamless_pattern';
-      }
+      const recraftStyle = 'vector_illustration';
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
