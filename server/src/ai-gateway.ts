@@ -409,6 +409,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         }
 
         // Step 2a: If style was created, generate vector using style_id
+        // Use a CLEAN pattern prompt — do NOT tell it to recreate the jersey, that causes the jersey shape to tile
+        const styleGuidePrompt = `Abstract flat vector sports sublimation pattern. Clean geometric shapes, bold curves, angular panels, isolated on white background. ${colors.length ? 'Color palette: ' + colors.join(', ') + '.' : ''} High-contrast, crisp edges, print-ready seamless graphic asset.`;
         if (styleId) {
           console.log(`[DesignSync AI Gateway] Generating vector with Style ID: ${styleId}...`);
           const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
@@ -418,7 +420,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
               'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
             },
             body: JSON.stringify({
-              prompt: cleanedPrompt,
+              prompt: styleGuidePrompt,
               model: 'recraftv3_vector',
               style_id: styleId,
               colors: colors.map((c: string) => ({ hex: c })),
@@ -441,12 +443,15 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         }
 
         // Step 2b: Fallback — use Recraft native Image-to-Image endpoint
-        console.log(`[DesignSync AI Gateway] Falling back to Recraft Image-to-Image (strength 0.35)...`);
+        // Use strength 0.75 so it transforms aggressively (not just copies the jersey silhouette)
+        // Use a focused style-extraction prompt instead of "recreate the jersey"
+        const i2iPrompt = `Flat vector sports sublimation graphic pattern inspired by the colors and shapes in this reference image. Abstract geometric panels, bold angular curves, clean isolated graphic asset on white background. Crisp print-ready vector art.`;
+        console.log(`[DesignSync AI Gateway] Falling back to Recraft Image-to-Image (strength 0.75)...`);
         const imgFormData = new FormData();
         imgFormData.append('image', blob, 'reference.png');
-        imgFormData.append('prompt', cleanedPrompt);
+        imgFormData.append('prompt', i2iPrompt);
         imgFormData.append('style', 'vector_illustration');
-        imgFormData.append('strength', '0.35');
+        imgFormData.append('strength', '0.75');
 
         const imgResponse = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
           method: 'POST',
