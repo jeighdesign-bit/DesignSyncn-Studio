@@ -391,7 +391,11 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         })
       });
 
-      if (!response.ok) throw new Error(`Recraft API error: ${response.statusText}`);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[DesignSync AI Gateway] Recraft API error response: "${errorText}" (Status: ${response.status})`);
+        throw new Error(`Recraft API error (${response.status}): ${errorText || response.statusText}`);
+      }
       const data = (await response.json()) as any;
       setUserTokens(cleanUserId, currentBalance - 1);
       return res.json({

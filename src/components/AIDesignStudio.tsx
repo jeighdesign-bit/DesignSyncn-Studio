@@ -469,6 +469,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       pushLog(`✓ Zone compliance: seam bleed ${seamBleed}", safe margin ${safeZoneRadius}"`);
     } catch (e: any) {
       console.error(e);
+      alert(`AI Generation failed: ${e.message}`);
       if (e.message === 'OUT_OF_TOKENS') {
         pushLog(`❌ AI Gateway Error: Credits exhausted. Upgrade to premium plan required!`);
       } else {
