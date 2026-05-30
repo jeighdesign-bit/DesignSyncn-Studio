@@ -392,7 +392,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       for (const pid of targetPanels) {
         const panel = panels.find(p => p.id === pid);
         const basePrompt = panel?.prompt.trim() || (dna ? `${dna.name} sports style: ${dna.description}` : 'sports jersey technical pattern');
-        const refinedPrompt = `${basePrompt}, sublimated ${pid} panel jersey texture`;
+        const refinedPrompt = `${basePrompt}, flat vector seamless sports pattern, tileable fabric texture`;
 
         pushLog(`[Secure AI Router] Routing ${pid} prompt to Replicate (Flux)...`);
 

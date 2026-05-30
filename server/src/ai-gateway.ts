@@ -294,6 +294,36 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     // Recraft AI Vector API integration (Official OpenAPI Spec)
     if ((mode === 'recraft' || mode === 'vector') && hasRecraft) {
       console.log(`[DesignSync AI Gateway] Routing to Recraft AI...`);
+
+      // Clean up prompt to remove garment words that confuse the AI into drawing mockups/shirts
+      let cleanedPrompt = optimizedPrompt;
+      const confusingWords = [
+        /\bjersey(s)?\b/gi,
+        /\bt-?shirt(s)?\b/gi,
+        /\bshirt(s)?\b/gi,
+        /\bclothing\b/gi,
+        /\bgarment(s)?\b/gi,
+        /\bpanel(s)?\b/gi,
+        /\bcollar(s)?\b/gi,
+        /\bsleeve(s)?\b/gi,
+        /\bmock-?up(s)?\b/gi,
+        /\bmannequin(s)?\b/gi,
+      ];
+      for (const rx of confusingWords) {
+        cleanedPrompt = cleanedPrompt.replace(rx, '');
+      }
+      // Ensure we don't end up with double spaces/commas
+      cleanedPrompt = cleanedPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
+
+      // Determine Recraft style
+      let recraftStyle = 'vector_illustration';
+      const promptLower = cleanedPrompt.toLowerCase();
+      if (promptLower.includes('pattern') || promptLower.includes('seamless') || promptLower.includes('texture') || promptLower.includes('tileable')) {
+        recraftStyle = 'seamless_pattern';
+      }
+
+      console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
+
       const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
         method: 'POST',
         headers: {
@@ -301,9 +331,9 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
         },
         body: JSON.stringify({
-          prompt: optimizedPrompt,
+          prompt: cleanedPrompt,
           model: 'recraftv3_vector',
-          style: 'vector_illustration',
+          style: recraftStyle,
           colors: colors.map((c: string) => ({ hex: c })),
         })
       });
