@@ -373,6 +373,44 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
+      // IF referenceImage is present, use Recraft's native Image-to-Image API!
+      if (referenceImage) {
+        console.log(`[DesignSync AI Gateway] Using Recraft Native Image-to-Image with strength 0.3...`);
+        const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
+        const buffer = Buffer.from(base64Data, 'base64');
+        const blob = new Blob([buffer], { type: 'image/png' });
+
+        const formData = new FormData();
+        formData.append('image', blob, 'reference.png');
+        formData.append('prompt', cleanedPrompt);
+        formData.append('model', 'recraftv3_vector');
+        formData.append('style', recraftStyle);
+        formData.append('strength', '0.3'); // Controls similarity (0.3 is strong style imitation)
+
+        const response = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
+          },
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[DesignSync AI Gateway] Recraft Image-to-Image error response: "${errorText}" (Status: ${response.status})`);
+          throw new Error(`Recraft Image-to-Image error (${response.status}): ${errorText || response.statusText}`);
+        }
+        const data = (await response.json()) as any;
+        setUserTokens(cleanUserId, currentBalance - 1);
+        return res.json({
+          url: data.data?.[0]?.url,
+          type: 'vector',
+          isSandbox: false,
+          remainingTokens: currentBalance - 1
+        });
+      }
+
+      // Otherwise, standard generation
       const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
         method: 'POST',
         headers: {
