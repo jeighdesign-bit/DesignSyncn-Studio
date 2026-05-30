@@ -384,8 +384,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     onUpdateProject({ panels: next });
   };
 
-  const handleGenerate = async () => {
-    const configuredPanels = panels.filter(p => p.prompt.trim() !== '' || selectedDNA !== null);
+  const handleGenerate = async (overridePanels?: PanelConfig[]) => {
+    const panelsToUse = overridePanels || panels;
+    const configuredPanels = panelsToUse.filter(p => p.prompt.trim() !== '' || selectedDNA !== null);
     if (configuredPanels.length === 0 && !selectedDNA) return;
 
     setGenerating(true);
@@ -405,7 +406,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
       // Generate patterns for each panel asynchronously via DesignSync AI Gateway
       for (const pid of targetPanels) {
-        const panel = panels.find(p => p.id === pid);
+        const panel = panelsToUse.find(p => p.id === pid);
         const basePrompt = panel?.prompt.trim() || (dna ? `${dna.name} sports style: ${dna.description}` : 'sports jersey technical pattern');
         const refinedPrompt = `${basePrompt}, flat vector seamless sports pattern, tileable fabric texture`;
 
@@ -453,7 +454,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       }
 
       setConcepts(newConcepts);
-      const updatedPanels = panels.map(p => {
+      const updatedPanels = panelsToUse.map(p => {
         const concept = newConcepts.find(c => c.panelId === p.id);
         return {
           ...p,
@@ -738,7 +739,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                     status: 'configured' as const
                   }));
                   onUpdateProject({ panels: nextPanels });
-                  setTimeout(() => handleGenerate(), 50);
+                  handleGenerate(nextPanels);
                 }
               }}
             />
@@ -753,7 +754,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                   status: 'configured' as const
                 }));
                 onUpdateProject({ panels: nextPanels });
-                setTimeout(() => handleGenerate(), 50);
+                handleGenerate(nextPanels);
               }}
               disabled={generating || !(project.prompt || '').trim()}
             >
