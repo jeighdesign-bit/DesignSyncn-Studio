@@ -23,7 +23,7 @@ export class RectangleTool implements CanvasTool {
   }
 
   onPointerDown(ctx: InteractionContext) {
-    const isTargetArtboard = ctx.target && (ctx.target as any).__isArtboard;
+    const isTargetArtboard = ctx.target && ((ctx.target as any).__isArtboard || (ctx.target as any).__id?.startsWith('bg-'));
     const canPlace = !ctx.target || isTargetArtboard;
     if (!canPlace) return;
 

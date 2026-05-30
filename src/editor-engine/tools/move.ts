@@ -10,7 +10,9 @@ export class MoveTool implements CanvasTool {
     ctx.canvas.setCursor('move');
     ctx.canvas.getObjects().forEach(o => {
       if (!(o as any).__isArtboard) {
-        o.selectable = !((o as any).__locked);
+        const isBg = (o as any).__id?.startsWith('bg-');
+        o.selectable = isBg ? false : !((o as any).__locked);
+        o.evented = isBg ? false : !((o as any).__locked);
       }
     });
     ctx.canvas.requestRenderAll();

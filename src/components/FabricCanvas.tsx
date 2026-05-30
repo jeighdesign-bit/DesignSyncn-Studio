@@ -651,6 +651,17 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
   const configureDesignObject = useCallback((obj: fabric.FabricObject) => {
     if ((obj as any).__isArtboard) return;
 
+    const isBg = (obj as any).__id?.startsWith('bg-');
+    if (isBg) {
+      obj.set({
+        selectable: false,
+        evented: false,
+        hasControls: false,
+        lockMovementX: true,
+        lockMovementY: true,
+      });
+    }
+
     let panel = (obj as any).__panel;
     if ((currentView === 'full' || currentView === 'sleeves') && !panel) {
       const center = obj.getCenterPoint();
