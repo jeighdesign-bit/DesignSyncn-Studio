@@ -404,52 +404,75 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
-      // IF referenceImage is present: use smart pipeline
+      // IF referenceImage is present: use smart Recraft-only pipeline
       if (referenceImage) {
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const blob = new Blob([buffer], { type: 'image/png' });
 
-        // ── PATH A: Gemini extracted a pattern → text-to-vector (BEST quality) ──
-        if (patternDescription) {
-          console.log(`[DesignSync AI Gateway] PATH A: Generating vector from Gemini pattern description...`);
-          // Clean up the finalPrompt from garment words
-          let cleanedFinalPrompt = finalPrompt;
-          for (const rx of confusingWords) {
-            cleanedFinalPrompt = cleanedFinalPrompt.replace(rx, '');
-          }
-          cleanedFinalPrompt = cleanedFinalPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
+        // ── PATH A: Recraft removeBackground → vectorize ($0.01 + $0.01 = $0.02, most accurate) ──
+        // Step 1: Remove room/hanger/background → isolated jersey design only
+        // Step 2: Vectorize the isolated design → clean SVG with actual paths
+        console.log(`[DesignSync AI Gateway] PATH A: removeBackground → vectorize pipeline...`);
+        try {
+          const removeBgFormData = new FormData();
+          removeBgFormData.append('image', blob, 'reference.png');
 
-          const vectorResponse = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
+          const removeBgResponse = await fetch('https://external.api.recraft.ai/v1/images/removeBackground', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
-            },
-            body: JSON.stringify({
-              prompt: cleanedFinalPrompt,
-              model: 'recraftv3_vector',
-              style: recraftStyle,
-              colors: colors.map((c: string) => ({ hex: c })),
-            })
+            headers: { 'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}` },
+            body: removeBgFormData,
           });
 
-          if (!vectorResponse.ok) {
-            const errorText = await vectorResponse.text();
-            console.error(`[DesignSync AI Gateway] PATH A vector error: "${errorText}" (Status: ${vectorResponse.status})`);
-            throw new Error(`Recraft Vector error (${vectorResponse.status}): ${errorText}`);
+          if (!removeBgResponse.ok) {
+            const errText = await removeBgResponse.text();
+            console.warn(`[DesignSync AI Gateway] PATH A removeBackground failed (${removeBgResponse.status}): ${errText}. Falling to PATH B.`);
+            throw new Error('removeBg failed');
           }
-          const vectorData = (await vectorResponse.json()) as any;
+
+          const removeBgData = (await removeBgResponse.json()) as any;
+          const isolatedUrl: string = removeBgData.image?.url || removeBgData.data?.[0]?.url || '';
+          if (!isolatedUrl) throw new Error('No URL from removeBackground');
+          console.log(`[DesignSync AI Gateway] Background removed. Fetching isolated image...`);
+
+          // Download the isolated (transparent background) image and vectorize it
+          const isolatedImgResp = await fetch(isolatedUrl);
+          const isolatedBuffer = Buffer.from(await isolatedImgResp.arrayBuffer());
+          const isolatedBlob = new Blob([isolatedBuffer], { type: 'image/png' });
+
+          const vectorizeFormData = new FormData();
+          vectorizeFormData.append('image', isolatedBlob, 'isolated.png');
+
+          const vectorizeResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}` },
+            body: vectorizeFormData,
+          });
+
+          if (!vectorizeResponse.ok) {
+            const errText = await vectorizeResponse.text();
+            console.warn(`[DesignSync AI Gateway] PATH A vectorize failed (${vectorizeResponse.status}): ${errText}. Falling to PATH B.`);
+            throw new Error('vectorize failed');
+          }
+
+          const vectorizeData = (await vectorizeResponse.json()) as any;
+          const vectorUrl: string = vectorizeData.image?.url || vectorizeData.data?.[0]?.url || '';
+          if (!vectorUrl) throw new Error('No URL from vectorize');
+
+          console.log(`[DesignSync AI Gateway] PATH A SUCCESS. Vector: ${vectorUrl}`);
           setUserTokens(cleanUserId, currentBalance - 1);
           return res.json({
-            url: vectorData.data?.[0]?.url,
+            url: vectorUrl,
             type: 'vector',
             isSandbox: false,
-            remainingTokens: currentBalance - 1
+            remainingTokens: currentBalance - 1,
+            pipeline: 'recraft-removebg-vectorize'
           });
+        } catch (pathAErr: any) {
+          console.warn(`[DesignSync AI Gateway] PATH A skipped: ${pathAErr.message}. Trying PATH B...`);
         }
 
-        // ── PATH B: No Gemini → try Recraft Custom Style API ──
+        // ── PATH B: Recraft Custom Styles API ──
         let styleId: string | null = null;
         try {
           console.log(`[DesignSync AI Gateway] PATH B: Creating custom style via Recraft Styles API...`);
