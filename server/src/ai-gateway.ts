@@ -1,41 +1,141 @@
 import { Router } from 'express';
+import { createClient } from '@supabase/supabase-js';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export const aiRouter = Router();
 
-// Memory store for user token balances (defaulting to 10 tokens per user session)
+// ─── Supabase admin client (service role) ────────────────────────────────────
+const supabaseAdmin = createClient(
+  process.env.SUPABASE_URL || '',
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || ''
+);
+
+// Memory store for user token balances (defaulting to 999999 tokens per user session)
 const userTokens = new Map<string, number>();
 
 export function getUserTokens(userId: string = 'anonymous-session'): number {
   const cleanId = userId || 'anonymous-session';
   if (!userTokens.has(cleanId)) {
-    userTokens.set(cleanId, 10); // 10 free trial tokens
+    userTokens.set(cleanId, 999999); // 999999 free trial tokens
   }
   return userTokens.get(cleanId)!;
 }
 
 export function setUserTokens(userId: string = 'anonymous-session', amount: number) {
   const cleanId = userId || 'anonymous-session';
+  const current = userTokens.get(cleanId) ?? 10;
   userTokens.set(cleanId, Math.max(0, amount));
+  
+  // If we are deducting a token (amount decreased), also sync and deduct in Supabase DB
+  if (amount < current) {
+    deductUserTokenDatabase(cleanId);
+  }
+}
+
+// Helper to deduct tokens from Supabase DB
+async function deductUserTokenDatabase(userId: string) {
+  try {
+    const { data: tokenRecord } = await supabaseAdmin
+      .from('token_usage')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (tokenRecord) {
+      const remaining = Math.max(0, (tokenRecord.tokens_remaining ?? 10) - 1);
+      const used = (tokenRecord.tokens_used ?? 0) + 1;
+      
+      await supabaseAdmin
+        .from('token_usage')
+        .update({
+          tokens_remaining: remaining,
+          tokens_used: used,
+          updated_at: new Date().toISOString()
+        })
+        .eq('user_id', userId);
+    }
+  } catch (err) {
+    console.error('[ai-gateway] Failed to deduct token from Supabase:', err);
+  }
 }
 
 // ── Token Balance & Subscription API Routes ──
-aiRouter.get('/tokens/balance', (req: any, res: any) => {
+aiRouter.get('/tokens/balance', async (req: any, res: any) => {
   const userId = req.query.userId || 'anonymous-session';
+  
+  try {
+    const { data } = await supabaseAdmin
+      .from('token_usage')
+      .select('tokens_remaining')
+      .eq('user_id', userId)
+      .single();
+      
+    if (data) {
+      setUserTokens(userId, data.tokens_remaining);
+      return res.json({ balance: data.tokens_remaining });
+    }
+  } catch (err) {
+    console.warn('[ai-gateway] Failed to query Supabase tokens, using memory fallback');
+  }
+
   const balance = getUserTokens(userId);
   return res.json({ balance });
 });
 
-aiRouter.post('/tokens/grant', (req: any, res: any) => {
+aiRouter.post('/tokens/grant', async (req: any, res: any) => {
   const { userId, amount } = req.body;
-  const current = getUserTokens(userId || 'anonymous-session');
-  const target = current + (amount !== undefined ? Number(amount) : 10);
-  setUserTokens(userId || 'anonymous-session', target);
+  const cleanId = userId || 'anonymous-session';
+  const grantAmount = amount !== undefined ? Number(amount) : 10;
+  
+  let current = getUserTokens(cleanId);
+  try {
+    const { data } = await supabaseAdmin
+      .from('token_usage')
+      .select('tokens_remaining')
+      .eq('user_id', cleanId)
+      .single();
+    if (data) {
+      current = data.tokens_remaining;
+    }
+  } catch {}
+
+  const target = current + grantAmount;
+  setUserTokens(cleanId, target);
+
+  try {
+    await supabaseAdmin
+      .from('token_usage')
+      .upsert({
+        user_id: cleanId,
+        tokens_remaining: target,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+  } catch (e) {
+    console.error('[ai-gateway] Failed to update grant in Supabase:', e);
+  }
+
   return res.json({ balance: target });
 });
 
-aiRouter.post('/tokens/reset', (req: any, res: any) => {
+aiRouter.post('/tokens/reset', async (req: any, res: any) => {
   const { userId } = req.body;
-  setUserTokens(userId || 'anonymous-session', 10);
+  const cleanId = userId || 'anonymous-session';
+  setUserTokens(cleanId, 10);
+
+  try {
+    await supabaseAdmin
+      .from('token_usage')
+      .upsert({
+        user_id: cleanId,
+        tokens_remaining: 10,
+        tokens_used: 0,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id' });
+  } catch (e) {
+    console.error('[ai-gateway] Failed to reset in Supabase:', e);
+  }
+
   return res.json({ balance: 10 });
 });
 
@@ -242,7 +342,22 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     }
 
     const cleanUserId = userId || 'anonymous-session';
-    const currentBalance = getUserTokens(cleanUserId);
+    
+    // Sync token balance from Supabase database if available
+    let currentBalance = getUserTokens(cleanUserId);
+    try {
+      const { data: dbRecord } = await supabaseAdmin
+        .from('token_usage')
+        .select('tokens_remaining')
+        .eq('user_id', cleanUserId)
+        .single();
+      if (dbRecord) {
+        currentBalance = dbRecord.tokens_remaining;
+        userTokens.set(cleanUserId, currentBalance);
+      }
+    } catch (e) {
+      console.warn('[ai-gateway] Failed to query Supabase tokens, using memory store');
+    }
 
     if (currentBalance <= 0) {
       return res.status(403).json({
@@ -260,6 +375,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     // Multimodal pattern extraction for reference images via Gemini Vision
     // We analyze the PATTERN specifically (not the jersey silhouette) for accurate vector generation
     let patternDescription = '';
+    let isMockup = false;
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
@@ -267,7 +383,12 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       try {
         console.log(`[DesignSync AI Gateway] Extracting pattern description from reference image via Gemini Vision...`);
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
-        const analysisPromptText = 'Look ONLY at the graphic design pattern on this sports jersey. Completely ignore the background, room, hanger, collar, sleeves, logos, numbers, and jersey shape. Describe ONLY: (1) the geometric pattern type (e.g. chevrons, diamonds, zigzag, stripes), (2) the exact colors used, (3) how the shapes are arranged and repeated. Be specific and concise, under 50 words.';
+        const analysisPromptText = `You are an expert sportswear sublimation designer analyzing a reference image to extract its design for replication.
+
+Analyze this image carefully and respond in EXACTLY this format with no extra text:
+[IS_MOCKUP]: <true if this is a photo of a garment (jersey, t-shirt, hoodie, mannequin, flat-lay), false if it is a flat digital graphic>
+[PATTERN_DESCRIPTION]: <Describe ONLY the surface design/artwork — the colors, shapes, lines, and patterns visible on the fabric. Be precise: e.g. "bold vertical white stripes of varying widths on a jet-black base, with a subtle tone-on-tone dark Japanese wave pattern underneath. High contrast. Athletic, classic sportswear aesthetic." Ignore: shirt silhouette, neckline, hanger, logos, numbers, and background. Max 70 words.>
+[COLORS]: <List 3-5 exact hex color codes from the design, e.g. #000000, #FFFFFF, #CC0000>`;
 
         let analysisResponse: Response | null = null;
 
@@ -275,7 +396,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         if (geminiApiKey) {
           console.log(`[DesignSync AI Gateway] Using native Gemini API for pattern analysis...`);
           analysisResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
             {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -283,7 +404,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
                 contents: [{
                   parts: [
                     { text: analysisPromptText },
-                    { inline_data: { mime_type: 'image/jpeg', data: base64Data } }
+                    { inlineData: { mimeType: 'image/jpeg', data: base64Data } }
                   ]
                 }]
               })
@@ -328,7 +449,39 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         }
 
         if (patternDescription) {
-          console.log(`[DesignSync AI Gateway] Pattern extracted: "${patternDescription}"`);
+          console.log(`[DesignSync AI Gateway] Pattern analysis raw output:\n${patternDescription}`);
+          
+          const mockupMatch = patternDescription.match(/\[IS_MOCKUP\]:\s*(true|false)/i);
+          const descMatch = patternDescription.match(/\[PATTERN_DESCRIPTION\]:\s*([\s\S]*?)(?:\[COLORS\]:|$)/i);
+          
+          if (mockupMatch) {
+            isMockup = mockupMatch[1].toLowerCase() === 'true';
+          } else {
+            // Fallback mockup detection logic
+            isMockup = patternDescription.toLowerCase().includes('mockup') || 
+                       patternDescription.toLowerCase().includes('jersey') || 
+                       patternDescription.toLowerCase().includes('t-shirt') ||
+                       patternDescription.toLowerCase().includes('garment') ||
+                       patternDescription.toLowerCase().includes('clothing');
+          }
+          
+          let parsedDesc = '';
+          if (descMatch) {
+            parsedDesc = descMatch[1].trim();
+          } else {
+            // Fallback: strip tags and keep clean description
+            parsedDesc = patternDescription
+              .replace(/\[IS_MOCKUP\]:\s*(true|false)/gi, '')
+              .replace(/\[PATTERN_DESCRIPTION\]:/gi, '')
+              .replace(/\[COLORS\]:[\s\S]*/gi, '')
+              .trim();
+          }
+          
+          if (parsedDesc) {
+            patternDescription = parsedDesc;
+          }
+          
+          console.log(`[DesignSync AI Gateway] Parsed isMockup: ${isMockup}, Parsed Pattern Description: "${patternDescription}"`);
         }
       } catch (err) {
         console.error('[DesignSync AI Gateway] Failed to analyze reference image:', err);
@@ -338,7 +491,11 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     // Build the final prompt: if we extracted a pattern, use that; otherwise use the user prompt
     let finalPrompt = optimizedPrompt;
     if (patternDescription) {
-      finalPrompt = `Flat vector sports sublimation pattern: ${patternDescription}. Isolated graphic on white background, crisp clean edges, print-ready vector art, no jersey silhouette, no clothing shape, no background.`;
+      if (isMockup) {
+        finalPrompt = `Premium sportswear sublimation placement artwork, full front panel, isolated on pure white background. Design: ${patternDescription}. Style rules: sharp clean vector paths, full bleed from edge to edge, bold layout with strong visual hierarchy from top to bottom. STRICT: NO shirt outline, NO neckline shape, NO collar boundary, NO repeating tiles, NO text, NO logos, NO human figures. Pure artwork only.`;
+      } else {
+        finalPrompt = `Flat vector seamless sportswear sublimation pattern: ${patternDescription}. Isolated graphic tile on white background, crisp clean vector edges, print-ready, no clothing silhouette, no background elements.`;
+      }
     }
 
     // Scan for credentials to determine if we run Sandbox or live API calls
@@ -348,9 +505,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
     // Check if we should fall back to Sandbox Simulator Mode
     let isSandbox = true;
-    if (mode === 'recraft' && hasRecraft) isSandbox = false;
+    if ((mode === 'recraft' || mode === 'vector') && (hasRecraft || hasReplicate)) isSandbox = false;
     else if ((mode === 'flux' || mode === 'pattern' || mode === 'texture' || mode === 'overlay' || mode === 'typography' || mode === 'logo') && hasReplicate) isSandbox = false;
-    else if (mode === 'vector' && (hasRecraft || hasReplicate)) isSandbox = false;
 
     if (isSandbox) {
       console.log(`[DesignSync AI Gateway] Generating in SANDBOX SIMULATOR mode. Mode: ${mode}`);
@@ -404,166 +560,54 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
-      // IF referenceImage is present: use smart Recraft-only pipeline
-      if (referenceImage) {
+      // IF referenceImage is present and is NOT a mockup jersey photo: use our premium color-mapped Image-to-Image vector replication
+      if (referenceImage && !isMockup) {
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const blob = new Blob([buffer], { type: 'image/png' });
 
-        // ── PATH A: Recraft removeBackground → vectorize ($0.01 + $0.01 = $0.02, most accurate) ──
-        // Step 1: Remove room/hanger/background → isolated jersey design only
-        // Step 2: Vectorize the isolated design → clean SVG with actual paths
-        console.log(`[DesignSync AI Gateway] PATH A: removeBackground → vectorize pipeline...`);
+        console.log(`[DesignSync AI Gateway] Replicating reference style via Image-to-Image (I2I) at strength 0.45...`);
         try {
-          const removeBgFormData = new FormData();
-          removeBgFormData.append('image', blob, 'reference.png');
-
-          const removeBgResponse = await fetch('https://external.api.recraft.ai/v1/images/removeBackground', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}` },
-            body: removeBgFormData,
-          });
-
-          if (!removeBgResponse.ok) {
-            const errText = await removeBgResponse.text();
-            console.warn(`[DesignSync AI Gateway] PATH A removeBackground failed (${removeBgResponse.status}): ${errText}. Falling to PATH B.`);
-            throw new Error('removeBg failed');
+          const imgFormData = new FormData();
+          imgFormData.append('image', blob, 'reference.png');
+          imgFormData.append('prompt', finalPrompt);
+          imgFormData.append('style', 'vector_illustration');
+          imgFormData.append('strength', '0.45');
+          
+          // Apply custom hex colors dynamically to the reference image conversion
+          if (colors && colors.length > 0) {
+            imgFormData.append('colors', JSON.stringify(colors.map((c: string) => ({ hex: c }))));
           }
 
-          const removeBgData = (await removeBgResponse.json()) as any;
-          const isolatedUrl: string = removeBgData.image?.url || removeBgData.data?.[0]?.url || '';
-          if (!isolatedUrl) throw new Error('No URL from removeBackground');
-          console.log(`[DesignSync AI Gateway] Background removed. Fetching isolated image...`);
-
-          // Download the isolated (transparent background) image and vectorize it
-          const isolatedImgResp = await fetch(isolatedUrl);
-          const isolatedBuffer = Buffer.from(await isolatedImgResp.arrayBuffer());
-          const isolatedBlob = new Blob([isolatedBuffer], { type: 'image/png' });
-
-          const vectorizeFormData = new FormData();
-          vectorizeFormData.append('image', isolatedBlob, 'isolated.png');
-
-          const vectorizeResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
-            method: 'POST',
-            headers: { 'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}` },
-            body: vectorizeFormData,
-          });
-
-          if (!vectorizeResponse.ok) {
-            const errText = await vectorizeResponse.text();
-            console.warn(`[DesignSync AI Gateway] PATH A vectorize failed (${vectorizeResponse.status}): ${errText}. Falling to PATH B.`);
-            throw new Error('vectorize failed');
-          }
-
-          const vectorizeData = (await vectorizeResponse.json()) as any;
-          const vectorUrl: string = vectorizeData.image?.url || vectorizeData.data?.[0]?.url || '';
-          if (!vectorUrl) throw new Error('No URL from vectorize');
-
-          console.log(`[DesignSync AI Gateway] PATH A SUCCESS. Vector: ${vectorUrl}`);
-          setUserTokens(cleanUserId, currentBalance - 1);
-          return res.json({
-            url: vectorUrl,
-            type: 'vector',
-            isSandbox: false,
-            remainingTokens: currentBalance - 1,
-            pipeline: 'recraft-removebg-vectorize'
-          });
-        } catch (pathAErr: any) {
-          console.warn(`[DesignSync AI Gateway] PATH A skipped: ${pathAErr.message}. Trying PATH B...`);
-        }
-
-        // ── PATH B: Recraft Custom Styles API ──
-        let styleId: string | null = null;
-        try {
-          console.log(`[DesignSync AI Gateway] PATH B: Creating custom style via Recraft Styles API...`);
-          const formData = new FormData();
-          formData.append('style', 'vector_illustration');
-          formData.append('images', blob, 'reference.png');
-
-          const styleResponse = await fetch('https://external.api.recraft.ai/v1/styles', {
+          const imgResponse = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
             },
-            body: formData,
+            body: imgFormData,
           });
 
-          if (styleResponse.ok) {
-            const styleData = (await styleResponse.json()) as any;
-            styleId = styleData.id || null;
-            console.log(`[DesignSync AI Gateway] Style created. Style ID: ${styleId}`);
+          if (imgResponse.ok) {
+            const imgData = (await imgResponse.json()) as any;
+            const vectorUrl = imgData.data?.[0]?.url;
+            if (vectorUrl) {
+              console.log(`[DesignSync AI Gateway] I2I SUCCESS. Vector Pattern: ${vectorUrl}`);
+              setUserTokens(cleanUserId, currentBalance - 1);
+              return res.json({
+                url: vectorUrl,
+                type: 'vector',
+                isSandbox: false,
+                remainingTokens: currentBalance - 1,
+                pipeline: 'recraft-image-to-image-pattern'
+              });
+            }
           } else {
-            const errorText = await styleResponse.text();
-            console.warn(`[DesignSync AI Gateway] Recraft Style creation failed (${styleResponse.status}): ${errorText}. Falling back to Image-to-Image.`);
+            const errorText = await imgResponse.text();
+            console.error(`[DesignSync AI Gateway] Image-to-Image API error: "${errorText}" (Status: ${imgResponse.status})`);
           }
-        } catch (styleErr) {
-          console.warn(`[DesignSync AI Gateway] Style creation exception:`, styleErr);
+        } catch (err: any) {
+          console.error(`[DesignSync AI Gateway] Image-to-Image exception: ${err.message}`);
         }
-
-        const styleGuidePrompt = `Abstract flat vector sports sublimation pattern. Clean geometric shapes, bold curves, angular panels, isolated on white background. ${colors.length ? 'Color palette: ' + colors.join(', ') + '.' : ''} High-contrast, crisp edges, print-ready.`;
-
-        if (styleId) {
-          console.log(`[DesignSync AI Gateway] PATH B: Generating vector with Style ID: ${styleId}...`);
-          const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
-            },
-            body: JSON.stringify({
-              prompt: styleGuidePrompt,
-              model: 'recraftv3_vector',
-              style_id: styleId,
-              colors: colors.map((c: string) => ({ hex: c })),
-            })
-          });
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[DesignSync AI Gateway] PATH B vector error: "${errorText}" (Status: ${response.status})`);
-            throw new Error(`Recraft Vector Generation error (${response.status}): ${errorText}`);
-          }
-          const data = (await response.json()) as any;
-          setUserTokens(cleanUserId, currentBalance - 1);
-          return res.json({
-            url: data.data?.[0]?.url,
-            type: 'vector',
-            isSandbox: false,
-            remainingTokens: currentBalance - 1
-          });
-        }
-
-        // ── PATH C: Final fallback — Vector Image-to-Image ──
-        // strength 0.4: preserve 60% design structure, convert to vector style
-        const i2iPrompt = `Convert to flat vector illustration. Preserve the geometric pattern, colors, and shapes from the reference. Crisp clean lines, print-ready sports sublimation graphic, isolated on white background.`;
-        console.log(`[DesignSync AI Gateway] PATH C: Vector Image-to-Image fallback (strength 0.4)...`);
-        const imgFormData = new FormData();
-        imgFormData.append('image', blob, 'reference.png');
-        imgFormData.append('prompt', i2iPrompt);
-        imgFormData.append('style', 'vector_illustration');
-        imgFormData.append('strength', '0.4');
-
-        const imgResponse = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
-          },
-          body: imgFormData,
-        });
-
-        if (!imgResponse.ok) {
-          const errorText = await imgResponse.text();
-          console.error(`[DesignSync AI Gateway] PATH C Image-to-Image error: "${errorText}" (Status: ${imgResponse.status})`);
-          throw new Error(`Recraft Image-to-Image error (${imgResponse.status}): ${errorText}`);
-        }
-        const imgData = (await imgResponse.json()) as any;
-        setUserTokens(cleanUserId, currentBalance - 1);
-        return res.json({
-          url: imgData.data?.[0]?.url,
-          type: 'vector',
-          isSandbox: false,
-          remainingTokens: currentBalance - 1
-        });
       }
 
       // Otherwise, standard generation
@@ -575,7 +619,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         },
         body: JSON.stringify({
           prompt: cleanedPrompt,
-          model: 'recraftv3_vector',
+          model: 'recraftv4_vector',
           style: recraftStyle,
           colors: colors.map((c: string) => ({ hex: c })),
         })
@@ -583,37 +627,49 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
       if (!response.ok) {
         const errorText = await response.text();
-        console.error(`[DesignSync AI Gateway] Recraft API error response: "${errorText}" (Status: ${response.status})`);
-        throw new Error(`Recraft API error (${response.status}): ${errorText || response.statusText}`);
+        const errorBody = (() => { try { return JSON.parse(errorText); } catch { return {}; } })();
+
+        // If Recraft is out of credits, immediately fall through to Replicate instead of crashing
+        if (response.status === 400 && errorBody?.code === 'not_enough_credits') {
+          console.warn(`[DesignSync AI Gateway] Recraft credits exhausted — falling through to Replicate Flux 1.1 Pro...`);
+          // Fall through to Replicate section below by skipping the throw
+        } else {
+          console.error(`[DesignSync AI Gateway] Recraft API error response: "${errorText}" (Status: ${response.status})`);
+          throw new Error(`Recraft API error (${response.status}): ${errorText || response.statusText}`);
+        }
+      } else {
+        const data = (await response.json()) as any;
+        setUserTokens(cleanUserId, currentBalance - 1);
+        return res.json({
+          url: data.data?.[0]?.url,
+          type: 'vector',
+          isSandbox: false,
+          remainingTokens: currentBalance - 1
+        });
       }
-      const data = (await response.json()) as any;
-      setUserTokens(cleanUserId, currentBalance - 1);
-      return res.json({
-        url: data.data?.[0]?.url,
-        type: 'vector',
-        isSandbox: false,
-        remainingTokens: currentBalance - 1
-      });
     }
 
-    // Replicate Flux Integration
+    // Replicate Flux 1.1 Pro Integration (high-quality fallback)
     if (hasReplicate) {
-      console.log(`[DesignSync AI Gateway] Routing to Replicate (Flux Schnell)...`);
-      const response = await fetch('https://api.replicate.com/v1/predictions', {
+      console.log(`[DesignSync AI Gateway] Routing to Replicate (Flux 1.1 Pro)...`);
+      const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
+          'Prefer': 'wait',
         },
         body: JSON.stringify({
-          version: 'black-forest-labs/flux-schnell',
           input: {
             prompt: finalPrompt,
-            go_fast: true,
-            megapixels: '1',
+            width: 1024,
+            height: 1024,
             num_outputs: 1,
             aspect_ratio: '1:1',
-            output_format: 'webp',
+            output_format: 'png',
+            output_quality: 100,
+            safety_tolerance: 2,
+            prompt_upsampling: false,
           }
         })
       });
@@ -621,10 +677,24 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       if (!response.ok) throw new Error(`Replicate API error: ${response.statusText}`);
       const data = (await response.json()) as any;
 
-      // Poll Replicate prediction endpoint
+      // Replicate returns the result immediately when using 'Prefer: wait'
+      // If it's already succeeded, return right away
+      if (data.status === 'succeeded' && data.output) {
+        const outputUrl = Array.isArray(data.output) ? data.output[0] : data.output;
+        setUserTokens(cleanUserId, currentBalance - 1);
+        return res.json({
+          url: outputUrl,
+          type: 'raster',
+          isSandbox: false,
+          pipeline: 'replicate-flux-1.1-pro',
+          remainingTokens: currentBalance - 1
+        });
+      }
+
+      // Poll Replicate prediction endpoint if not immediately done
       let prediction: any = data;
       let attempts = 0;
-      while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 10) {
+      while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 20) {
         await new Promise((resolve) => setTimeout(resolve, 1500));
         const check = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
           headers: { 'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}` }
@@ -634,15 +704,17 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       }
 
       if (prediction.status === 'succeeded') {
+        const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
         setUserTokens(cleanUserId, currentBalance - 1);
         return res.json({
-          url: prediction.output?.[0],
+          url: outputUrl,
           type: 'raster',
           isSandbox: false,
+          pipeline: 'replicate-flux-1.1-pro',
           remainingTokens: currentBalance - 1
         });
       } else {
-        throw new Error('Replicate generation failed or timed out.');
+        throw new Error(`Replicate generation failed or timed out. Status: ${prediction.status}`);
       }
     }
 

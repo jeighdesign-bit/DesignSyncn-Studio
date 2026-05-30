@@ -133,7 +133,10 @@ const createNewProject = (details: {
 };
 
 export default function App() {
-  const [view, setView] = useState<'landing' | 'dashboard' | 'editor'>('landing');
+  const [view, setView] = useState<'landing' | 'dashboard' | 'editor'>(() => {
+    const saved = localStorage.getItem('ds_active_view');
+    return (saved as 'landing' | 'dashboard' | 'editor') || 'landing';
+  });
   const [wizardStep, setWizardStep] = useState<number>(1);
   const [blueprintView, setBlueprintView] = useState<'front' | 'back'>('front');
   
@@ -184,6 +187,18 @@ export default function App() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [project, setProject] = useState<Project>(defaultProjects[0]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Persist routing view state to prevent landing page redirect on refresh
+  useEffect(() => {
+    localStorage.setItem('ds_active_view', view);
+  }, [view]);
+
+  // Persist active project selection to retain project on refresh
+  useEffect(() => {
+    if (project?.id) {
+      localStorage.setItem('ds_active_project_id', project.id);
+    }
+  }, [project?.id]);
 
   // Listen to Auth state changes
   useEffect(() => {
@@ -242,12 +257,15 @@ export default function App() {
           };
         });
         setProjects(mappedProjects);
-        const activeProj = mappedProjects.find(p => !p.isArchived) || mappedProjects[0];
+        const savedId = localStorage.getItem('ds_active_project_id');
+        const activeProj = (savedId && mappedProjects.find(p => p.id === savedId)) || mappedProjects.find(p => !p.isArchived) || mappedProjects[0];
         setProject(activeProj);
       } else {
         // Fallback to default if no projects exist in Supabase
         setProjects(defaultProjects);
-        setProject(defaultProjects[0]);
+        const savedId = localStorage.getItem('ds_active_project_id');
+        const activeProj = (savedId && defaultProjects.find(p => p.id === savedId)) || defaultProjects[0];
+        setProject(activeProj);
       }
       setIsLoading(false);
     };

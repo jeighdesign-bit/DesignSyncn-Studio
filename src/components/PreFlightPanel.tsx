@@ -381,9 +381,21 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                 if (textVal === 'PLAYER NAME' || textVal === 'SURNAME' || textVal === 'NAME') { customizedData.text = selectedPlayer.name; customizedData.scaleX = (customizedData.scaleX || 1) * selectedPlayer.nameScale; }
                 else if (textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || textVal === '00' || textVal === '7') { customizedData.text = selectedPlayer.number; }
               }
-              const obj = await fabric.util.enlivenObjects([customizedData]);
-              if (obj && obj[0]) {
-                const fObj = obj[0] as fabric.FabricObject;
+              let fObj: fabric.FabricObject | null = null;
+              if (customizedData.type === 'image' && customizedData.src && (customizedData.src.includes('.svg') || customizedData.src.startsWith('data:image/svg+xml'))) {
+                try {
+                  const { objects: svgObjs, options } = await fabric.loadSVGFromURL(customizedData.src);
+                  const filteredObjs = (svgObjs || []).filter((o): o is fabric.FabricObject => o !== null);
+                  fObj = fabric.util.groupSVGElements(filteredObjs, options);
+                } catch (err) {
+                  console.error('Failed to load SVG as vector in PreFlightPanel:', err);
+                }
+              }
+              if (!fObj) {
+                const obj = await fabric.util.enlivenObjects([customizedData]);
+                if (obj && obj[0]) fObj = obj[0] as fabric.FabricObject;
+              }
+              if (fObj) {
                 const clipPath = new fabric.Path(tData.pathData, { left: leftPos, top: topPos, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, originX: 'left', originY: 'top', absolutePositioned: true });
                 fObj.set({ left: leftPos + (objData.left || 0) * placement.scale * (flipH ? -1 : 1), top: topPos + (objData.top || 0) * placement.scale, scaleX: (objData.scaleX || 1) * placement.scale * (flipH ? -1 : 1), scaleY: (objData.scaleY || 1) * placement.scale, selectable: false, evented: false, clipPath });
                 canvas.add(fObj);
@@ -516,9 +528,21 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
                 if (textVal === 'PLAYER NAME' || textVal === 'SURNAME' || textVal === 'NAME') { customizedData.text = piece.player.name; customizedData.scaleX = (customizedData.scaleX || 1) * piece.player.nameScale; }
                 else if (textVal === 'PLAYER NUMBER' || textVal === 'NUMBER' || textVal === '00' || textVal === '7') { customizedData.text = piece.player.number; }
               }
-              const obj = await fabric.util.enlivenObjects([customizedData]);
-              if (obj && obj[0]) {
-                const fObj = obj[0] as fabric.FabricObject;
+              let fObj: fabric.FabricObject | null = null;
+              if (customizedData.type === 'image' && customizedData.src && (customizedData.src.includes('.svg') || customizedData.src.startsWith('data:image/svg+xml'))) {
+                try {
+                  const { objects: svgObjs, options } = await fabric.loadSVGFromURL(customizedData.src);
+                  const filteredObjs = (svgObjs || []).filter((o): o is fabric.FabricObject => o !== null);
+                  fObj = fabric.util.groupSVGElements(filteredObjs, options);
+                } catch (err) {
+                  console.error('Failed to load SVG as vector in PreFlightPanel:', err);
+                }
+              }
+              if (!fObj) {
+                const obj = await fabric.util.enlivenObjects([customizedData]);
+                if (obj && obj[0]) fObj = obj[0] as fabric.FabricObject;
+              }
+              if (fObj) {
                 const objLeft = (objData.left || 0) * (flipH ? -1 : 1);
                 const objTop = (objData.top || 0);
                 const clipPath = new fabric.Path(tData.pathData, { left: pathLeft, top: pathTop, scaleX: placement.scale * (flipH ? -1 : 1), scaleY: placement.scale, originX: 'left', originY: 'top', angle: angle, absolutePositioned: true });

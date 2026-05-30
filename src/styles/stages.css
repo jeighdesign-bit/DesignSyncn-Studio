@@ -4641,10 +4641,28 @@
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+.ap-toolbar-btn svg {
+  width: 18px !important;
+  height: 18px !important;
+  display: block !important;
+}
+
+.ap-panel-icon {
+  width: 20px !important;
+  height: 20px !important;
+  min-width: 20px !important;
+  min-height: 20px !important;
+  display: block !important;
+}
+
 .ap-toolbar-btn:hover {
   background: rgba(255, 255, 255, 0.04);
   color: #fff;
   border-color: rgba(255, 255, 255, 0.06);
+}
+
+.ap-toolbar-btn:hover .ap-floating-tooltip {
+  opacity: 1 !important;
 }
 
 .ap-toolbar-btn.active {

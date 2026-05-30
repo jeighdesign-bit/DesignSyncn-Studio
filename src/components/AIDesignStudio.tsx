@@ -171,7 +171,8 @@ const GarmentFlat: React.FC<{
   concepts: GeneratedConcept[];
   selectedDNA: StyleDNA | null;
   apparelType?: string;
-}> = ({ concepts, selectedDNA, apparelType }) => {
+  scaleMode?: 'cover' | 'tiled';
+}> = ({ concepts, selectedDNA, apparelType, scaleMode = 'cover' }) => {
   const mockupSrc = 
     apparelType === 'esports_jersey' ? '/mockups/jersey_round_neck.png' :
     apparelType === 'crewneck_sweatshirt' ? '/mockups/hoodie.png' :
@@ -181,22 +182,24 @@ const GarmentFlat: React.FC<{
     apparelType === 'shorts' ? '/mockups/shorts.png' :
     '/mockups/tshirt.png';
 
-
+  // Show front concept by default; if viewing back panel selector, use back
   const frontConcept = concepts.find(c => c.panelId === 'front');
   const backConcept = concepts.find(c => c.panelId === 'back');
 
-  const frontFill = frontConcept?.patternUrl 
-    ? `url(${frontConcept.patternUrl})` 
-    : (selectedDNA ? `linear-gradient(135deg, ${selectedDNA.primaryColor}, ${selectedDNA.secondaryColor})` : '#ffffff');
+  // Pick the best available design to show (front takes priority)
+  const primaryConcept = frontConcept || concepts[0];
 
-  const backFill = backConcept?.patternUrl 
-    ? `url(${backConcept.patternUrl})` 
-    : (selectedDNA ? `linear-gradient(135deg, ${selectedDNA.primaryColor}, ${selectedDNA.secondaryColor})` : '#ffffff');
+  const primaryFill = primaryConcept?.patternUrl 
+    ? `url(${primaryConcept.patternUrl})` 
+    : (selectedDNA ? `linear-gradient(135deg, ${selectedDNA.primaryColor}, ${selectedDNA.secondaryColor})` : 'transparent');
+
+  const backgroundSize = scaleMode === 'tiled' ? '150px 150px' : 'cover';
+  const backgroundRepeat = scaleMode === 'tiled' ? 'repeat' : 'no-repeat';
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '360px', maxWidth: '640px' } as any}>
       
-      {/* 🌟 MOCKUP IMAGE — always shown, keyed to force remount on src change */}
+      {/* 🌟 MOCKUP IMAGE — always shown */}
       <img
         key={mockupSrc}
         src={mockupSrc}
@@ -213,8 +216,8 @@ const GarmentFlat: React.FC<{
         }}
       />
 
-      {/* 🌟 AI PATTERN OVERLAY — shown only when concepts have been generated */}
-      {concepts.length > 0 && (
+      {/* 🌟 AI PATTERN OVERLAY — single full-cover over the whole garment */}
+      {concepts.length > 0 && primaryConcept?.patternUrl && (
         <div
           style={{
             position: 'absolute',
@@ -222,7 +225,6 @@ const GarmentFlat: React.FC<{
             left: 0,
             width: '100%',
             height: '100%',
-            display: 'flex',
             pointerEvents: 'none',
             mixBlendMode: 'multiply',
             maskImage: `url("${mockupSrc}")`,
@@ -234,30 +236,48 @@ const GarmentFlat: React.FC<{
             maskPosition: 'center',
             WebkitMaskPosition: 'center',
             zIndex: 2,
+            background: primaryFill,
+            backgroundSize: backgroundSize,
+            backgroundRepeat: backgroundRepeat,
+            backgroundPosition: 'center',
+            opacity: 0.93,
           }}
-        >
-          {/* Left Half: Front Design */}
-          <div
-            style={{
-              flex: 1,
-              height: '100%',
-              background: frontFill,
-              backgroundSize: frontConcept?.patternUrl ? '150px 150px' : 'cover',
-              backgroundRepeat: 'repeat',
-              opacity: 0.95,
-            }}
-          />
-          {/* Right Half: Back Design */}
-          <div
-            style={{
-              flex: 1,
-              height: '100%',
-              background: backFill,
-              backgroundSize: backConcept?.patternUrl ? '150px 150px' : 'cover',
-              backgroundRepeat: 'repeat',
-              opacity: 0.95,
-            }}
-          />
+        />
+      )}
+
+      {/* Back panel generated — compact indicator chip bottom-right */}
+      {backConcept?.patternUrl && (
+        <div style={{
+          position: 'absolute',
+          bottom: '10px',
+          right: '14px',
+          zIndex: 10,
+          background: 'rgba(6,6,12,0.82)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '8px',
+          padding: '4px 10px 4px 6px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '6px',
+          backdropFilter: 'blur(12px)',
+          fontSize: '9px',
+          fontWeight: 700,
+          color: '#00e676',
+          letterSpacing: '0.06em',
+          textTransform: 'uppercase',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+        }}>
+          <div style={{
+            width: '22px',
+            height: '15px',
+            borderRadius: '3px',
+            backgroundImage: `url(${backConcept.patternUrl})`,
+            backgroundSize: 'cover',
+            backgroundRepeat: 'no-repeat',
+            border: '1px solid rgba(0,230,118,0.25)',
+            flexShrink: 0,
+          }} />
+          Back ✓
         </div>
       )}
     </div>
@@ -276,14 +296,24 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   onUpdateTokens,
 }) => {
   // ── State ──────────────────────────────────────────────────────────────────
-  const [activePanel] = useState<GarmentPanel>('front');
+  const [activePanel, setActivePanel] = useState<GarmentPanel>('front');
+  const [patternScaleMode, setPatternScaleMode] = useState<'cover' | 'tiled'>('cover');
   const [panels, setPanels] = useState<PanelConfig[]>(() => {
     if (project.panels && project.panels.length > 0) {
       return project.panels;
     }
     return INITIAL_PANELS;
   });
-  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  
+  // Track reference image per-panel for part-aware uploads
+  const [panelReferences, setPanelReferences] = useState<Record<GarmentPanel, string | null>>({
+    front: null,
+    back: null,
+    'left-sleeve': null,
+    'right-sleeve': null,
+    collar: null
+  });
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -291,32 +321,38 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        setReferenceImage(reader.result as string);
-        pushLog('Creative Studio: Reference image uploaded successfully');
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            canvas.width = 512;
+            canvas.height = 512;
+            
+            // Draw the entire uploaded image to fit the 512x512 canvas, preserving 100% of graphic detail (like side panels)
+            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 512, 512);
+            const processedDataUrl = canvas.toDataURL('image/png');
+            setPanelReferences(prev => ({
+              ...prev,
+              [activePanel]: processedDataUrl
+            }));
+            pushLog(`Creative Studio: Reference image for ${activePanel} uploaded and processed`);
+          } else {
+            setPanelReferences(prev => ({
+              ...prev,
+              [activePanel]: reader.result as string
+            }));
+            pushLog(`Creative Studio: Reference image for ${activePanel} uploaded`);
+          }
+        };
+        img.src = reader.result as string;
       };
       reader.readAsDataURL(file);
     }
   };
 
   const [selectedDNA] = useState<StyleDNA | null>(null);
-  const [concepts, setConcepts] = useState<GeneratedConcept[]>(() => {
-    if (project.panels && project.panels.length > 0) {
-      return project.panels
-        .filter(p => p.patternUrl)
-        .map(p => ({
-          id: `c-${p.id}`,
-          panelId: p.id,
-          label: p.prompt || 'Base Concept',
-          primaryColor: project.baseColors?.primary || '#09090b',
-          secondaryColor: project.baseColors?.secondary || '#111115',
-          accentColor: project.baseColors?.accent || '#0070f3',
-          patternKey: `default-${p.id}`,
-          timestamp: new Date().toLocaleTimeString(),
-          patternUrl: p.patternUrl
-        }));
-    }
-    return [];
-  });
+  const [concepts, setConcepts] = useState<GeneratedConcept[]>([]);
 
   const safeZoneRadius = 0.5;
   const seamBleed = 0.5;
@@ -386,15 +422,45 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
   const handleGenerate = async (overridePanels?: PanelConfig[]) => {
     const panelsToUse = overridePanels || panels;
-    const configuredPanels = panelsToUse.filter(p => p.prompt.trim() !== '' || selectedDNA !== null);
-    if (configuredPanels.length === 0 && !selectedDNA) return;
+    
+    // Determine which panels should be generated in this run:
+    // 1. The active panel (if configured)
+    // 2. Any panel with status === 'configured' (edited but not yet generated)
+    let targetPanels = (['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'] as GarmentPanel[]).filter(pid => {
+      const panel = panelsToUse.find(p => p.id === pid);
+      if (!panel) return false;
+      
+      // Always generate the active panel if it has a prompt or reference image
+      if (pid === activePanel) {
+        return panel.prompt.trim() !== '' || panelReferences[pid] !== null;
+      }
+      
+      // Otherwise, only generate if it is configured (edited) but not yet generated
+      return panel.status === 'configured' && (panel.prompt.trim() !== '' || panelReferences[pid] !== null);
+    });
+
+    // Smart UX Logic: If this is the very first generation in the project (no panels have been generated yet),
+    // we want to cohesively generate BOTH Front and Back body panels together by default so the user gets
+    // a completed look. Later panel switches act as individual panel refinements.
+    const hasAnyGenerated = panelsToUse.some(p => p.status === 'generated' || p.status === 'approved');
+    if (!hasAnyGenerated) {
+      const isBodyPanel = activePanel === 'front' || activePanel === 'back';
+      if (isBodyPanel) {
+        if (!targetPanels.includes('front')) targetPanels.push('front');
+        if (!targetPanels.includes('back')) targetPanels.push('back');
+      }
+    }
+
+    if (targetPanels.length === 0) {
+      pushLog("AI Engine: No new or active panels are configured for generation.");
+      return;
+    }
 
     setGenerating(true);
     onGenerate();
-    pushLog(`AI Engine: Generating layout for ${configuredPanels.length > 0 ? configuredPanels.length + ' configured panels' : 'all panels via Style DNA'}`);
+    pushLog(`AI Engine: Generating layout for ${targetPanels.length} configured panel(s): ${targetPanels.join(', ')}`);
 
     const dna = selectedDNA;
-    const targetPanels: GarmentPanel[] = ['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'];
 
     try {
       const newConcepts: GeneratedConcept[] = [];
@@ -404,10 +470,25 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
         project.baseColors.accent || '#ffcc00'
       ];
 
-      // Generate patterns for each panel asynchronously via DesignSync AI Gateway
+      // Generate patterns for targeted panels asynchronously via DesignSync AI Gateway
       for (const pid of targetPanels) {
         const panel = panelsToUse.find(p => p.id === pid);
-        const basePrompt = panel?.prompt.trim() || (dna ? `${dna.name} sports style: ${dna.description}` : 'sports jersey technical pattern');
+        
+        // Cohesive Design Copying: If generating Front and Back together on the first run,
+        // make the unconfigured body panel copy the prompt and reference image of the active one.
+        let promptToUse = panel?.prompt.trim();
+        let referenceToUse = panelReferences[pid];
+        if (!hasAnyGenerated && (pid === 'front' || pid === 'back')) {
+          const activePanelConfig = panelsToUse.find(p => p.id === activePanel);
+          if (!promptToUse && activePanelConfig) {
+            promptToUse = activePanelConfig.prompt.trim();
+          }
+          if (!referenceToUse) {
+            referenceToUse = panelReferences[activePanel];
+          }
+        }
+
+        const basePrompt = promptToUse || (dna ? `${dna.name} sports style: ${dna.description}` : 'sports jersey technical pattern');
         const refinedPrompt = `${basePrompt}, flat vector seamless sports pattern, tileable fabric texture`;
 
         pushLog(`[Secure AI Router] Routing ${pid} prompt to Replicate (Flux)...`);
@@ -418,10 +499,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: refinedPrompt,
-            providerMode: 'recraft', // will use Recraft Vector AI or fall back to beautiful Sandbox SVGs
+            providerMode: 'recraft',
             baseColors: colors,
             userId: userId,
-            referenceImage: referenceImage
+            referenceImage: referenceToUse
           })
         });
 
@@ -449,24 +530,33 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           accentColor: dna?.accentColor ?? project.baseColors.accent,
           patternKey: `${dna?.id ?? 'default'}-${pid}`,
           timestamp: new Date().toLocaleTimeString(),
-          patternUrl: data.url // Dynamic live AI-generated texture URL or sandbox mockup!
+          patternUrl: data.url
         });
       }
 
-      setConcepts(newConcepts);
+      // Merge new concepts into state, retaining other panels' previously generated concepts
+      setConcepts(prev => {
+        const filtered = prev.filter(c => !targetPanels.includes(c.panelId));
+        return [...filtered, ...newConcepts];
+      });
+
       const updatedPanels = panelsToUse.map(p => {
         const concept = newConcepts.find(c => c.panelId === p.id);
-        return {
-          ...p,
-          status: p.prompt.trim() !== '' || selectedDNA !== null ? 'generated' as const : 'configured' as const,
-          patternUrl: concept?.patternUrl || p.patternUrl
-        };
+        if (concept) {
+          return {
+            ...p,
+            status: 'generated' as const,
+            patternUrl: concept.patternUrl
+          };
+        }
+        return p;
       });
+
       setPanels(updatedPanels);
       onUpdateProject({
         panels: updatedPanels
       });
-      pushLog(`✓ Panel layout generated — ${targetPanels.length} panels mapped successfully`);
+      pushLog(`✓ Panel layout generated — ${targetPanels.length} panel(s) updated successfully`);
       pushLog(`✓ Zone compliance: seam bleed ${seamBleed}", safe margin ${safeZoneRadius}"`);
     } catch (e: any) {
       console.error(e);
@@ -614,12 +704,136 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             </div>
           )}
 
+          {/* Floating Left Panel Selector (Part-Aware AI Controller) */}
+          <div 
+            className="ap-left-floating-toolbar"
+            style={{
+              position: 'absolute',
+              left: '24px',
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 35,
+              background: 'rgba(10, 10, 15, 0.85)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '24px',
+              padding: '12px 6px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              backdropFilter: 'blur(24px)',
+              boxShadow: '0 20px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+              width: '48px',
+            }}
+          >
+            {(['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'] as GarmentPanel[]).map((pid) => {
+              const panel = panels.find(p => p.id === pid);
+              const isActive = activePanel === pid;
+              
+              // Define panel-specific status light color
+              let statusDot = null;
+              if (panel?.status === 'generated' && panel.patternUrl) {
+                statusDot = <span style={{ position: 'absolute', top: '3px', right: '3px', width: '6px', height: '6px', borderRadius: '50%', background: '#00e676', boxShadow: '0 0 6px #00e676' }} />;
+              } else if (panel?.prompt || panelReferences[pid]) {
+                statusDot = <span style={{ position: 'absolute', top: '3px', right: '3px', width: '6px', height: '6px', borderRadius: '50%', background: '#eab308', boxShadow: '0 0 6px #eab308' }} />;
+              }
+
+              // Determine icon
+              let icon = null;
+              if (pid === 'front') {
+                icon = (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ap-panel-icon">
+                    <path d="M 6,3 L 8,5 L 16,5 L 18,3 L 22,8 L 19,10 L 18,9 L 18,21 L 6,21 L 6,9 L 5,10 L 2,8 Z" />
+                    <path d="M 9,5 Q 12,9 15,5" strokeWidth="1.5" />
+                  </svg>
+                );
+              } else if (pid === 'back') {
+                icon = (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ap-panel-icon">
+                    <path d="M 6,3 L 8,5 L 16,5 L 18,3 L 22,8 L 19,10 L 18,9 L 18,21 L 6,21 L 6,9 L 5,10 L 2,8 Z" />
+                    <rect x="9.5" y="9.5" width="5" height="6" rx="0.5" strokeWidth="1.5" />
+                  </svg>
+                );
+              } else if (pid === 'left-sleeve') {
+                icon = (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ap-panel-icon">
+                    <path d="M 6,3 L 8,5 L 16,5 L 18,3 L 22,8 L 19,10 L 18,9 L 18,21 L 6,21 L 6,9 L 5,10 L 2,8 Z" strokeDasharray="2 2" strokeOpacity="0.4" />
+                    <path d="M 6,3 L 2,8 L 5,10 L 6,9 Z" fill="currentColor" fillOpacity="0.3" />
+                  </svg>
+                );
+              } else if (pid === 'right-sleeve') {
+                icon = (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ap-panel-icon">
+                    <path d="M 6,3 L 8,5 L 16,5 L 18,3 L 22,8 L 19,10 L 18,9 L 18,21 L 6,21 L 6,9 L 5,10 L 2,8 Z" strokeDasharray="2 2" strokeOpacity="0.4" />
+                    <path d="M 18,3 L 22,8 L 19,10 L 18,9 Z" fill="currentColor" fillOpacity="0.3" />
+                  </svg>
+                );
+              } else if (pid === 'collar') {
+                icon = (
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="ap-panel-icon">
+                    <path d="M 6,3 L 8,5 L 16,5 L 18,3 L 22,8 L 19,10 L 18,9 L 18,21 L 6,21 L 6,9 L 5,10 L 2,8 Z" strokeDasharray="2 2" strokeOpacity="0.4" />
+                    <path d="M 8,5 Q 12,10 16,5 Z" fill="currentColor" fillOpacity="0.4" />
+                  </svg>
+                );
+              }
+
+              return (
+                <button
+                  key={pid}
+                  className={`ap-toolbar-btn ${isActive ? 'active' : ''}`}
+                  onClick={() => setActivePanel(pid)}
+                  title={panel?.label || pid}
+                  style={{ 
+                    position: 'relative', 
+                    width: '36px', 
+                    height: '36px', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'center',
+                    borderRadius: '10px',
+                    transition: 'all 0.2s',
+                    background: isActive ? 'rgba(0, 112, 243, 0.15)' : 'transparent',
+                    border: isActive ? '1px solid rgba(0, 112, 243, 0.3)' : '1px solid transparent',
+                    color: isActive ? 'var(--accent-blue)' : 'rgba(255,255,255,0.6)'
+                  }}
+                >
+                  {icon}
+                  {statusDot}
+                  
+                  {/* Tooltip labels */}
+                  <span style={{
+                    position: 'absolute',
+                    left: '52px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: '#0a0a0f',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    color: '#fff',
+                    fontSize: '9.5px',
+                    fontWeight: 600,
+                    padding: '3px 8px',
+                    borderRadius: '6px',
+                    whiteSpace: 'nowrap',
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    transition: 'opacity 0.15s ease',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.5)',
+                    zIndex: 40
+                  }} className="ap-floating-tooltip">
+                    {panel?.shortLabel || pid}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+
           {/* Actual Flat Garment SVG Blueprint preview */}
           <div style={{ transform: 'scale(1.02)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <GarmentFlat
               concepts={concepts}
               selectedDNA={selectedDNA}
               apparelType={project.apparelType}
+              scaleMode={patternScaleMode}
             />
           </div>
 
@@ -638,6 +852,17 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
           {/* BOTTOM-CENTER FLOATING AI PROMPT BAR */}
           <div className="ap-bottom-prompt-bar">
+            {/* Design Mapping Mode Button */}
+            <button
+              className="ap-prompt-dropdown-btn"
+              onClick={() => setPatternScaleMode(prev => prev === 'cover' ? 'tiled' : 'cover')}
+              title={patternScaleMode === 'cover' ? 'Switch to Tiled Texture Mode' : 'Switch to Full-Panel Placement Mode'}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <Cpu size={12} style={{ color: patternScaleMode === 'cover' ? '#00ff88' : '#ffcc00' }} />
+              <span>{patternScaleMode === 'cover' ? 'Placement (Fit)' : 'Textured (Tile)'}</span>
+            </button>
+
             {/* Mockup Selector Dropdown Trigger */}
             <div style={{ position: 'relative' }}>
               <button
@@ -698,7 +923,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             {/* Attachment Button */}
             <button 
               className="ap-prompt-attachment-btn" 
-              title="Attach logo or reference illustration"
+              title={`Attach reference style image specifically for ${activePanel}`}
               onClick={() => {
                 fileInputRef.current?.click();
               }}
@@ -707,11 +932,11 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             </button>
 
             {/* Reference Image Thumbnail Preview */}
-            {referenceImage && (
+            {panelReferences[activePanel] && (
               <div className="ap-prompt-ref-preview">
-                <img src={referenceImage} alt="reference" />
+                <img src={panelReferences[activePanel] || ''} alt="reference" />
                 <button 
-                  onClick={() => setReferenceImage(null)} 
+                  onClick={() => setPanelReferences(prev => ({ ...prev, [activePanel]: null }))} 
                   className="ap-prompt-ref-remove-btn"
                   title="Remove reference image"
                 >
@@ -724,22 +949,19 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             <input
               type="text"
               className="ap-prompt-textarea"
-              placeholder={`Describe design vision for the whole garment...`}
-              value={project.prompt || ''}
+              placeholder={`Describe design vision for the ${panels.find(p => p.id === activePanel)?.label || activePanel}...`}
+              value={panels.find(p => p.id === activePanel)?.prompt || ''}
               onChange={e => {
-                onUpdateProject({
-                  prompt: e.target.value
+                updatePanel(activePanel, {
+                  prompt: e.target.value,
+                  status: e.target.value.trim() ? 'configured' : 'empty'
                 });
               }}
               onKeyDown={e => {
-                if (e.key === 'Enter' && (project.prompt || '').trim() !== '') {
-                  const nextPanels = panels.map(p => ({
-                    ...p,
-                    prompt: project.prompt,
-                    status: 'configured' as const
-                  }));
-                  onUpdateProject({ panels: nextPanels });
-                  handleGenerate(nextPanels);
+                const currentPrompt = panels.find(p => p.id === activePanel)?.prompt || '';
+                const hasRefImage = !!panelReferences[activePanel];
+                if (e.key === 'Enter' && (currentPrompt.trim() !== '' || hasRefImage)) {
+                  handleGenerate(panels);
                 }
               }}
             />
@@ -748,15 +970,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             <button
               className={`ap-prompt-generate-btn ${generating ? 'loading' : ''}`}
               onClick={() => {
-                const nextPanels = panels.map(p => ({
-                  ...p,
-                  prompt: project.prompt || '',
-                  status: 'configured' as const
-                }));
-                onUpdateProject({ panels: nextPanels });
-                handleGenerate(nextPanels);
+                handleGenerate(panels);
               }}
-              disabled={generating || !(project.prompt || '').trim()}
+              disabled={generating || (!panels.some(p => p.prompt.trim() !== '') && !panelReferences[activePanel])}
             >
               {generating ? (
                 <><RefreshCw size={13} className="animate-spin" /></>

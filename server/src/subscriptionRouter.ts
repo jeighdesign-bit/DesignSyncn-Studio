@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import { stripe, STRIPE_PRICE_IDS, WEBHOOK_SECRET } from './stripe.js';
 import dotenv from 'dotenv';
+import { getUserTokens } from './ai-gateway.js';
 dotenv.config();
 
 export const subscriptionRouter = Router();
@@ -14,7 +15,7 @@ const supabaseAdmin = createClient(
 
 // ─── Plan token limits ────────────────────────────────────────────────────────
 const PLAN_TOKENS: Record<string, number> = {
-  free: 10,
+  free: 999999, // Unlocked for development & local pairing
   pro: 500,
   enterprise: 999999,
 };
@@ -108,7 +109,8 @@ subscriptionRouter.get('/status', async (req: Request, res: Response) => {
     });
   } catch (e: any) {
     console.error('❌ /status error:', e);
-    return res.json({ planId: 'free', status: 'active', tokensRemaining: 10, tokensTotal: 10 });
+    const memTokens = getUserTokens(userId);
+    return res.json({ planId: 'free', status: 'active', tokensRemaining: memTokens, tokensTotal: 10 });
   }
 });
 

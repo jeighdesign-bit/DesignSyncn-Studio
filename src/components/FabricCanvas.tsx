@@ -227,6 +227,58 @@ const applyBg = (canvas: fabric.Canvas, bg: string) => {
   canvas.requestRenderAll();
 };
 
+export const replaceSvgImagesWithVectors = async (canvas: fabric.Canvas) => {
+  const objects = canvas.getObjects();
+  for (const obj of objects) {
+    if (obj.type === 'image' && (obj as any).src && ((obj as any).src.includes('.svg') || (obj as any).src.startsWith('data:image/svg+xml'))) {
+      try {
+        const src = (obj as any).src;
+        const { objects: svgObjs, options } = await fabric.loadSVGFromURL(src);
+        const filteredObjs = (svgObjs || []).filter((o): o is fabric.FabricObject => o !== null);
+        const vectorGroup = fabric.util.groupSVGElements(filteredObjs, options);
+        
+        // Transfer properties
+        vectorGroup.set({
+          left: obj.left,
+          top: obj.top,
+          scaleX: obj.scaleX,
+          scaleY: obj.scaleY,
+          angle: obj.angle,
+          originX: obj.originX,
+          originY: obj.originY,
+          clipPath: obj.clipPath,
+          selectable: obj.selectable,
+          evented: obj.evented,
+        });
+        
+        // Transfer custom properties
+        const customProps = [
+          '__id', '__layerName', '__isArtboard', '__locked', '__panel',
+          '__anchor', '__offsetXInches', '__offsetYInches', '__restrictToSafe',
+          '__productionLocked'
+        ];
+        customProps.forEach(prop => {
+          if (prop in obj) {
+            (vectorGroup as any)[prop] = (obj as any)[prop];
+          }
+        });
+        
+        // Replace on canvas
+        const idx = canvas.getObjects().indexOf(obj);
+        canvas.remove(obj);
+        canvas.add(vectorGroup);
+        if (idx !== -1) {
+          canvas.moveObjectTo(vectorGroup, idx);
+        }
+      } catch (err) {
+        console.error('Failed to replace SVG image with vector:', err);
+      }
+    }
+  }
+  canvas.requestRenderAll();
+};
+
+
 
 /**
  * @deprecated Use getArtworkScaleFactor from garment-size-engine instead.
@@ -1212,6 +1264,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       try {
         canvas.discardActiveObject();
         await canvas.loadFromJSON(JSON.parse(previousState));
+        await replaceSvgImagesWithVectors(canvas);
         addTemplateOutlines(canvas);
         canvas.getObjects().forEach(obj => {
           if (!(obj as any).__isArtboard) {
@@ -1245,6 +1298,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       try {
         canvas.discardActiveObject();
         await canvas.loadFromJSON(JSON.parse(nextState));
+        await replaceSvgImagesWithVectors(canvas);
         addTemplateOutlines(canvas);
         canvas.getObjects().forEach(obj => {
           if (!(obj as any).__isArtboard) {
@@ -1290,7 +1344,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
 
     canvas.discardActiveObject();
     isProcessingHistoryRef.current = true;
-    canvas.loadFromJSON(JSON.parse(lastState)).then(() => {
+    canvas.loadFromJSON(JSON.parse(lastState)).then(async () => {
+      await replaceSvgImagesWithVectors(canvas);
       // Enforce artboard properties and ensure they are drawn
       addTemplateOutlines(canvas);
       canvas.getObjects().forEach(obj => {
@@ -1393,7 +1448,8 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     if (hasInitialState) {
       isProcessingHistoryRef.current = true;
       const lastState = initialUndoStack[initialUndoStack.length - 1];
-      canvas.loadFromJSON(JSON.parse(lastState)).then(() => {
+      canvas.loadFromJSON(JSON.parse(lastState)).then(async () => {
+        await replaceSvgImagesWithVectors(canvas);
         // Enforce artboard properties and ensure they are drawn
         addTemplateOutlines(canvas);
         canvas.getObjects().forEach(obj => {
