@@ -399,7 +399,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
         await drawPanelSheet('back', offsets.back.x, offsets.back.y, 1120, 1360);
         if (includeSleeves && activeTemplate.files && (activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'])) {
           await drawPanelSheet('sleeves', offsets.sleeves.x, offsets.sleeves.y, 960, 640);
-          await drawPanelSheet('sleeves_right', offsets.sleeves_right.x, offsets.sleeves_right.y, 960, 640, true);
+          await drawPanelSheet('sleeves_right', offsets.sleeves_right.x, offsets.sleeves_right.y, 960, 640, !activeTemplate.files['right-sleeve']);
         }
         if (includeCollar && activeTemplate.files && activeTemplate.files['collar']) await drawPanelSheet('collar', offsets.collar.x, offsets.collar.y, 560, 320);
       } else if (sheetLayoutType === 'front_only') {
@@ -409,7 +409,7 @@ export const PreFlightPanel: React.FC<PreFlightPanelProps> = ({ project, onUpdat
       } else if (sheetLayoutType === 'sleeves_only') {
         if (activeTemplate.files && (activeTemplate.files['left-sleeve'] || activeTemplate.files['sleeves'])) {
           await drawPanelSheet('sleeves', 40, 110, 960, 640);
-          await drawPanelSheet('sleeves_right', 40, 780, 960, 640, true);
+          await drawPanelSheet('sleeves_right', 40, 780, 960, 640, !activeTemplate.files['right-sleeve']);
         }
       } else if (sheetLayoutType === 'collars_only') {
         if (activeTemplate.files && activeTemplate.files['collar']) {

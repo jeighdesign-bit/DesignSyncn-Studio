@@ -185,9 +185,21 @@ const GarmentFlat: React.FC<{
   safeZone: number;
   seamBleed: number;
   onPanelClick: (id: GarmentPanel) => void;
-}> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, onPanelClick }) => {
-  const mockupSrc = '/mockups/tshirt.png';
+  apparelType?: string;
+}> = ({ panels, activePanel, concepts, showZones, selectedDNA, sponsorZone, onPanelClick, apparelType }) => {
+  const mockupSrc = 
+    apparelType === 'esports_jersey' ? '/mockups/jersey_round_neck.png' :
+    apparelType === 'crewneck_sweatshirt' ? '/mockups/hoodie.png' :
+    apparelType === 'tshirt' ? '/mockups/tshirt.png' :
+    apparelType === 'long_sleeve' ? '/mockups/long_sleeve.png' :
+    apparelType === 'pants' ? '/mockups/pants.png' :
+    apparelType === 'shorts' ? '/mockups/shorts.png' :
+    '/mockups/tshirt.png';
   const [useSvgFallback, setUseSvgFallback] = useState(false);
+
+  useEffect(() => {
+    setUseSvgFallback(false);
+  }, [mockupSrc]);
 
   const handleMockupError = () => {
     setUseSvgFallback(true);
@@ -223,288 +235,26 @@ const GarmentFlat: React.FC<{
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '360px', maxWidth: '640px' } as any}>
-      {/* DYNAMIC SVG OUTLINE LAYOUT (Completely hidden when custom PNG mockup is used) */}
-      <svg
-        viewBox="0 0 640 440"
-        className="ap-garment-flat-svg"
+      
+      {/* 🌟 MOCKUP IMAGE — always shown, keyed to force remount on src change */}
+      <img
+        key={mockupSrc}
+        src={mockupSrc}
+        alt="Garment Mockup"
         style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
           width: '100%',
-          height: '100%',
           maxHeight: '420px',
-          display: useSvgFallback ? 'block' : 'none',
-          zIndex: 10,
-          pointerEvents: 'auto'
+          objectFit: 'contain',
+          filter: 'drop-shadow(0 12px 36px rgba(0,0,0,0.55))',
+          pointerEvents: 'none',
+          display: 'block',
+          position: 'relative',
+          zIndex: 1,
         }}
-      >
-      <defs>
-        {/* Render dynamic image pattern fills or linear gradient fallbacks */}
-        {['front','back','left-sleeve','right-sleeve','collar'].map(pid => {
-          const c = getPanelConcept(pid as GarmentPanel);
-          const dna = selectedDNA;
-          const p = c?.primaryColor ?? dna?.primaryColor ?? '#16161f';
-          const s = c?.secondaryColor ?? dna?.secondaryColor ?? '#1e1e2e';
-          const a = c?.accentColor ?? dna?.accentColor ?? '#0070f3';
-          
-          return (
-            <React.Fragment key={pid}>
-              {/* Pattern fill utilizing actual generated AI url */}
-              {c?.patternUrl && (
-                <pattern id={`pattern-${pid}`} width="1" height="1" patternContentUnits="objectBoundingBox">
-                  <image href={c.patternUrl} width="1" height="1" preserveAspectRatio="xMidYMid slice" />
-                </pattern>
-              )}
-              {/* Gradient fallback */}
-              <linearGradient id={`grad-${pid}`} x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor={p} />
-                <stop offset="60%" stopColor={s} />
-                <stop offset="100%" stopColor={a} stopOpacity={0.4} />
-              </linearGradient>
-            </React.Fragment>
-          );
-        })}
+      />
 
-        {/* Seam hatch pattern */}
-        <pattern id="seam-hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-          <line x1="0" y1="0" x2="0" y2="6" stroke="#ef4444" strokeWidth="1" strokeOpacity="0.5" />
-        </pattern>
-
-        {/* Safe zone dash */}
-        <pattern id="safe-dash" width="8" height="8" patternUnits="userSpaceOnUse">
-          <rect width="8" height="8" fill="rgba(234,179,8,0.05)" />
-        </pattern>
-
-        {/* Drop shadow filter */}
-        <filter id="panel-shadow">
-          <feDropShadow dx="0" dy="4" stdDeviation="8" floodColor="#000" floodOpacity="0.6" />
-        </filter>
-        <filter id="active-glow">
-          <feDropShadow dx="0" dy="0" stdDeviation="6" floodColor="#0070f3" floodOpacity="0.8" />
-        </filter>
-      </defs>
-
-      {/* ── BACK BODY PANEL (left side) ── */}
-      <g
-        onClick={() => onPanelClick('back')}
-        style={{ cursor: 'pointer' }}
-        filter={isActive('back') ? 'url(#active-glow)' : 'url(#panel-shadow)'}
-      >
-        {/* Main back body */}
-        <path
-          d="M 30,120 L 60,90 L 100,105 L 110,80 L 180,75 L 180,360 L 30,360 Z"
-          fill={getPanelFill('back')}
-          stroke={isActive('back') ? '#0070f3' : '#2a2a3e'}
-          strokeWidth={isActive('back') ? 2 : 1}
-        />
-        {/* Seam danger zone - back */}
-        {showZones.seam && (
-          <path
-            d="M 35,125 L 62,95 L 98,109 L 107,85 L 175,80 L 175,355 L 35,355 Z"
-            fill="none"
-            stroke="#ef4444"
-            strokeWidth="1"
-            strokeDasharray="4 3"
-            opacity="0.7"
-          />
-        )}
-        {/* Name / Number safe zone - back center */}
-        {showZones.safe && (
-          <rect x="60" y="150" width="105" height="140" rx="2"
-            fill="rgba(234,179,8,0.07)"
-            stroke="#eab308"
-            strokeWidth="1"
-            strokeDasharray="5 4"
-          />
-        )}
-        {/* Design zone fill - back */}
-        {showZones.design && panelStatus('back') === 'empty' && (
-          <path
-            d="M 40,130 L 65,100 L 100,113 L 110,88 L 172,82 L 172,352 L 40,352 Z"
-            fill="rgba(0,230,118,0.04)"
-            stroke="#00e676"
-            strokeWidth="0.5"
-            strokeDasharray="8 6"
-          />
-        )}
-        {/* Panel label */}
-        <text x="105" y="275" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="9" fontFamily="monospace" fontWeight="bold" letterSpacing="0.08em">BACK</text>
-        {/* Status dot */}
-        <circle cx="170" cy="88" r="5" fill={STATUS_COLOR[panelStatus('back')]} />
-        {/* Active ring */}
-        {isActive('back') && <circle cx="170" cy="88" r="7" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
-      </g>
-
-      {/* ── RIGHT SLEEVE (back side — left in back view) ── */}
-      <g onClick={() => onPanelClick('right-sleeve')} style={{ cursor: 'pointer' }}
-        filter={isActive('right-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
-        <path
-          d="M 30,120 L 60,90 L 100,105 L 85,195 L 5,175 Z"
-          fill={getPanelFill('right-sleeve')}
-          stroke={isActive('right-sleeve') ? '#0070f3' : '#2a2a3e'}
-          strokeWidth={isActive('right-sleeve') ? 2 : 1}
-        />
-        {showZones.seam && (
-          <path d="M 35,122 L 63,94 L 97,108 L 82,192 L 8,173 Z"
-            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
-        )}
-        <text x="50" y="148" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">R.SLV</text>
-        <circle cx="62" cy="92" r="4" fill={STATUS_COLOR[panelStatus('right-sleeve')]} />
-        {isActive('right-sleeve') && <circle cx="62" cy="92" r="6" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
-      </g>
-
-      {/* ── LEFT SLEEVE (back side — right in back view) ── */}
-      <g onClick={() => onPanelClick('left-sleeve')} style={{ cursor: 'pointer' }}
-        filter={isActive('left-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
-        <path
-          d="M 180,75 L 230,70 L 265,90 L 265,180 L 195,195 Z"
-          fill={getPanelFill('left-sleeve')}
-          stroke={isActive('left-sleeve') ? '#0070f3' : '#2a2a3e'}
-          strokeWidth={isActive('left-sleeve') ? 2 : 1}
-        />
-        {showZones.seam && (
-          <path d="M 182,78 L 228,73 L 262,93 L 262,177 L 197,192 Z"
-            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
-        )}
-        <text x="222" y="138" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">L.SLV</text>
-        <circle cx="232" cy="72" r="4" fill={STATUS_COLOR[panelStatus('left-sleeve')]} />
-        {isActive('left-sleeve') && <circle cx="232" cy="72" r="6" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
-      </g>
-
-      {/* SEPARATOR LINE */}
-      <line x1="300" y1="60" x2="300" y2="410" stroke="#1e1e2e" strokeWidth="3" />
-      <text x="300" y="425" textAnchor="middle" fill="rgba(255,255,255,0.12)" fontSize="7" fontFamily="monospace" letterSpacing="0.12em">FRONT / BACK LAYOUT</text>
-
-      {/* ── FRONT BODY PANEL (right side) ── */}
-      <g onClick={() => onPanelClick('front')} style={{ cursor: 'pointer' }}
-        filter={isActive('front') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
-        <path
-          d="M 330,120 L 360,90 L 400,105 L 460,75 L 530,75 L 540,80 L 545,105 L 590,90 L 620,120 L 620,360 L 330,360 Z"
-          fill={getPanelFill('front')}
-          stroke={isActive('front') ? '#0070f3' : '#2a2a3e'}
-          strokeWidth={isActive('front') ? 2 : 1}
-        />
-        {/* Collar notch on front */}
-        <path d="M 450,75 Q 475,100 500,75" fill="none" stroke={isActive('collar') ? '#0070f3' : '#555'} strokeWidth={isActive('collar') ? 2 : 1} />
-
-        {/* Seam danger zone - front */}
-        {showZones.seam && (
-          <path
-            d="M 338,125 L 365,96 L 403,110 L 462,80 L 526,80 L 538,85 L 542,109 L 587,95 L 614,125 L 614,354 L 338,354 Z"
-            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7"
-          />
-        )}
-        {/* Sponsor zone - front top chest */}
-        {showZones.sponsor && sponsorZone && (
-          <rect x="390" y="115" width="180" height="65" rx="3"
-            fill="rgba(0,112,243,0.12)"
-            stroke="#0070f3"
-            strokeWidth="1.2"
-            strokeDasharray="6 4"
-          />
-        )}
-        {sponsorZone && (
-          <text x="480" y="152" textAnchor="middle" fill="#0070f3" fontSize="8" fontFamily="monospace" fontWeight="bold" opacity="0.7">SPONSOR ZONE</text>
-        )}
-        {/* Name/Number safe zone - front back */}
-        {showZones.safe && (
-          <rect x="370" y="215" width="220" height="100" rx="2"
-            fill="rgba(234,179,8,0.07)"
-            stroke="#eab308"
-            strokeWidth="1"
-            strokeDasharray="5 4"
-          />
-        )}
-        {showZones.safe && (
-          <text x="480" y="270" textAnchor="middle" fill="#eab308" fontSize="7" fontFamily="monospace" opacity="0.6">NAME / # SAFE ZONE</text>
-        )}
-        {/* Free design zone */}
-        {showZones.design && (
-          <rect x="345" y="130" width="280" height="218" rx="2"
-            fill="rgba(0,230,118,0.03)"
-            stroke="#00e676"
-            strokeWidth="0.5"
-            strokeDasharray="10 8"
-          />
-        )}
-        {/* Panel label */}
-        <text x="480" y="340" textAnchor="middle" fill="rgba(255,255,255,0.25)" fontSize="9" fontFamily="monospace" fontWeight="bold" letterSpacing="0.08em">FRONT</text>
-        {/* Status dot */}
-        <circle cx="610" cy="130" r="5" fill={STATUS_COLOR[panelStatus('front')]} />
-        {isActive('front') && <circle cx="610" cy="130" r="7" fill="none" stroke="#0070f3" strokeWidth="1.5" opacity="0.7" />}
-      </g>
-
-      {/* ── LEFT SLEEVE (front side) ── */}
-      <g onClick={() => onPanelClick('left-sleeve')} style={{ cursor: 'pointer' }}
-        filter={isActive('left-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
-        <path
-          d="M 330,120 L 360,90 L 400,105 L 390,200 L 310,185 Z"
-          fill={getPanelFill('left-sleeve')}
-          stroke={isActive('left-sleeve') ? '#0070f3' : '#2a2a3e'}
-          strokeWidth={isActive('left-sleeve') ? 2 : 1}
-        />
-        {showZones.seam && (
-          <path d="M 335,122 L 363,94 L 397,108 L 387,197 L 314,182 Z"
-            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
-        )}
-        <text x="355" y="152" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">L.SLV</text>
-      </g>
-
-      {/* ── RIGHT SLEEVE (front side) ── */}
-      <g onClick={() => onPanelClick('right-sleeve')} style={{ cursor: 'pointer' }}
-        filter={isActive('right-sleeve') ? 'url(#active-glow)' : 'url(#panel-shadow)'}>
-        <path
-          d="M 590,90 L 620,120 L 690,175 L 615,195 L 600,105 Z"
-          fill={getPanelFill('right-sleeve')}
-          stroke={isActive('right-sleeve') ? '#0070f3' : '#2a2a3e'}
-          strokeWidth={isActive('right-sleeve') ? 2 : 1}
-        />
-        {showZones.seam && (
-          <path d="M 592,93 L 617,123 L 686,172 L 612,192 L 602,108 Z"
-            fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="4 3" opacity="0.7" />
-        )}
-        <text x="640" y="148" textAnchor="middle" fill="rgba(255,255,255,0.2)" fontSize="7" fontFamily="monospace">R.SLV</text>
-      </g>
-
-      {/* ── COLLAR PANEL (front) ── */}
-      <g onClick={() => onPanelClick('collar')} style={{ cursor: 'pointer' }}>
-        <path
-          d="M 450,75 Q 475,105 500,75 L 540,80 L 530,75 Q 505,65 475,68 Q 445,65 460,75 Z"
-          fill={getPanelFill('collar')}
-          stroke={isActive('collar') ? '#0070f3' : '#3a3a4e'}
-          strokeWidth={isActive('collar') ? 2 : 1}
-        />
-        <circle cx="475" cy="80" r="4" fill={STATUS_COLOR[panelStatus('collar')]} />
-      </g>
-
-      {/* Zone Legend */}
-      <g transform="translate(310, 370)">
-        {showZones.seam && <><rect x="0" y="0" width="8" height="8" fill="none" stroke="#ef4444" strokeWidth="1" strokeDasharray="3 2" /><text x="11" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Seam Zone</text></>}
-        {showZones.safe && <><rect x="80" y="0" width="8" height="8" fill="none" stroke="#eab308" strokeWidth="1" strokeDasharray="3 2" /><text x="91" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Safe Zone</text></>}
-        {showZones.sponsor && sponsorZone && <><rect x="158" y="0" width="8" height="8" fill="rgba(0,112,243,0.2)" stroke="#0070f3" strokeWidth="1" /><text x="169" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Sponsor</text></>}
-        {showZones.design && <><rect x="225" y="0" width="8" height="8" fill="none" stroke="#00e676" strokeWidth="0.5" strokeDasharray="4 3" /><text x="236" y="8" fill="rgba(255,255,255,0.4)" fontSize="7" fontFamily="monospace">Design Area</text></>}
-      </g>
-    </svg>
-      {/* 🌟 1. BASE MOCKUP UNDERLAY (Provides the 3D shading, folds, and outlines) */}
-      {!useSvgFallback && (
-        <img
-          src={mockupSrc}
-          alt="Custom Sublimation Mockup"
-          onError={handleMockupError}
-          style={{
-            width: '100%',
-            maxHeight: '420px',
-            objectFit: 'contain',
-            filter: 'drop-shadow(0 12px 36px rgba(0,0,0,0.55))',
-            pointerEvents: 'none',
-            display: 'block'
-          }}
-        />
-      )}
-
-      {/* 🌟 2. 3D PHOTOREALISTIC MASKED AI PATTERN OVERLAY */}
-      {!useSvgFallback && concepts.length > 0 && (
+      {/* 🌟 AI PATTERN OVERLAY — shown only when concepts have been generated */}
+      {concepts.length > 0 && (
         <div
           style={{
             position: 'absolute',
@@ -523,9 +273,10 @@ const GarmentFlat: React.FC<{
             WebkitMaskRepeat: 'no-repeat',
             maskPosition: 'center',
             WebkitMaskPosition: 'center',
+            zIndex: 2,
           }}
         >
-          {/* Left Half: Front Shirt Design Mask */}
+          {/* Left Half: Front Design */}
           <div
             style={{
               flex: 1,
@@ -536,7 +287,7 @@ const GarmentFlat: React.FC<{
               opacity: 0.95,
             }}
           />
-          {/* Right Half: Back Shirt Design Mask */}
+          {/* Right Half: Back Design */}
           <div
             style={{
               flex: 1,
@@ -901,6 +652,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
               onPanelClick={(id) => {
                 setActivePanel(id);
               }}
+              apparelType={project.apparelType}
             />
           </div>
 
@@ -919,31 +671,48 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
           {/* BOTTOM-CENTER FLOATING AI PROMPT BAR */}
           <div className="ap-bottom-prompt-bar">
-            {/* Panel Selector Dropdown Trigger */}
+            {/* Mockup Selector Dropdown Trigger */}
             <div style={{ position: 'relative' }}>
               <button
                 className="ap-prompt-dropdown-btn"
                 onClick={() => setActivePanelDropdown(!activePanelDropdown)}
               >
-                <Shirt size={13} style={{ color: STATUS_COLOR[activeConfig.status] }} />
-                <span>{activeConfig.shortLabel} Panel</span>
+                <Shirt size={13} style={{ color: 'var(--accent-blue)' }} />
+                <span>
+                  {
+                    project.apparelType === 'esports_jersey' ? 'Jersey Round Neck' :
+                    project.apparelType === 'crewneck_sweatshirt' ? 'Hoodie' :
+                    project.apparelType === 'tshirt' ? 'T-Shirt' :
+                    project.apparelType === 'long_sleeve' ? 'Long Sleeve' :
+                    project.apparelType === 'pants' ? 'Pants' :
+                    project.apparelType === 'shorts' ? 'Shorts' :
+                    'Select Mockup'
+                  }
+                </span>
                 <ChevronDown size={12} style={{ opacity: 0.6 }} />
               </button>
               
               {activePanelDropdown && (
                 <div className="ap-prompt-dropdown-menu">
-                  {panels.map(p => (
+                  {[
+                    { id: 'tshirt', name: 'T-Shirt' },
+                    { id: 'esports_jersey', name: 'Jersey Round Neck' },
+                    { id: 'crewneck_sweatshirt', name: 'Hoodie' },
+                    { id: 'long_sleeve', name: 'Long Sleeve' },
+                    { id: 'pants', name: 'Pants' },
+                    { id: 'shorts', name: 'Shorts' }
+                  ].map(opt => (
                     <button
-                      key={p.id}
-                      className={`ap-prompt-dropdown-item ${activePanel === p.id ? 'active' : ''}`}
+                      key={opt.id}
+                      className={`ap-prompt-dropdown-item ${project.apparelType === opt.id ? 'active' : ''}`}
                       onClick={() => {
-                        setActivePanel(p.id);
+                        onUpdateProject({ apparelType: opt.id });
                         setActivePanelDropdown(false);
                       }}
                     >
-                      <span className="ap-dropdown-dot" style={{ background: STATUS_COLOR[p.status] }} />
-                      <span>{p.label}</span>
-                      {activePanel === p.id && <Check size={11} style={{ marginLeft: 'auto', color: 'var(--accent-blue)' }} />}
+                      <span className="ap-dropdown-dot" style={{ background: 'var(--accent-blue)' }} />
+                      <span>{opt.name}</span>
+                      {project.apparelType === opt.id && <Check size={11} style={{ marginLeft: 'auto', color: 'var(--accent-blue)' }} />}
                     </button>
                   ))}
                 </div>
@@ -965,17 +734,22 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             <input
               type="text"
               className="ap-prompt-textarea"
-              placeholder={`Describe details for ${activeConfig.label.toLowerCase()} (e.g., "${PANEL_PROMPT_CHIPS[activePanel][0]}")...`}
-              value={activeConfig.prompt}
+              placeholder={`Describe design vision for the whole garment...`}
+              value={project.prompt || ''}
               onChange={e => {
-                updatePanel(activePanel, {
-                  prompt: e.target.value,
-                  status: e.target.value.trim() ? 'configured' : 'empty'
+                onUpdateProject({
+                  prompt: e.target.value
                 });
               }}
               onKeyDown={e => {
-                if (e.key === 'Enter' && activeConfig.prompt.trim() !== '') {
-                  handleGenerate();
+                if (e.key === 'Enter' && (project.prompt || '').trim() !== '') {
+                  const nextPanels = panels.map(p => ({
+                    ...p,
+                    prompt: project.prompt,
+                    status: 'configured' as const
+                  }));
+                  onUpdateProject({ panels: nextPanels });
+                  setTimeout(() => handleGenerate(), 50);
                 }
               }}
             />
@@ -983,8 +757,16 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             {/* Generate Action Button */}
             <button
               className={`ap-prompt-generate-btn ${generating ? 'loading' : ''}`}
-              onClick={handleGenerate}
-              disabled={generating || (panels.every(p => p.prompt.trim() === '') && !selectedDNA)}
+              onClick={() => {
+                const nextPanels = panels.map(p => ({
+                  ...p,
+                  prompt: project.prompt || '',
+                  status: 'configured' as const
+                }));
+                onUpdateProject({ panels: nextPanels });
+                setTimeout(() => handleGenerate(), 50);
+              }}
+              disabled={generating || !(project.prompt || '').trim()}
             >
               {generating ? (
                 <><RefreshCw size={13} className="animate-spin" /></>

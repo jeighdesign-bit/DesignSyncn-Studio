@@ -251,7 +251,7 @@ export function alignObjectsToProductionAnchors(
   // Get artwork scale factor from the production grading engine
   const artworkScaleFactor = rules.dynamicScaling ? getArtworkScaleFactor(activeSize) : 1.0;
 
-  const isFull = panel === 'full';
+  const isFull = panel === 'full' || panel === 'sleeves';
   const offs = offsets || {
     sleeves: { x: 60, y: 100 },
     sleeves_right: { x: 1380, y: 100 },
@@ -266,7 +266,7 @@ export function alignObjectsToProductionAnchors(
     if (obj.__isArtboard) return;
 
     // Determine the active object's panel
-    const objPanel = isFull ? (obj.__panel || 'front') : panel;
+    const objPanel = isFull ? (obj.__panel || 'sleeves') : panel;
     const normalizedObjPanel = objPanel === 'sleeves_right' ? 'sleeves' : objPanel;
 
     // Get the size of that active panel in pixels
@@ -281,7 +281,7 @@ export function alignObjectsToProductionAnchors(
     let panelOffsetX = 0;
     let panelOffsetY = 0;
     if (isFull) {
-      const offset = offs[objPanel] ?? offs.front;
+      const offset = offs[objPanel] ?? (panel === 'sleeves' ? offs.sleeves : offs.front);
       panelOffsetX = offset.x;
       panelOffsetY = offset.y;
     }
@@ -501,7 +501,17 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     totalW: 2400,
     totalH: 2400
   };
-  const actualOffsets = offsets || defaultOffsets;
+  const baseOffsets = offsets || defaultOffsets;
+  const localOffsets = currentView === 'sleeves' ? {
+    sleeves: { x: 0, y: 0 },
+    sleeves_right: { x: 960 + 40, y: 0 }, // 40px gap between sleeves (artboards are 960px wide)
+    front: { x: 0, y: 0 },
+    back: { x: 0, y: 0 },
+    collar: { x: 0, y: 0 },
+    totalW: 960 * 2 + 40,
+    totalH: 640
+  } : baseOffsets;
+  const actualOffsets = localOffsets;
 
   useEffect(() => {
     let active = true;
@@ -642,12 +652,15 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     if ((obj as any).__isArtboard) return;
 
     let panel = (obj as any).__panel;
-    if (currentView === 'full' && !panel) {
+    if ((currentView === 'full' || currentView === 'sleeves') && !panel) {
       const center = obj.getCenterPoint();
       const cx = center.x;
       const cy = center.y;
 
-      const panels = [
+      const panels = currentView === 'sleeves' ? [
+        { name: 'sleeves', x: actualOffsets.sleeves.x, y: actualOffsets.sleeves.y, w: 960, h: 640 },
+        { name: 'sleeves_right', x: actualOffsets.sleeves_right.x, y: actualOffsets.sleeves_right.y, w: 960, h: 640 }
+      ] : [
         { name: 'front', x: actualOffsets.front.x, y: actualOffsets.front.y, w: 1120, h: 1360 },
         { name: 'back', x: actualOffsets.back.x, y: actualOffsets.back.y, w: 1120, h: 1360 },
         { name: 'sleeves', x: actualOffsets.sleeves.x, y: actualOffsets.sleeves.y, w: 960, h: 640 },
@@ -655,7 +668,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         { name: 'collar', x: actualOffsets.collar.x, y: actualOffsets.collar.y, w: 560, h: 320 }
       ].filter(p => actualTemplate.files[p.name === 'sleeves_right' ? 'right-sleeve' : p.name === 'sleeves' ? 'left-sleeve' : p.name]);
 
-      let closest = 'front';
+      let closest = currentView === 'sleeves' ? 'sleeves' : 'front';
       let minDist = Infinity;
       panels.forEach(p => {
         const pcx = p.x + p.w / 2;
@@ -679,7 +692,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
     const artboardH = panel === 'front' || panel === 'back' ? 1360 : panel === 'sleeves' || panel === 'sleeves_right' ? 640 : 320;
 
     let offset = { x: 0, y: 0 };
-    if (currentView === 'full') {
+    if (currentView === 'full' || currentView === 'sleeves') {
       offset = actualOffsets[panel] ?? actualOffsets.front;
     }
 
@@ -806,14 +819,68 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       drawFullPanel('back', actualOffsets.back, 1120, 1360);
       if (actualTemplate.files['left-sleeve'] || actualTemplate.files['sleeves']) {
         drawFullPanel('sleeves', actualOffsets.sleeves, 960, 640);
-        drawFullPanel('sleeves_right', actualOffsets.sleeves_right, 960, 640, true);
+        drawFullPanel('sleeves_right', actualOffsets.sleeves_right, 960, 640, !actualTemplate.files['right-sleeve']);
       }
       if (actualTemplate.files['collar']) {
         drawFullPanel('collar', actualOffsets.collar, 560, 320);
       }
+    } else if (currentView === 'sleeves') {
+      const artboardW = 960;
+      const artboardH = 640;
+
+      const drawSingleFocusPanel = (panelKey: string, offset: { x: number; y: number }, flipH = false) => {
+        const templateFileKey = panelKey === 'sleeves_right' ? 'right-sleeve' : panelKey === 'sleeves' ? 'left-sleeve' : panelKey;
+        const tData = panelTemplates[templateFileKey] || panelTemplates['left-sleeve'] || panelTemplates['front'];
+
+        const artboardRect = new fabric.Rect({
+          left: offset.x,
+          top: offset.y,
+          width: artboardW,
+          height: artboardH,
+          originX: 'left',
+          originY: 'top',
+          fill: fillBg,
+          stroke: canvasBg === 'dark' ? '#2d2d3d' : '#e1e1e6',
+          strokeWidth: 1.5,
+          selectable: false,
+          evented: false,
+          hoverCursor: 'default',
+          shadow
+        });
+        (artboardRect as any).__isArtboard = true;
+        (artboardRect as any).__id = `artboard-rect-${panelKey}`;
+        (artboardRect as any).__panel = panelKey;
+        artboardObjects.push(artboardRect);
+
+        if (tData && tData.pathData) {
+          const placement = getGarmentPlacement(panelKey, tData.viewBoxW, tData.viewBoxH, dims, artboardW, artboardH, offset, flipH);
+
+          const p = new fabric.Path(tData.pathData, {
+            left: placement.left,
+            top: placement.top,
+            scaleX: placement.scale * (flipH ? -1 : 1),
+            scaleY: placement.scale,
+            fill: '#ffffff',
+            stroke: '#b0b0b0',
+            strokeWidth: 1,
+            selectable: false,
+            evented: false,
+            hoverCursor: 'default',
+            originX: 'left',
+            originY: 'top'
+          });
+          (p as any).__isArtboard = true;
+          (p as any).__id = `artboard-path-${panelKey}`;
+          (p as any).__panel = panelKey;
+          artboardObjects.push(p);
+        }
+      };
+
+      drawSingleFocusPanel('sleeves', actualOffsets.sleeves);
+      drawSingleFocusPanel('sleeves_right', actualOffsets.sleeves_right, !actualTemplate.files['right-sleeve']);
     } else {
-      const artboardW = currentView === 'front' || currentView === 'back' ? 1120 : currentView === 'sleeves' ? 960 : 560;
-      const artboardH = currentView === 'front' || currentView === 'back' ? 1360 : currentView === 'sleeves' ? 640 : 320;
+      const artboardW = currentView === 'front' || currentView === 'back' ? 1120 : 560;
+      const artboardH = currentView === 'front' || currentView === 'back' ? 1360 : 320;
 
       // 1. Draw the rectangular artboard (workspace)
       const artboardRect = new fabric.Rect({
@@ -837,7 +904,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       artboardObjects.push(artboardRect);
 
       // 2. Draw the garment outline shape
-      const templateFileKey = currentView === 'sleeves' ? 'left-sleeve' : currentView;
+      const templateFileKey = currentView;
       const tData = panelTemplates[templateFileKey] || panelTemplates['left-sleeve'] || panelTemplates['front'];
 
       if (tData && tData.pathData) {
@@ -1223,6 +1290,31 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       if (projectRef.current) {
         alignObjectsToProductionAnchors(canvas, currentViewRef.current, width, height, projectRef.current, offsetsRef.current);
       }
+      if (currentViewRef.current === 'sleeves') {
+        const objs = canvas.getObjects().filter(o => !(o as any).__isArtboard && (o as any).__panel === 'sleeves');
+        const offs = offsetsRef.current;
+        const offsetDiffX = offs.sleeves_right.x - offs.sleeves.x;
+        objs.forEach(obj => {
+          const id = (obj as any).__id;
+          if (id) {
+            const peerExists = canvas.getObjects().some(o => (o as any).__id === id && (o as any).__panel === 'sleeves_right');
+            if (!peerExists) {
+              obj.clone().then((cloned: fabric.FabricObject) => {
+                (cloned as any).__id = id;
+                (cloned as any).__panel = 'sleeves_right';
+                (cloned as any).__layerName = (obj as any).__layerName;
+                cloned.set({
+                  left: (obj.left ?? 0) + offsetDiffX,
+                  top: obj.top,
+                });
+                configureDesignObjectRef.current(cloned);
+                canvas.add(cloned);
+                canvas.requestRenderAll();
+              });
+            }
+          }
+        });
+      }
       applyBg(canvas, canvasBg);
       canvas.setViewportTransform([zoomRef.current, 0, 0, zoomRef.current, panRef.current.x, panRef.current.y]);
       canvas.requestRenderAll();
@@ -1301,6 +1393,31 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         if (projectRef.current) {
           alignObjectsToProductionAnchors(canvas, currentViewRef.current, width, height, projectRef.current, offsetsRef.current);
         }
+        if (currentViewRef.current === 'sleeves') {
+          const objs = canvas.getObjects().filter(o => !(o as any).__isArtboard && (o as any).__panel === 'sleeves');
+          const offs = offsetsRef.current;
+          const offsetDiffX = offs.sleeves_right.x - offs.sleeves.x;
+          objs.forEach(obj => {
+            const id = (obj as any).__id;
+            if (id) {
+              const peerExists = canvas.getObjects().some(o => (o as any).__id === id && (o as any).__panel === 'sleeves_right');
+              if (!peerExists) {
+                obj.clone().then((cloned: fabric.FabricObject) => {
+                  (cloned as any).__id = id;
+                  (cloned as any).__panel = 'sleeves_right';
+                  (cloned as any).__layerName = (obj as any).__layerName;
+                  cloned.set({
+                    left: (obj.left ?? 0) + offsetDiffX,
+                    top: obj.top,
+                  });
+                  configureDesignObjectRef.current(cloned);
+                  canvas.add(cloned);
+                  canvas.requestRenderAll();
+                });
+              }
+            }
+          });
+        }
         applyBg(canvas, canvasBg);
         canvas.setViewportTransform([zoomRef.current, 0, 0, zoomRef.current, panRef.current.x, panRef.current.y]);
         canvas.requestRenderAll();
@@ -1337,7 +1454,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
 
     // Helper: update object panel and clip dynamically based on center coordinate
     const updateObjectPanelAndClip = (obj: fabric.FabricObject) => {
-      if (currentViewRef.current !== 'full') return;
+      if (currentViewRef.current !== 'full' && currentViewRef.current !== 'sleeves') return;
 
       const center = obj.getCenterPoint();
       const cx = center.x;
@@ -1346,7 +1463,10 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       const dm = dimsRef.current;
       const templ = templateRef.current;
 
-      const panels = [
+      const panels = currentViewRef.current === 'sleeves' ? [
+        { name: 'sleeves', x: offs.sleeves.x, y: offs.sleeves.y, w: 960, h: 640 },
+        { name: 'sleeves_right', x: offs.sleeves_right.x, y: offs.sleeves_right.y, w: 960, h: 640 }
+      ] : [
         { name: 'front', x: offs.front.x, y: offs.front.y, w: 1120, h: 1360 },
         { name: 'back', x: offs.back.x, y: offs.back.y, w: 1120, h: 1360 },
         { name: 'sleeves', x: offs.sleeves.x, y: offs.sleeves.y, w: 960, h: 640 },
@@ -1570,7 +1690,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       if (isProcessingHistoryRef.current) return;
       const obj = opt.target;
       if (obj && !(obj as any).__isArtboard) {
-        if (currentViewRef.current === 'full') {
+        if (currentViewRef.current === 'full' || currentViewRef.current === 'sleeves') {
           updateObjectPanelAndClip(obj);
           syncSleeveObject(obj);
         }
@@ -1585,7 +1705,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       }
       if (isProcessingHistoryRef.current) return;
       if (obj && !(obj as any).__isArtboard) {
-        if (currentViewRef.current === 'full') {
+        if (currentViewRef.current === 'full' || currentViewRef.current === 'sleeves') {
           syncSleeveObjectAdded(obj);
         }
       }
@@ -1596,7 +1716,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       if (isProcessingHistoryRef.current) return;
       const obj = opt.target;
       if (obj && !(obj as any).__isArtboard) {
-        if (currentViewRef.current === 'full') {
+        if (currentViewRef.current === 'full' || currentViewRef.current === 'sleeves') {
           syncSleeveObjectRemoved(obj);
         }
       }
@@ -1604,15 +1724,15 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
       notifyLayers();
     };
     const getActivePanelCoords = (obj: any) => {
-      const isFull = currentViewRef.current === 'full';
-      const panel = isFull ? (obj.__panel || 'front') : currentViewRef.current;
+      const isFull = currentViewRef.current === 'full' || currentViewRef.current === 'sleeves';
+      const panel = isFull ? (obj.__panel || (currentViewRef.current === 'sleeves' ? 'sleeves' : 'front')) : currentViewRef.current;
       const offs = offsetsRef.current;
       
       // 1. Get panel offset on the master canvas
       let panelOffsetX = 0;
       let panelOffsetY = 0;
       if (isFull) {
-        const offset = offs[panel] ?? offs.front;
+        const offset = offs[panel] ?? (currentViewRef.current === 'sleeves' ? offs.sleeves : offs.front);
         panelOffsetX = offset.x;
         panelOffsetY = offset.y;
       }
@@ -1680,7 +1800,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         obj.__offsetYInches = Number(((relativeCy - anchorCoords.y) / 40).toFixed(3));
       }
 
-      if (currentViewRef.current === 'full') {
+      if (currentViewRef.current === 'full' || currentViewRef.current === 'sleeves') {
         updateObjectPanelAndClip(obj);
         syncSleeveObject(obj);
       }
@@ -1719,7 +1839,7 @@ export const FabricCanvas = forwardRef<FabricCanvasHandle, FabricCanvasProps>(({
         });
         obj.setCoords();
 
-        if (currentViewRef.current === 'full') {
+        if (currentViewRef.current === 'full' || currentViewRef.current === 'sleeves') {
           syncSleeveObject(obj);
         }
       }

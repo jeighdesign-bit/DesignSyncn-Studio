@@ -2589,6 +2589,9 @@ export const ProductionStudio: React.FC<ProductionStudioProps> = ({
   const CANVAS_W = React.useMemo(() => {
     const view = project.activeCanvasView;
     if (view === 'full') return 2400;
+    if (view === 'sleeves') {
+      return 960 * 2 + 40;
+    }
     const panelDims = dims[view as keyof typeof dims] ?? dims.front;
     return Math.round(panelDims.w * PX_PER_INCH);
   }, [project.activeCanvasView, dims]);

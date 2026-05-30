@@ -892,38 +892,34 @@ export default function App() {
                         <div 
                           className="project-thumbnail-area"
                           style={{
-                            background: `linear-gradient(135deg, ${p.baseColors?.primary || '#13131a'} 0%, ${p.baseColors?.secondary || '#07070a'} 60%, ${p.baseColors?.accent || '#0070f3'}22 100%)`,
+                            background: '#0d0d12',
                             height: '160px',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            position: 'relative'
+                            position: 'relative',
+                            overflow: 'hidden',
                           }}
                         >
-                          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'radial-gradient(circle at 50% 50%, rgba(255,255,255,0.02) 0%, transparent 80%)', pointerEvents: 'none' }} />
-                          
-                          <div style={{ transform: 'scale(1.15)', filter: `drop-shadow(0 0 16px ${p.baseColors?.accent || 'var(--accent-blue)'}3a)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {p.apparelType === 'esports_jersey' ? (
-                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
-                                <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
-                                <path d="M 30,20 L 30,110" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeDasharray="2,2" />
-                                <path d="M 70,20 L 70,110" stroke="rgba(255,255,255,0.08)" strokeWidth="0.8" strokeDasharray="2,2" />
-                              </svg>
-                            ) : p.apparelType === 'tshirt' ? (
-                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
-                                <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" />
-                              </svg>
-                            ) : p.apparelType === 'hoodie' ? (
-                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
-                                <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" />
-                                <path d="M 32,29 C 30,10 70,10 68,29 Z" />
-                              </svg>
-                            ) : (
-                              <svg viewBox="0 0 100 120" width="60" height="72" style={{ fill: 'none', stroke: p.baseColors?.accent || 'var(--accent-blue)', strokeWidth: '1.5' }}>
-                                <path d="M 20,25 C 35,15 65,15 80,25 L 92,50 L 80,53 L 78,110 L 22,110 L 20,53 L 8,50 Z" />
-                              </svg>
-                            )}
-                          </div>
+                          <img 
+                            src={
+                              p.apparelType === 'esports_jersey' ? '/mockups/jersey_round_neck.png' :
+                              p.apparelType === 'crewneck_sweatshirt' ? '/mockups/hoodie.png' :
+                              p.apparelType === 'tshirt' ? '/mockups/tshirt.png' :
+                              p.apparelType === 'long_sleeve' ? '/mockups/long_sleeve.png' :
+                              p.apparelType === 'pants' ? '/mockups/pants.png' :
+                              p.apparelType === 'shorts' ? '/mockups/shorts.png' :
+                              '/mockups/jersey_round_neck.png'
+                            }
+                            alt={p.name}
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              padding: '12px',
+                              boxSizing: 'border-box',
+                            }}
+                          />
 
                           <span className={`project-thumbnail-banner ${p.isArchived ? 'archive-tag' : 'active-tag'}`}>
                             {p.isArchived ? 'Archived' : p.stage === 'brief' ? '1. Create' : p.stage === 'design' ? '2. Generate' : p.stage === 'studio' ? '3. Refine' : '4. Produce'}
@@ -943,12 +939,14 @@ export default function App() {
                           
                           <div className="project-spec-badges" style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px' }}>
                             <span className="spec-badge" style={{ fontSize: '9px', textTransform: 'capitalize' }}>
-                              {p.apparelType ? p.apparelType.replace('_', ' ') : 'Jersey'}
+                              {p.apparelType === 'esports_jersey' ? 'Jersey Round Neck' :
+                               p.apparelType === 'crewneck_sweatshirt' ? 'Hoodie' :
+                               p.apparelType === 'tshirt' ? 'T-Shirt' :
+                               p.apparelType === 'long_sleeve' ? 'Long Sleeve' :
+                               p.apparelType === 'pants' ? 'Pants' :
+                               p.apparelType === 'shorts' ? 'Shorts' :
+                               p.apparelType ? p.apparelType.replace(/_/g, ' ') : 'Jersey'}
                             </span>
-                            {p.templateChoice && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.templateChoice}</span>}
-                            {p.canvasSize && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.canvasSize}</span>}
-                            {p.dpi && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.dpi} DPI</span>}
-                            {p.colorMode && <span className="spec-badge" style={{ fontSize: '9px' }}>{p.colorMode}</span>}
                           </div>
                         </div>
 
@@ -1084,9 +1082,11 @@ export default function App() {
                                     setNewColorMode('CMYK');
                                   }}
                                 >
-                                  <svg viewBox="0 0 100 120" width="40" height="46" className="visual-apparel-card-svg" style={{ stroke: newGarmentType === 'esports_jersey' ? 'var(--accent-blue)' : '#718096', fill: 'none', strokeWidth: 1.8, marginBottom: '8px' }}>
-                                    <path d="M 20,20 C 35,10 65,10 80,20 L 90,50 L 78,54 L 79,110 C 60,115 40,115 21,110 L 22,54 L 10,50 Z" />
-                                  </svg>
+                                  <img 
+                                    src="/mockups/jersey_round_neck.png" 
+                                    alt="Esports Jersey" 
+                                    style={{ width: '45px', height: '45px', objectFit: 'contain', marginBottom: '8px', filter: newGarmentType === 'esports_jersey' ? 'drop-shadow(0 0 6px var(--accent-blue))' : 'grayscale(0.7) opacity(0.6)', transition: 'all 0.2s' }} 
+                                  />
                                   <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>Esports Jersey</span>
                                   <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Standard raglan athletic cut</span>
                                 </div>
@@ -1100,9 +1100,11 @@ export default function App() {
                                     setNewColorMode('CMYK');
                                   }}
                                 >
-                                  <svg viewBox="0 0 100 120" width="40" height="46" className="visual-apparel-card-svg" style={{ stroke: newGarmentType === 'crewneck_sweatshirt' ? 'var(--accent-blue)' : '#718096', fill: 'none', strokeWidth: 1.8, marginBottom: '8px' }}>
-                                    <path d="M 20,25 C 35,15 65,15 80,25 L 95,75 L 85,78 L 80,110 L 20,110 L 15,78 L 5,75 Z" />
-                                  </svg>
+                                  <img 
+                                    src="/mockups/hoodie.png" 
+                                    alt="Crewneck Sweatshirt" 
+                                    style={{ width: '45px', height: '45px', objectFit: 'contain', marginBottom: '8px', filter: newGarmentType === 'crewneck_sweatshirt' ? 'drop-shadow(0 0 6px var(--accent-blue))' : 'grayscale(0.7) opacity(0.6)', transition: 'all 0.2s' }} 
+                                  />
                                   <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>Crewneck Sweatshirt</span>
                                   <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Loose long sleeve streetwear fit</span>
                                 </div>
@@ -1197,123 +1199,35 @@ export default function App() {
                       }[newStylePreference as 'Esports' | 'Streetwear' | 'Minimalist' | 'Aggressive' | 'Luxury' | 'Futuristic'] || { primary: '#0070f3', secondary: '#111115', accent: '#00e5ff' };
 
                       return (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                          <div style={{ position: 'absolute', top: '16px', left: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <span style={{ fontSize: '9px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Studio Live View</span>
-                            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
-                              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: styleColors.primary, boxShadow: `0 0 8px ${styleColors.primary}`, display: 'inline-block' }}></span>
-                              <span style={{ fontSize: '11px', fontWeight: '800', color: '#fff', textTransform: 'capitalize' }}>
-                                {newStylePreference} Vibe Preset
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {/* SVG Silhouette */}
-                          <svg viewBox="0 0 200 220" width="180" height="200" style={{ filter: 'drop-shadow(0 15px 25px rgba(0,0,0,0.6))', transition: 'all 0.3s ease' }}>
-                            <defs>
-                              <linearGradient id="garmentGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                                <stop offset="0%" stopColor="#1a1a24" />
-                                <stop offset="100%" stopColor="#0a0a0f" />
-                              </linearGradient>
-                              {/* Cyber grid pattern */}
-                              <pattern id="hexGridPattern" width="10" height="10" patternUnits="userSpaceOnUse">
-                                <path d="M 5 0 L 10 2.5 L 10 7.5 L 5 10 L 0 7.5 L 0 2.5 Z" fill="none" stroke={styleColors.primary} strokeWidth="0.4" strokeOpacity="0.25" />
-                              </pattern>
-                            </defs>
-
-                            {/* Outer shadow / glow path */}
-                            {isJersey ? (
-                              <path d="M 40,30 C 70,12 130,12 160,30 L 180,90 L 155,98 L 158,200 C 120,208 80,208 42,200 L 45,98 L 20,90 Z" fill="none" stroke={styleColors.primary} strokeWidth="6" strokeOpacity="0.12" filter="blur(6px)" />
-                            ) : (
-                              <path d="M 40,40 C 70,22 130,22 160,40 L 190,120 L 170,126 L 160,195 L 40,195 L 30,126 L 10,120 Z" fill="none" stroke={styleColors.primary} strokeWidth="6" strokeOpacity="0.12" filter="blur(6px)" />
-                            )}
-
-                            {/* Main body garment vector */}
-                            {isJersey ? (
-                              <path d="M 40,30 C 70,12 130,12 160,30 L 180,90 L 155,98 L 158,200 C 120,208 80,208 42,200 L 45,98 L 20,90 Z" fill="url(#garmentGrad)" stroke={styleColors.primary} strokeWidth="1.5" />
-                            ) : (
-                              <path d="M 40,40 C 70,22 130,22 160,40 L 190,120 L 170,126 L 160,195 L 40,195 L 30,126 L 10,120 Z" fill="url(#garmentGrad)" stroke={styleColors.primary} strokeWidth="1.5" />
-                            )}
-
-                            {/* Style graphics */}
-                            {newStylePreference === 'Esports' && (
-                              <>
-                                <path d="M 50,80 L 100,105 L 150,80 L 150,92 L 100,117 L 50,92 Z" fill={styleColors.accent} fillOpacity="0.4" />
-                                <path d="M 50,105 L 100,130 L 150,105 L 150,115 L 100,140 L 50,115 Z" fill={styleColors.primary} fillOpacity="0.6" />
-                              </>
-                            )}
-                            {newStylePreference === 'Streetwear' && (
-                              <>
-                                <rect x="55" y="85" width="90" height="30" fill={styleColors.primary} fillOpacity="0.75" rx="3" />
-                                <circle cx="150" cy="70" r="14" fill={styleColors.accent} fillOpacity="0.25" filter="blur(1px)" />
-                                <circle cx="50" cy="140" r="16" fill={styleColors.primary} fillOpacity="0.15" filter="blur(2px)" />
-                              </>
-                            )}
-                            {newStylePreference === 'Minimalist' && (
-                              <>
-                                <rect x="92" y="80" width="16" height="16" fill="none" stroke={styleColors.accent} strokeWidth="1" strokeOpacity="0.5" />
-                                <line x1="100" y1="75" x2="100" y2="105" stroke={styleColors.accent} strokeWidth="0.5" strokeOpacity="0.3" />
-                              </>
-                            )}
-                            {newStylePreference === 'Aggressive' && (
-                              <>
-                                <path d="M 45,70 L 80,120 L 45,130 Z" fill={styleColors.primary} fillOpacity="0.7" />
-                                <path d="M 155,70 L 120,120 L 155,130 Z" fill={styleColors.primary} fillOpacity="0.7" />
-                                <path d="M 70,160 L 100,115 L 130,160 Z" fill={styleColors.accent} fillOpacity="0.5" />
-                              </>
-                            )}
-                            {newStylePreference === 'Luxury' && (
-                              <>
-                                {isJersey ? (
-                                  <>
-                                    <path d="M 40,30 C 70,12 130,12 160,30" fill="none" stroke={styleColors.accent} strokeWidth="2" />
-                                    <path d="M 20,90 L 45,98" fill="none" stroke={styleColors.accent} strokeWidth="2.5" />
-                                    <path d="M 180,90 L 155,98" fill="none" stroke={styleColors.accent} strokeWidth="2.5" />
-                                  </>
-                                ) : (
-                                  <>
-                                    <path d="M 40,40 C 70,22 130,22 160,40" fill="none" stroke={styleColors.accent} strokeWidth="2.5" />
-                                    <path d="M 10,120 L 30,126" fill="none" stroke={styleColors.accent} strokeWidth="3" />
-                                    <path d="M 190,120 L 170,126" fill="none" stroke={styleColors.accent} strokeWidth="3" />
-                                  </>
-                                )}
-                              </>
-                            )}
-                            {newStylePreference === 'Futuristic' && (
-                              <>
-                                {isJersey ? (
-                                  <path d="M 50,45 C 80,32 120,32 150,45 L 148,185 C 115,192 85,192 52,185 Z" fill="url(#hexGridPattern)" />
-                                ) : (
-                                  <path d="M 50,55 C 80,42 120,42 150,55 L 148,185 L 52,185 Z" fill="url(#hexGridPattern)" />
-                                )}
-                                <path d="M 42,100 Q 100,125 158,100" fill="none" stroke={styleColors.accent} strokeWidth="1.2" strokeDasharray="3 3" />
-                              </>
-                            )}
-
-                            {/* Dynamic Text Displays */}
-                            <text x="100" y="70" fill="#ffffff" fontSize="8" fontWeight="800" textAnchor="middle" letterSpacing="0.12em" style={{ opacity: 0.35, fontFamily: 'monospace' }}>
-                              {newTeamName ? newTeamName.toUpperCase() : 'DESIGN STUDIO'}
-                            </text>
-                            
-                            <text x="100" y="105" fill="#ffffff" fontSize="10" fontWeight="900" textAnchor="middle" letterSpacing="0.06em" style={{ textShadow: '0 2px 5px rgba(0,0,0,0.9)', fontFamily: 'Outfit, sans-serif' }}>
-                              {newProjectName ? (newProjectName.length > 15 ? newProjectName.slice(0, 13).toUpperCase() + '...' : newProjectName.toUpperCase()) : 'NEW JERSEY'}
-                            </text>
-
-                            {/* Fit Guidelines overlay */}
-                            {newTemplateChoice === 'Pro Athletic Fit' && (
-                              <path d="M 50,50 L 52,180 M 148,50 L 146,180" stroke="#00e5ff" strokeWidth="0.8" strokeDasharray="2 3" strokeOpacity="0.5" />
-                            )}
-                          </svg>
+                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+                          {/* Clean Mockup Preview */}
+                          <img
+                            src={
+                              newGarmentType === 'esports_jersey' ? '/mockups/jersey_round_neck.png' :
+                              newGarmentType === 'crewneck_sweatshirt' ? '/mockups/hoodie.png' :
+                              newGarmentType === 'tshirt' ? '/mockups/tshirt.png' :
+                              newGarmentType === 'long_sleeve' ? '/mockups/long_sleeve.png' :
+                              newGarmentType === 'pants' ? '/mockups/pants.png' :
+                              newGarmentType === 'shorts' ? '/mockups/shorts.png' :
+                              '/mockups/jersey_round_neck.png'
+                            }
+                            alt="Apparel Mockup"
+                            style={{
+                              width: '75%',
+                              maxHeight: '260px',
+                              objectFit: 'contain',
+                            }}
+                          />
 
                           {/* Quick specs pill */}
-                          <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '5px', background: 'rgba(0,0,0,0.4)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', width: '100%', maxWidth: '230px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', background: 'rgba(0,0,0,0.4)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', width: '100%', maxWidth: '230px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
                               <span style={{ color: 'rgba(255,255,255,0.4)' }}>Garment Type:</span>
                               <span style={{ color: '#fff', fontWeight: 'bold' }}>{isJersey ? 'Jersey' : 'Sweatshirt'}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
                               <span style={{ color: 'rgba(255,255,255,0.4)' }}>Fit Profile:</span>
-                              <span style={{ color: styleColors.accent, fontWeight: 'bold' }}>{newTemplateChoice}</span>
+                              <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{newTemplateChoice}</span>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
                               <span style={{ color: 'rgba(255,255,255,0.4)' }}>Resolution:</span>
