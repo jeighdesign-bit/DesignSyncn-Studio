@@ -373,21 +373,17 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
-      // IF referenceImage is present, use Recraft's native Image-to-Image API!
+      // IF referenceImage is present, create a custom style and generate using style_id
       if (referenceImage) {
-        console.log(`[DesignSync AI Gateway] Using Recraft Native Image-to-Image with strength 0.3...`);
+        console.log(`[DesignSync AI Gateway] Creating custom style via Recraft Styles API...`);
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const blob = new Blob([buffer], { type: 'image/png' });
 
         const formData = new FormData();
-        formData.append('image', blob, 'reference.png');
-        formData.append('prompt', cleanedPrompt);
-        formData.append('model', 'recraftv3_vector');
-        formData.append('style', recraftStyle);
-        formData.append('strength', '0.3'); // Controls similarity (0.3 is strong style imitation)
+        formData.append('images', blob, 'reference.png');
 
-        const response = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
+        const styleResponse = await fetch('https://external.api.recraft.ai/v1/styles', {
           method: 'POST',
           headers: {
             'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
@@ -395,10 +391,35 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           body: formData,
         });
 
+        if (!styleResponse.ok) {
+          const errorText = await styleResponse.text();
+          console.error(`[DesignSync AI Gateway] Recraft Create Style error response: "${errorText}" (Status: ${styleResponse.status})`);
+          throw new Error(`Recraft Style creation error (${styleResponse.status}): ${errorText || styleResponse.statusText}`);
+        }
+        const styleData = (await styleResponse.json()) as any;
+        const styleId = styleData.id;
+        console.log(`[DesignSync AI Gateway] Style created successfully. Style ID: ${styleId}`);
+
+        // Now, call generations vector with style_id
+        console.log(`[DesignSync AI Gateway] Generating vector with Style ID...`);
+        const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
+          },
+          body: JSON.stringify({
+            prompt: cleanedPrompt,
+            model: 'recraftv3_vector',
+            style_id: styleId,
+            colors: colors.map((c: string) => ({ hex: c })),
+          })
+        });
+
         if (!response.ok) {
           const errorText = await response.text();
-          console.error(`[DesignSync AI Gateway] Recraft Image-to-Image error response: "${errorText}" (Status: ${response.status})`);
-          throw new Error(`Recraft Image-to-Image error (${response.status}): ${errorText || response.statusText}`);
+          console.error(`[DesignSync AI Gateway] Recraft Vector Generation error response: "${errorText}" (Status: ${response.status})`);
+          throw new Error(`Recraft Vector Generation error (${response.status}): ${errorText || response.statusText}`);
         }
         const data = (await response.json()) as any;
         setUserTokens(cleanUserId, currentBalance - 1);
