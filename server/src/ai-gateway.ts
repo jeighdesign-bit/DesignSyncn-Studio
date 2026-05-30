@@ -236,7 +236,7 @@ aiRouter.post('/enhance', async (req: any, res: any) => {
 // 2. POST /api/ai/generate
 aiRouter.post('/generate', async (req: any, res: any) => {
   try {
-    const { prompt, providerMode, baseColors, userId } = req.body;
+    const { prompt, providerMode, baseColors, userId, referenceImage } = req.body;
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
@@ -256,6 +256,59 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
     // Inject strict dye-sub sublimation prompt parameters (Asset-Based generation)
     const optimizedPrompt = optimizePromptForSublimation(prompt, mode);
+
+    // Multimodal style analysis for reference images via Gemini
+    let referenceDescription = '';
+    const openRouterKey = process.env.OPENROUTER_API_KEY;
+    if (referenceImage && openRouterKey) {
+      try {
+        console.log(`[DesignSync AI Gateway] Analyzing reference image style via OpenRouter...`);
+        const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
+        
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${openRouterKey}`,
+            'HTTP-Referer': 'https://designsync.studio',
+            'X-Title': 'DesignSync Studio',
+          },
+          body: JSON.stringify({
+            model: 'google/gemini-flash-1.5',
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  {
+                    type: 'text',
+                    text: 'Describe the design style, colors, texture pattern, and visual elements of this reference image. Focus on details that help an AI generate a similar vector pattern. Keep it brief, under 45 words.'
+                  },
+                  {
+                    type: 'image_url',
+                    image_url: {
+                      url: `data:image/jpeg;base64,${base64Data}`
+                    }
+                  }
+                ]
+              }
+            ]
+          })
+        });
+
+        if (response.ok) {
+          const data = (await response.json()) as any;
+          referenceDescription = data.choices?.[0]?.message?.content?.trim() || '';
+          console.log(`[DesignSync AI Gateway] Reference style analyzed: "${referenceDescription}"`);
+        }
+      } catch (err) {
+        console.error('Failed to analyze reference image:', err);
+      }
+    }
+
+    let finalPrompt = optimizedPrompt;
+    if (referenceDescription) {
+      finalPrompt = `${optimizedPrompt}. Mimic this style description: ${referenceDescription}`;
+    }
 
     // Scan for credentials to determine if we run Sandbox or live API calls
     const hasRecraft = !!process.env.RECRAFT_API_KEY;
@@ -296,7 +349,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       console.log(`[DesignSync AI Gateway] Routing to Recraft AI...`);
 
       // Clean up prompt to remove garment words that confuse the AI into drawing mockups/shirts
-      let cleanedPrompt = optimizedPrompt;
+      let cleanedPrompt = finalPrompt;
       const confusingWords = [
         /\bjersey(s)?\b/gi,
         /\bt-?shirt(s)?\b/gi,
@@ -361,7 +414,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         body: JSON.stringify({
           version: 'black-forest-labs/flux-schnell',
           input: {
-            prompt: optimizedPrompt,
+            prompt: finalPrompt,
             go_fast: true,
             megapixels: '1',
             num_outputs: 1,

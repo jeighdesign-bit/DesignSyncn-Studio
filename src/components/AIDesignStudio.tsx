@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { Project } from '../types';
 import {
   Sparkles, RefreshCw,
@@ -283,6 +283,21 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     }
     return INITIAL_PANELS;
   });
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setReferenceImage(reader.result as string);
+        pushLog('Creative Studio: Reference image uploaded successfully');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const [selectedDNA] = useState<StyleDNA | null>(null);
   const [concepts, setConcepts] = useState<GeneratedConcept[]>(() => {
     if (project.panels && project.panels.length > 0) {
@@ -404,7 +419,8 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             prompt: refinedPrompt,
             providerMode: 'recraft', // will use Recraft Vector AI or fall back to beautiful Sandbox SVGs
             baseColors: colors,
-            userId: userId
+            userId: userId,
+            referenceImage: referenceImage
           })
         });
 
@@ -668,16 +684,39 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
               )}
             </div>
 
+            {/* Hidden File Input */}
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              accept="image/*" 
+              style={{ display: 'none' }} 
+              onChange={handleFileChange} 
+            />
+
             {/* Attachment Button */}
             <button 
               className="ap-prompt-attachment-btn" 
               title="Attach logo or reference illustration"
               onClick={() => {
-                pushLog('Creative Studio: Prompt attachment added as design guidance');
+                fileInputRef.current?.click();
               }}
             >
               <Paperclip size={15} />
             </button>
+
+            {/* Reference Image Thumbnail Preview */}
+            {referenceImage && (
+              <div className="ap-prompt-ref-preview">
+                <img src={referenceImage} alt="reference" />
+                <button 
+                  onClick={() => setReferenceImage(null)} 
+                  className="ap-prompt-ref-remove-btn"
+                  title="Remove reference image"
+                >
+                  ×
+                </button>
+              </div>
+            )}
 
             {/* Prompt Text input field */}
             <input

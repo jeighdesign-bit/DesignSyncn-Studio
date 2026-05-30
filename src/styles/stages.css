@@ -4919,3 +4919,48 @@
   box-shadow: 0 0 10px rgba(0, 112, 243, 0.1);
 }
 
+/* Reference Image Preview Styles */
+.ap-prompt-ref-preview {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #000;
+  flex-shrink: 0;
+}
+
+.ap-prompt-ref-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.ap-prompt-ref-remove-btn {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.85);
+  color: #fff;
+  border: none;
+  font-size: 10px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  padding: 0;
+  transition: all 0.15s;
+}
+
+.ap-prompt-ref-remove-btn:hover {
+  background: #ef4444;
+}
+
