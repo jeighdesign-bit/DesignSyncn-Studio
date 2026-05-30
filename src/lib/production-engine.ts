@@ -47,13 +47,13 @@ export function resolvePlayerPanelLayout(
     chestAlignment: 'center',
     sponsorSpacingInches: 1.5,
     playerNameHeightInches: 2.0,
-    playerNumberHeightInches: 8.0,
+    playerNumberHeightInches: 6.0,
     surnameSpacingCollarInches: 4.5,
     maxTextWidthInches: 12.0,
     autoFitSizing: true,
     safeMarginInches: 0.5,
-    bleedInches: 0.25,
-    seamAllowanceInches: 0.5,
+    bleedInches: 1.8,
+    seamAllowanceInches: 0.3,
     autoCenter: true,
     dynamicScaling: true
   };
@@ -200,10 +200,18 @@ export function resolvePlayerPanelLayout(
         anchor = 'collar_base';
         ox = activeRules.chestAlignment === 'left' ? -5.0 : activeRules.chestAlignment === 'right' ? 5.0 : 0;
         oy = activeRules.frontLogoSpacingCollarInches;
-      } else if (normPanel === 'sleeves' && o.__isSleeveLogo) {
-        anchor = 'sleeve_center';
+      } else if (normPanel === 'front' && o.__isNumberText) {
+        anchor = 'chest_center';
         ox = 0;
-        oy = 0;
+        oy = 3.0; // 3 inches below chest logo by default
+      } else if (normPanel === 'back' && o.__isPrimaryLogo) {
+        anchor = 'collar_base';
+        ox = 0;
+        oy = 3.0; // 3 inches below back neck curve
+      } else if (normPanel === 'sleeves' && o.__isSleeveLogo) {
+        anchor = 'sleeve_cuff'; // 3 inches up from bottom cuff
+        ox = 0;
+        oy = -3.0;
       } else {
         // Fallback to visual landmarks
         anchor = normPanel === 'front' ? 'chest_center' : normPanel === 'back' ? 'mid_back' : 'sleeve_center';

@@ -1,5 +1,5 @@
 import { Queue } from 'bullmq';
-import Redis from 'ioredis';
+import { Redis } from 'ioredis';
 import dotenv from 'dotenv';
 
 dotenv.config();
@@ -15,7 +15,7 @@ redisConnection.on('connect', () => {
   console.log('🔌 Redis connected successfully!');
 });
 
-redisConnection.on('error', (err) => {
+redisConnection.on('error', (err: any) => {
   console.error('❌ Redis connection error:', err);
 });
 

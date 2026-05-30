@@ -3,8 +3,9 @@
   "version": "1.0.0",
   "description": "BullMQ + Redis Microservice for high-resolution sublimation exports",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
-    "dev": "nodemon --watch src -e ts --exec ts-node src/index.ts",
+    "dev": "nodemon --watch src -e ts --exec \"tsc && node dist/index.js\"",
     "build": "tsc",
     "start": "node dist/index.js"
   },

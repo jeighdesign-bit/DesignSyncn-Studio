@@ -402,7 +402,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             prompt: refinedPrompt,
-            providerMode: 'flux', // will use Replicate Flux or fall back to beautiful Sandbox SVGs
+            providerMode: 'recraft', // will use Recraft Vector AI or fall back to beautiful Sandbox SVGs
             baseColors: colors,
             userId: userId
           })

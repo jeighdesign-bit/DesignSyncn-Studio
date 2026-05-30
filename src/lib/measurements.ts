@@ -616,7 +616,7 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   });
 
   // Player Number Text
-  const numberHeight = rules?.playerNumberHeightInches ?? 8.0;
+  const numberHeight = rules?.playerNumberHeightInches ?? 6.0;
   backObjects.push({
     type: 'i-text',
     version: '6.0.0-beta.7',
@@ -678,7 +678,7 @@ export function generateProductionCanvasStates(project: Project): Record<string,
   // Add Sleeve Sponsor Logo if present
   const sleeveLogo = sponsorLogo || primaryLogo;
   if (sleeveLogo) {
-    const targetW = 3.0 * PX_PER_INCH; // 3 inches
+    const targetW = 2.5 * PX_PER_INCH; // 2.5 inches standard
     const ratio = sleeveLogo.heightPx && sleeveLogo.widthPx ? sleeveLogo.heightPx / sleeveLogo.widthPx : 1.0;
     const targetH = targetW * ratio;
 
