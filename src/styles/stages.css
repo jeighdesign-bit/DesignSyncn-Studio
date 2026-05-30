@@ -4771,13 +4771,20 @@
   border-radius: 10px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
   flex-shrink: 0;
+}
+
+.ap-prompt-attachment-btn svg {
+  width: 16px !important;
+  height: 16px !important;
+  display: block !important;
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
 .ap-prompt-attachment-btn:hover {
