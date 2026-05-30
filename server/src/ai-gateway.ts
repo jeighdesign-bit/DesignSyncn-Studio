@@ -257,12 +257,13 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     // Inject strict dye-sub sublimation prompt parameters (Asset-Based generation)
     const optimizedPrompt = optimizePromptForSublimation(prompt, mode);
 
-    // Multimodal style analysis for reference images via Gemini
-    let referenceDescription = '';
+    // Multimodal pattern extraction for reference images via Gemini Vision
+    // We analyze the PATTERN specifically (not the jersey silhouette) for accurate vector generation
+    let patternDescription = '';
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     if (referenceImage && openRouterKey) {
       try {
-        console.log(`[DesignSync AI Gateway] Analyzing reference image style via OpenRouter...`);
+        console.log(`[DesignSync AI Gateway] Extracting pattern description from reference image via Gemini Vision...`);
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
         
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -281,7 +282,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
                 content: [
                   {
                     type: 'text',
-                    text: 'Describe the design style, colors, texture pattern, and visual elements of this reference image. Focus on details that help an AI generate a similar vector pattern. Keep it brief, under 45 words.'
+                    text: 'Look ONLY at the graphic design pattern on this sports jersey. Completely ignore the background, room, hanger, collar, sleeves, logos, numbers, and jersey shape. Describe ONLY: (1) the geometric pattern type (e.g. chevrons, diamonds, zigzag, stripes), (2) the exact colors used, (3) how the shapes are arranged and repeated. Be specific and concise, under 50 words.'
                   },
                   {
                     type: 'image_url',
@@ -297,17 +298,18 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
         if (response.ok) {
           const data = (await response.json()) as any;
-          referenceDescription = data.choices?.[0]?.message?.content?.trim() || '';
-          console.log(`[DesignSync AI Gateway] Reference style analyzed: "${referenceDescription}"`);
+          patternDescription = data.choices?.[0]?.message?.content?.trim() || '';
+          console.log(`[DesignSync AI Gateway] Pattern extracted: "${patternDescription}"`);
         }
       } catch (err) {
-        console.error('Failed to analyze reference image:', err);
+        console.error('[DesignSync AI Gateway] Failed to analyze reference image:', err);
       }
     }
 
+    // Build the final prompt: if we extracted a pattern, use that; otherwise use the user prompt
     let finalPrompt = optimizedPrompt;
-    if (referenceDescription) {
-      finalPrompt = `${optimizedPrompt}. Mimic this style description: ${referenceDescription}`;
+    if (patternDescription) {
+      finalPrompt = `Flat vector sports sublimation pattern: ${patternDescription}. Isolated graphic on white background, crisp clean edges, print-ready vector art, no jersey silhouette, no clothing shape, no background.`;
     }
 
     // Scan for credentials to determine if we run Sandbox or live API calls
@@ -373,17 +375,55 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
-      // IF referenceImage is present, try Recraft Custom Style → fallback to Image-to-Image
+      // IF referenceImage is present: use smart pipeline
       if (referenceImage) {
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const blob = new Blob([buffer], { type: 'image/png' });
 
-        let styleId: string | null = null;
+        // ── PATH A: Gemini extracted a pattern → text-to-vector (BEST quality) ──
+        if (patternDescription) {
+          console.log(`[DesignSync AI Gateway] PATH A: Generating vector from Gemini pattern description...`);
+          // Clean up the finalPrompt from garment words
+          let cleanedFinalPrompt = finalPrompt;
+          for (const rx of confusingWords) {
+            cleanedFinalPrompt = cleanedFinalPrompt.replace(rx, '');
+          }
+          cleanedFinalPrompt = cleanedFinalPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
 
-        // Step 1: Try to create a custom Recraft style from the reference image
+          const vectorResponse = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
+            },
+            body: JSON.stringify({
+              prompt: cleanedFinalPrompt,
+              model: 'recraftv3_vector',
+              style: recraftStyle,
+              colors: colors.map((c: string) => ({ hex: c })),
+            })
+          });
+
+          if (!vectorResponse.ok) {
+            const errorText = await vectorResponse.text();
+            console.error(`[DesignSync AI Gateway] PATH A vector error: "${errorText}" (Status: ${vectorResponse.status})`);
+            throw new Error(`Recraft Vector error (${vectorResponse.status}): ${errorText}`);
+          }
+          const vectorData = (await vectorResponse.json()) as any;
+          setUserTokens(cleanUserId, currentBalance - 1);
+          return res.json({
+            url: vectorData.data?.[0]?.url,
+            type: 'vector',
+            isSandbox: false,
+            remainingTokens: currentBalance - 1
+          });
+        }
+
+        // ── PATH B: No Gemini → try Recraft Custom Style API ──
+        let styleId: string | null = null;
         try {
-          console.log(`[DesignSync AI Gateway] Creating custom style via Recraft Styles API...`);
+          console.log(`[DesignSync AI Gateway] PATH B: Creating custom style via Recraft Styles API...`);
           const formData = new FormData();
           formData.append('style', 'vector_illustration');
           formData.append('images', blob, 'reference.png');
@@ -399,20 +439,19 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           if (styleResponse.ok) {
             const styleData = (await styleResponse.json()) as any;
             styleId = styleData.id || null;
-            console.log(`[DesignSync AI Gateway] Style created successfully. Style ID: ${styleId}`);
+            console.log(`[DesignSync AI Gateway] Style created. Style ID: ${styleId}`);
           } else {
             const errorText = await styleResponse.text();
             console.warn(`[DesignSync AI Gateway] Recraft Style creation failed (${styleResponse.status}): ${errorText}. Falling back to Image-to-Image.`);
           }
         } catch (styleErr) {
-          console.warn(`[DesignSync AI Gateway] Style creation exception, falling back to Image-to-Image:`, styleErr);
+          console.warn(`[DesignSync AI Gateway] Style creation exception:`, styleErr);
         }
 
-        // Step 2a: If style was created, generate vector using style_id
-        // Use a CLEAN pattern prompt — do NOT tell it to recreate the jersey, that causes the jersey shape to tile
-        const styleGuidePrompt = `Abstract flat vector sports sublimation pattern. Clean geometric shapes, bold curves, angular panels, isolated on white background. ${colors.length ? 'Color palette: ' + colors.join(', ') + '.' : ''} High-contrast, crisp edges, print-ready seamless graphic asset.`;
+        const styleGuidePrompt = `Abstract flat vector sports sublimation pattern. Clean geometric shapes, bold curves, angular panels, isolated on white background. ${colors.length ? 'Color palette: ' + colors.join(', ') + '.' : ''} High-contrast, crisp edges, print-ready.`;
+
         if (styleId) {
-          console.log(`[DesignSync AI Gateway] Generating vector with Style ID: ${styleId}...`);
+          console.log(`[DesignSync AI Gateway] PATH B: Generating vector with Style ID: ${styleId}...`);
           const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
             method: 'POST',
             headers: {
@@ -429,8 +468,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
           if (!response.ok) {
             const errorText = await response.text();
-            console.error(`[DesignSync AI Gateway] Recraft Vector Generation error: "${errorText}" (Status: ${response.status})`);
-            throw new Error(`Recraft Vector Generation error (${response.status}): ${errorText || response.statusText}`);
+            console.error(`[DesignSync AI Gateway] PATH B vector error: "${errorText}" (Status: ${response.status})`);
+            throw new Error(`Recraft Vector Generation error (${response.status}): ${errorText}`);
           }
           const data = (await response.json()) as any;
           setUserTokens(cleanUserId, currentBalance - 1);
@@ -442,11 +481,9 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           });
         }
 
-        // Step 2b: Fallback — use Recraft native Image-to-Image endpoint
-        // Use strength 0.75 so it transforms aggressively (not just copies the jersey silhouette)
-        // Use a focused style-extraction prompt instead of "recreate the jersey"
+        // ── PATH C: Final fallback — Image-to-Image ──
         const i2iPrompt = `Flat vector sports sublimation graphic pattern inspired by the colors and shapes in this reference image. Abstract geometric panels, bold angular curves, clean isolated graphic asset on white background. Crisp print-ready vector art.`;
-        console.log(`[DesignSync AI Gateway] Falling back to Recraft Image-to-Image (strength 0.75)...`);
+        console.log(`[DesignSync AI Gateway] PATH C: Image-to-Image fallback (strength 0.75)...`);
         const imgFormData = new FormData();
         imgFormData.append('image', blob, 'reference.png');
         imgFormData.append('prompt', i2iPrompt);
@@ -463,8 +500,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
         if (!imgResponse.ok) {
           const errorText = await imgResponse.text();
-          console.error(`[DesignSync AI Gateway] Recraft Image-to-Image error: "${errorText}" (Status: ${imgResponse.status})`);
-          throw new Error(`Recraft Image-to-Image error (${imgResponse.status}): ${errorText || imgResponse.statusText}`);
+          console.error(`[DesignSync AI Gateway] PATH C Image-to-Image error: "${errorText}" (Status: ${imgResponse.status})`);
+          throw new Error(`Recraft Image-to-Image error (${imgResponse.status}): ${errorText}`);
         }
         const imgData = (await imgResponse.json()) as any;
         setUserTokens(cleanUserId, currentBalance - 1);
