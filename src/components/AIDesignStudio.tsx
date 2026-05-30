@@ -502,7 +502,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             providerMode: 'recraft',
             baseColors: colors,
             userId: userId,
-            referenceImage: referenceToUse
+            referenceImage: referenceToUse,
+            highSimilarityMode: true, // Always true or linked dynamically
+            similarityStrength: 0.88 // Hardcoded default strength: 0.88 (fidelity range 0.85-0.92)
           })
         });
 

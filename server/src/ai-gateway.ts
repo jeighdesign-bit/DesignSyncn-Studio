@@ -336,12 +336,14 @@ aiRouter.post('/enhance', async (req: any, res: any) => {
 // 2. POST /api/ai/generate
 aiRouter.post('/generate', async (req: any, res: any) => {
   try {
-    const { prompt, providerMode, baseColors, userId, referenceImage } = req.body;
+    const { prompt, providerMode, baseColors, userId, referenceImage, highSimilarityMode, similarityStrength } = req.body;
     if (!prompt) {
       return res.status(400).json({ error: 'Prompt is required' });
     }
 
     const cleanUserId = userId || 'anonymous-session';
+    const isHighSimilarity = highSimilarityMode === true || highSimilarityMode === 'true';
+    const activeStrength = similarityStrength !== undefined ? Number(similarityStrength) : 0.88;
     
     // Sync token balance from Supabase database if available
     let currentBalance = getUserTokens(cleanUserId);
@@ -379,7 +381,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     const openRouterKey = process.env.OPENROUTER_API_KEY;
     const geminiApiKey = process.env.GEMINI_API_KEY;
 
-    if (referenceImage && (geminiApiKey || openRouterKey)) {
+    // BYPASS Gemini Vision if High Similarity Mode is enabled!
+    if (referenceImage && !isHighSimilarity && (geminiApiKey || openRouterKey)) {
       try {
         console.log(`[DesignSync AI Gateway] Extracting pattern description from reference image via Gemini Vision...`);
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
@@ -560,25 +563,64 @@ Analyze this image carefully and respond in EXACTLY this format with no extra te
 
       console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
 
-      // IF referenceImage is present and is NOT a mockup jersey photo: use our premium color-mapped Image-to-Image vector replication
-      if (referenceImage && !isMockup) {
+      // 🔍 DEBUG & VERIFICATION: Log uploaded image data and incoming request details
+      if (referenceImage) {
+        const payloadLength = referenceImage.length;
+        const mimeTypeMatch = referenceImage.match(/^data:(image\/\w+);base64,/);
+        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'unknown';
+        console.log(`\n================== [AI-GATEWAY REFERENCE IMAGE INBOUND DEEP DEBUG] ==================`);
+        console.log(`• Reference image exists in request payload: YES`);
+        console.log(`• Raw payload base64 length: ${payloadLength} characters`);
+        console.log(`• Detected MIME Type: ${mimeType}`);
+        console.log(`• Snippet: "${referenceImage.substring(0, 100)}..."`);
+        console.log(`• Is mockup detected by Gemini: ${isMockup}`);
+        console.log(`=====================================================================================\n`);
+      } else {
+        console.log(`\n================== [AI-GATEWAY REFERENCE IMAGE INBOUND DEEP DEBUG] ==================`);
+        console.log(`• Reference image exists in request payload: NO`);
+        console.log(`• Using pure text-to-image synthesis.`);
+        console.log(`=====================================================================================\n`);
+      }
+
+      // IF referenceImage is present: route to Image-to-Image
+      // (always for high similarity mode, or for flat design references when not in high similarity mode)
+      const shouldRouteI2I = referenceImage && (isHighSimilarity || !isMockup);
+      
+      if (shouldRouteI2I) {
         const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
         const buffer = Buffer.from(base64Data, 'base64');
         const blob = new Blob([buffer], { type: 'image/png' });
 
-        console.log(`[DesignSync AI Gateway] Replicating reference style via Image-to-Image (I2I) at strength 0.45...`);
-        try {
-          const imgFormData = new FormData();
-          imgFormData.append('image', blob, 'reference.png');
-          imgFormData.append('prompt', finalPrompt);
-          imgFormData.append('style', 'vector_illustration');
-          imgFormData.append('strength', '0.45');
-          
-          // Apply custom hex colors dynamically to the reference image conversion
-          if (colors && colors.length > 0) {
-            imgFormData.append('colors', JSON.stringify(colors.map((c: string) => ({ hex: c }))));
-          }
+        console.log(`[DesignSync AI Gateway] Replicating reference style via Image-to-Image (I2I) at strength ${activeStrength}...`);
+        
+        // Formulating the multipart/form-data for the external request
+        const imgFormData = new FormData();
+        imgFormData.append('image', blob, 'reference.png');
+        imgFormData.append('prompt', finalPrompt);
+        imgFormData.append('style', 'vector_illustration');
+        imgFormData.append('strength', String(activeStrength));
+        
+        // Apply custom hex colors dynamically to the reference image conversion
+        if (colors && colors.length > 0) {
+          imgFormData.append('colors', JSON.stringify(colors.map((c: string) => ({ hex: c }))));
+        }
 
+        console.log(`\n================== [EXACT RECRAFT API CALL SENT: IMAGE-TO-IMAGE] ==================`);
+        console.log(`• Endpoint: POST https://external.api.recraft.ai/v1/images/imageToImage`);
+        console.log(`• Headers: { Authorization: "Bearer RECRAFT_API_KEY_HIDDEN" }`);
+        console.log(`• Route Mode Selected: DIRECT IMAGE-TO-IMAGE`);
+        console.log(`• High Similarity Mode: ${isHighSimilarity ? "ON (Bypassed Gemini Vision)" : "OFF (Flat design layout)"}`);
+        console.log(`• Similarity Strength: ${activeStrength} (Fidelity Range: 0.85 - 0.92)`);
+        console.log(`• Crop Dimensions: Pre-cropped 18% from outer borders (original 512x512 canvas -> cropped central design resized to 512x512)`);
+        console.log(`• Multipart Request Body:`);
+        console.log(`  - image: [Binary Blob: ${buffer.length} bytes]`);
+        console.log(`  - prompt: "${finalPrompt}"`);
+        console.log(`  - style: "vector_illustration"`);
+        console.log(`  - strength: "${activeStrength}"`);
+        console.log(`  - colors: ${JSON.stringify(colors.map((c: string) => ({ hex: c })))}`);
+        console.log(`===================================================================================\n`);
+
+        try {
           const imgResponse = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
             method: 'POST',
             headers: {
@@ -591,7 +633,7 @@ Analyze this image carefully and respond in EXACTLY this format with no extra te
             const imgData = (await imgResponse.json()) as any;
             const vectorUrl = imgData.data?.[0]?.url;
             if (vectorUrl) {
-              console.log(`[DesignSync AI Gateway] I2I SUCCESS. Vector Pattern: ${vectorUrl}`);
+              console.log(`[DesignSync AI Gateway] I2I SUCCESS. Vector Pattern URL: ${vectorUrl}`);
               setUserTokens(cleanUserId, currentBalance - 1);
               return res.json({
                 url: vectorUrl,
@@ -611,18 +653,32 @@ Analyze this image carefully and respond in EXACTLY this format with no extra te
       }
 
       // Otherwise, standard generation
+      const requestPayload = {
+        prompt: cleanedPrompt,
+        model: 'recraftv4_vector',
+        style: recraftStyle,
+        colors: colors.map((c: string) => ({ hex: c })),
+      };
+
+      console.log(`\n================== [EXACT RECRAFT API CALL SENT: TEXT-TO-IMAGE] ==================`);
+      console.log(`• Endpoint: POST https://external.api.recraft.ai/v1/images/generations/vector`);
+      console.log(`• Headers: { "Content-Type": "application/json", Authorization: "Bearer RECRAFT_API_KEY_HIDDEN" }`);
+      console.log(`• JSON Request Body:`);
+      console.log(JSON.stringify(requestPayload, null, 2));
+      if (referenceImage && isMockup) {
+        console.log(`• Note: Reference image uploaded was jersey mockup. Pattern was successfully extracted by Gemini Vision.`);
+        console.log(`  Pattern Description: "${patternDescription}"`);
+        console.log(`  To avoid shirt-silhouette pollution inside patterns, we route this request as standard Text-to-Image Vector Generation.`);
+      }
+      console.log(`===================================================================================\n`);
+
       const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
         },
-        body: JSON.stringify({
-          prompt: cleanedPrompt,
-          model: 'recraftv4_vector',
-          style: recraftStyle,
-          colors: colors.map((c: string) => ({ hex: c })),
-        })
+        body: JSON.stringify(requestPayload)
       });
 
       if (!response.ok) {
