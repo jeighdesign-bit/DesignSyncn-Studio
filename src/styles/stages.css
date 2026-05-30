@@ -4777,6 +4777,7 @@
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .ap-prompt-attachment-btn:hover {
