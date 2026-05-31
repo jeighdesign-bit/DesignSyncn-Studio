@@ -1126,7 +1126,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 border: '1px solid rgba(255,255,255,0.04)',
                 position: 'relative',
                 overflow: 'hidden',
-                minHeight: '480px',
+                minHeight: '240px',
                 padding: '12px'
               }}>
                 {panelReferences[activePanel] ? (
@@ -1297,7 +1297,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 border: '1px solid rgba(255,255,255,0.04)',
                 position: 'relative',
                 overflow: 'hidden',
-                minHeight: '480px',
+                minHeight: '240px',
                 padding: '12px'
               }}>
                 {concepts.find(c => c.panelId === activePanel)?.patternUrl ? (
