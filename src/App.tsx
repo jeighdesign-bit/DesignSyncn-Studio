@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import type { Project, SponsorLogo, ApparelType } from './types';
+import type { Project, ApparelType } from './types';
 import { supabase } from './lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { AuthModal } from './components/AuthModal';
@@ -10,10 +10,9 @@ import { AIDesignStudio } from './components/AIDesignStudio';
 import { UpgradeModal } from './components/UpgradeModal';
 import { useBillingState } from './lib/useBillingState';
 import {
-  Layers, FileText, Download,
-  ChevronLeft, ArrowRight, ArrowLeft, Sparkles, Menu, Upload,
-  Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy,
-  AlertTriangle
+  Layers, Download,
+  ChevronLeft, ArrowRight, Sparkles, Menu,
+  Trash2, Plus, Search, Folder, Archive, FolderPlus, X, Check, Lock, Copy
 } from 'lucide-react';
 
 // Default Project Settings
@@ -137,8 +136,7 @@ export default function App() {
     const saved = localStorage.getItem('ds_active_view');
     return (saved as 'landing' | 'dashboard' | 'editor') || 'landing';
   });
-  const [wizardStep, setWizardStep] = useState<number>(1);
-  const [blueprintView, setBlueprintView] = useState<'front' | 'back'>('front');
+
   
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', 'dark');
@@ -291,13 +289,11 @@ export default function App() {
   const [newCanvasSize, setNewCanvasSize] = useState('2400 x 2400 px');
   const [newDpi, setNewDpi] = useState<number>(300);
   const [newColorMode, setNewColorMode] = useState<'RGB' | 'CMYK'>('CMYK');
-  const [modalStep, setModalStep] = useState<number>(1);
   const [newStylePreference, setNewStylePreference] = useState<string>('Esports');
 
   // Auto-reset when modal opens
   useEffect(() => {
     if (isModalOpen) {
-      setModalStep(1);
       setNewProjectName('');
       setNewTeamName('');
       setNewStylePreference('Esports');
@@ -309,12 +305,7 @@ export default function App() {
     }
   }, [isModalOpen]);
 
-  // Reset wizard steps when active project changes
-  useEffect(() => {
-    if (project?.id) {
-      setWizardStep(1);
-    }
-  }, [project?.id]);
+
 
   const [isSidebarExpanded, setIsSidebarExpanded] = useState<boolean>(true);
   const [aiGenerating, setAiGenerating] = useState<boolean>(false);
@@ -692,53 +683,7 @@ export default function App() {
     });
   };
 
-  // Add dummy high-res logo
-  const loadHighResLogo = () => {
-    const newLogo: SponsorLogo = {
-      id: 'high-res-logo',
-      name: 'CyberCrest_Primary.png',
-      url: '/cyber_crest_logo.png',
-      dpi: 300,
-      widthPx: 1200,
-      heightPx: 1200,
-      resolutionStatus: 'high',
-      sizeInches: 5.5,
-      offsetCollarInches: 3.5,
-    };
-    setProject(prev => ({
-      ...prev,
-      logos: [...prev.logos.filter(l => l.id !== 'high-res-logo'), newLogo]
-    }));
-    addLog('Sponsor logo loaded: CyberCrest_Primary.png (300 DPI — High Res).');
-  };
 
-  // Add dummy low-res logo to test pre-flight warning
-  const loadLowResLogo = () => {
-    const newLogo: SponsorLogo = {
-      id: 'low-res-logo',
-      name: 'Temp_Sponsor_Web.jpg',
-      url: '',
-      dpi: 72,
-      widthPx: 180,
-      heightPx: 120,
-      resolutionStatus: 'low',
-      sizeInches: 4.0,
-      offsetCollarInches: 3.5,
-    };
-    setProject(prev => ({
-      ...prev,
-      logos: [...prev.logos.filter(l => l.id !== 'low-res-logo'), newLogo]
-    }));
-    addLog('Warning: Loaded graphic Temp_Sponsor_Web.jpg under 300 DPI (72 DPI detected).');
-  };
-
-  const deleteLogo = (id: string) => {
-    setProject(prev => ({
-      ...prev,
-      logos: prev.logos.filter(l => l.id !== id)
-    }));
-    addLog('Sponsor logo removed.');
-  };
 
   const handlePresetSelect = (presetId: string) => {
     const p = presets.find(item => item.id === presetId);
