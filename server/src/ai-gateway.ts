@@ -245,11 +245,63 @@ aiRouter.post('/generate', async (req: any, res: any) => {
     //  3. Strip silhouette boundaries and jersey wrinkles using a rigorous regex
     //  4. Synthesize flat native SVG using Recraft V4.1 Pro Vector
     if (referenceImage) {
+      const isGrabber = req.body.pipeline === 'grabber';
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+
+      if (isGrabber) {
+        console.log(`\n══════════════ [Design Grabber: Recraft Vectorizer Service] ══════════════`);
+        console.log(`• Input: 3D Reference Mockup Uploaded (Design Grabber Mode)`);
+        console.log(`• Method: Recraft Image Vectorization (1:1 Tracing)`);
+        
+        if (!recraftKey) {
+          return res.status(500).json({ error: 'RECRAFT_API_KEY is missing. Grabber requires Recraft API.' });
+        }
+
+        try {
+          const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
+
+          // Construct FormData using native Node 18+ global FormData and Blob
+          const formData = new FormData();
+          formData.append('image', new Blob([buffer], { type: 'image/png' }), 'mockup.png');
+
+          const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${recraftKey}`
+            },
+            body: formData
+          });
+
+          if (recraftResponse.ok) {
+            const recraftData = await recraftResponse.json() as any;
+            const resultUrl = recraftData.url || recraftData.image_url || recraftData.data?.[0]?.url;
+            if (resultUrl) {
+              console.log(`[Design Grabber] ✅ RECRAFT VECTORIZER SUCCESS → ${resultUrl}`);
+              setUserTokens(cleanUserId, currentBalance - 1);
+              return res.json({
+                url: resultUrl,
+                type: 'vector',
+                isSandbox: false,
+                pipeline: 'recraft-literal-vectorizer',
+                remainingTokens: currentBalance - 1
+              });
+            } else {
+              throw new Error('No valid URL found in Recraft response data.');
+            }
+          } else {
+            const errText = await recraftResponse.text().catch(() => 'unknown');
+            throw new Error(`Recraft Vectorizer API failed (${recraftResponse.status}): ${errText}`);
+          }
+        } catch (grabberErr: any) {
+          console.error(`[Design Grabber] ❌ Recraft Vectorization failed:`, grabberErr);
+          return res.status(500).json({ error: `Design Grabber failed: ${grabberErr.message}` });
+        }
+      }
+
       console.log(`\n══════════════ [StyleSync AI: Gemini + Recraft V4.1 Pro Vector] ══════════════`);
       console.log(`• Input: 3D Reference Mockup Uploaded`);
       console.log(`• Model: recraftv4_1_pro_vector`);
-      
-      const geminiApiKey = process.env.GEMINI_API_KEY;
       let extractedPrompt = '';
 
       if (geminiApiKey) {
