@@ -9,6 +9,7 @@ import { PreFlightPanel } from './components/PreFlightPanel';
 import { AIDesignStudio } from './components/AIDesignStudio';
 import { UpgradeModal } from './components/UpgradeModal';
 import { useBillingState } from './lib/useBillingState';
+import { Analytics } from '@vercel/analytics/react';
 import {
   Layers, Download,
   ChevronLeft, ArrowRight, Sparkles, Menu,
@@ -724,6 +725,7 @@ export default function App() {
 
   return (
     <>
+      <Analytics />
       {/* ====================================================
          VIEW 1: LANDING PAGE
          ==================================================== */}

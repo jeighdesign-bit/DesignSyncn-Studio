@@ -12,6 +12,7 @@
   "dependencies": {
     "@sentry/react": "^10.54.0",
     "@supabase/supabase-js": "^2.106.2",
+    "@vercel/analytics": "^2.0.1",
     "fabric": "^7.4.0",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",
