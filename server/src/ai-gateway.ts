@@ -259,12 +259,24 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         }
 
         try {
+          if (!referenceImage || typeof referenceImage !== 'string' || !referenceImage.includes(';base64,')) {
+            console.error(`[Design Grabber] ❌ Invalid or empty referenceImage payload.`);
+            return res.status(400).json({ error: 'Invalid or empty referenceImage payload.' });
+          }
+
           const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
           const buffer = Buffer.from(base64Data, 'base64');
 
+          if (buffer.length === 0) {
+            console.error(`[Design Grabber] ❌ referenceImage decoded to an empty buffer.`);
+            return res.status(400).json({ error: 'Decoded reference image is empty.' });
+          }
+
+          console.log(`[Design Grabber] Decoded buffer size: ${buffer.length} bytes.`);
+
           // Construct FormData using form-data package for high Node compatibility
           const formData = new FormData();
-          formData.append('image', buffer, { filename: 'mockup.png', contentType: 'image/png' });
+          formData.append('file', buffer, { filename: 'mockup.png', contentType: 'image/png' });
 
           const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
             method: 'POST',
