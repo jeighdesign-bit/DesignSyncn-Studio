@@ -262,11 +262,16 @@ export default function App() {
         const activeProj = (savedId && mappedProjects.find(p => p.id === savedId)) || mappedProjects.find(p => !p.isArchived) || mappedProjects[0];
         setProject(activeProj);
       } else {
-        // Fallback to default if no projects exist in Supabase
-        setProjects(defaultProjects);
-        const savedId = localStorage.getItem('ds_active_project_id');
-        const activeProj = (savedId && defaultProjects.find(p => p.id === savedId)) || defaultProjects[0];
-        setProject(activeProj);
+        // Fallback to empty projects list for logged-in users, or default projects for guest users
+        if (session) {
+          setProjects([]);
+          setProject(defaultProjects[0]);
+        } else {
+          setProjects(defaultProjects);
+          const savedId = localStorage.getItem('ds_active_project_id');
+          const activeProj = (savedId && defaultProjects.find(p => p.id === savedId)) || defaultProjects[0];
+          setProject(activeProj);
+        }
       }
       setIsLoading(false);
     };
