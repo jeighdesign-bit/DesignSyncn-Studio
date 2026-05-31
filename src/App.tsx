@@ -224,6 +224,7 @@ export default function App() {
       const { data, error } = await supabase
         .from('projects')
         .select('*')
+        .eq('user_id', session.user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -366,6 +367,7 @@ export default function App() {
       // Helper function to perform the actual update
       const saveProjectToDb = async () => {
         if (project.id?.startsWith('project-')) return;
+        if (!session?.user?.id) return;
 
         const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = project;
         const { error } = await supabase.from('projects').update({
@@ -378,7 +380,7 @@ export default function App() {
           color_mode: colorMode,
           is_archived: isArchived,
           project_data: projectData
-        }).eq('id', id);
+        }).eq('id', id).eq('user_id', session.user.id);
 
         if (error) {
           console.error('Error auto-saving project:', error);
@@ -402,7 +404,7 @@ export default function App() {
 
       return () => clearTimeout(timer);
     }
-  }, [project, isLoading]);
+  }, [project, isLoading, session]);
 
   // Handlers for dashboard actions
   const handleOpenProject = (p: Project) => {
@@ -433,8 +435,11 @@ export default function App() {
     }));
 
     // Supabase update
-    if (!id.startsWith('project-')) {
-      await supabase.from('projects').update({ is_archived: newArchivedState }).eq('id', id);
+    if (!id.startsWith('project-') && session?.user?.id) {
+      await supabase.from('projects')
+        .update({ is_archived: newArchivedState })
+        .eq('id', id)
+        .eq('user_id', session.user.id);
     }
   };
 
@@ -453,8 +458,11 @@ export default function App() {
       });
 
       // Supabase delete
-      if (!id.startsWith('project-')) {
-        await supabase.from('projects').delete().eq('id', id);
+      if (!id.startsWith('project-') && session?.user?.id) {
+        await supabase.from('projects')
+          .delete()
+          .eq('id', id)
+          .eq('user_id', session.user.id);
       }
     }
   };
@@ -463,9 +471,24 @@ export default function App() {
     const copyName = `${proj.name} (Copy)`;
     const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = proj;
 
+    if (!session?.user?.id) {
+      // Guest local duplication
+      const duplicatedProj: Project = {
+        ...proj,
+        id: `project-${Date.now()}`,
+        name: copyName,
+        stage: 'brief',
+        createdAt: new Date().toISOString(),
+      };
+      setProjects(prev => [duplicatedProj, ...prev]);
+      addLog(`Duplicated local project: ${proj.name} → ${copyName}`);
+      return;
+    }
+
     // Insert into Supabase
     const { data, error } = await supabase.from('projects').insert([{
       name: copyName, 
+      user_id: session.user.id,
       apparel_type: apparelType, 
       stage: 'brief', // reset duplicate back to brief for fresh workflow
       template_choice: templateChoice, 
@@ -517,9 +540,34 @@ export default function App() {
 
     const { id, name, apparelType, stage, templateChoice, canvasSize, dpi, colorMode, isArchived, createdAt, ...projectData } = newProj;
 
+    if (!session?.user?.id) {
+      // Guest local creation
+      const localProj: Project = {
+        ...newProj,
+        id: `project-${Date.now()}`
+      };
+      setProjects(prev => [localProj, ...prev]);
+      setProject(localProj);
+      setIsModalOpen(false);
+
+      // Reset Form
+      setNewProjectName('');
+      setNewTeamName('');
+      setNewGarmentType('esports_jersey');
+      setNewTemplateChoice('Pro Athletic Fit');
+      setNewCanvasSize('2400 x 2400 px');
+      setNewDpi(300);
+      setNewColorMode('CMYK');
+
+      setView('editor');
+      addLog(`Created new local project: ${localProj.name}`);
+      return;
+    }
+
     // Insert into Supabase
     const { data, error } = await supabase.from('projects').insert([{
       name, 
+      user_id: session.user.id,
       apparel_type: apparelType, 
       stage, 
       template_choice: templateChoice, 
@@ -1373,9 +1421,6 @@ export default function App() {
                   </span>
                 </div>
               )}
-
-
-
               {/* Dynamic AI Tokens Widget */}
               <div 
                 onClick={() => setShowUpgradeModal(true)}
@@ -1404,7 +1449,7 @@ export default function App() {
                   e.currentTarget.style.transform = 'scale(1)';
                   e.currentTarget.style.boxShadow = '0 0 10px rgba(124, 58, 237, 0.1)';
                 }}
-                title="Click to manage your AI credits & subscriptions"
+                title="Click to manage your AI tokens & subscriptions"
               >
                 <Sparkles size={11} style={{ color: '#c084fc' }} className="animate-pulse" />
                 <span>
@@ -1413,7 +1458,7 @@ export default function App() {
                       {billingState.planId === 'pro' ? '⚡ Pro' : '🛡 Enterprise'} ·&nbsp;
                     </span>
                   )}
-                  AI Credits: {billingState.tokensRemaining >= 999999 ? '∞ Unlimited' : `${billingState.tokensRemaining} left`}
+                  AI Tokens: {billingState.tokensRemaining >= 999999 ? '∞ Unlimited' : `${billingState.tokensRemaining} left`}
                 </span>
               </div>
 

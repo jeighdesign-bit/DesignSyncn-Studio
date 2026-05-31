@@ -96,3 +96,33 @@ CREATE TRIGGER update_token_usage_updated_at
 -- INSERT INTO token_usage (user_id, tokens_used, tokens_remaining, plan_id)
 -- VALUES ('anonymous-session', 0, 10, 'free')
 -- ON CONFLICT (user_id) DO NOTHING;
+
+
+-- ═══════════════════════════════════════════════════════════════════
+-- TABLE 3: projects (Schema Update & RLS)
+-- ═══════════════════════════════════════════════════════════════════
+
+-- 1. Add user_id column to associate projects with auth.users
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE;
+
+-- 2. Enable Row Level Security
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+
+-- 3. Create RLS Policies for projects
+CREATE POLICY "Users can select their own projects"
+  ON projects FOR SELECT
+  USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own projects"
+  ON projects FOR INSERT
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own projects"
+  ON projects FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own projects"
+  ON projects FOR DELETE
+  USING (auth.uid() = user_id);
+

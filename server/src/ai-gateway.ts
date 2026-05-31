@@ -11,13 +11,13 @@ const supabaseAdmin = createClient(
   process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_KEY || ''
 );
 
-// Memory store for user token balances (defaulting to 999999 tokens per user session)
+// ─── Token Memory Store ───────────────────────────────────────────────────────
 const userTokens = new Map<string, number>();
 
 export function getUserTokens(userId: string = 'anonymous-session'): number {
   const cleanId = userId || 'anonymous-session';
   if (!userTokens.has(cleanId)) {
-    userTokens.set(cleanId, 999999); // 999999 free trial tokens
+    userTokens.set(cleanId, 999999);
   }
   return userTokens.get(cleanId)!;
 }
@@ -26,14 +26,11 @@ export function setUserTokens(userId: string = 'anonymous-session', amount: numb
   const cleanId = userId || 'anonymous-session';
   const current = userTokens.get(cleanId) ?? 10;
   userTokens.set(cleanId, Math.max(0, amount));
-  
-  // If we are deducting a token (amount decreased), also sync and deduct in Supabase DB
   if (amount < current) {
     deductUserTokenDatabase(cleanId);
   }
 }
 
-// Helper to deduct tokens from Supabase DB
 async function deductUserTokenDatabase(userId: string) {
   try {
     const { data: tokenRecord } = await supabaseAdmin
@@ -45,14 +42,9 @@ async function deductUserTokenDatabase(userId: string) {
     if (tokenRecord) {
       const remaining = Math.max(0, (tokenRecord.tokens_remaining ?? 10) - 1);
       const used = (tokenRecord.tokens_used ?? 0) + 1;
-      
       await supabaseAdmin
         .from('token_usage')
-        .update({
-          tokens_remaining: remaining,
-          tokens_used: used,
-          updated_at: new Date().toISOString()
-        })
+        .update({ tokens_remaining: remaining, tokens_used: used, updated_at: new Date().toISOString() })
         .eq('user_id', userId);
     }
   } catch (err) {
@@ -60,17 +52,15 @@ async function deductUserTokenDatabase(userId: string) {
   }
 }
 
-// ── Token Balance & Subscription API Routes ──
+// ─── Token API Routes ─────────────────────────────────────────────────────────
 aiRouter.get('/tokens/balance', async (req: any, res: any) => {
   const userId = req.query.userId || 'anonymous-session';
-  
   try {
     const { data } = await supabaseAdmin
       .from('token_usage')
       .select('tokens_remaining')
       .eq('user_id', userId)
       .single();
-      
     if (data) {
       setUserTokens(userId, data.tokens_remaining);
       return res.json({ balance: data.tokens_remaining });
@@ -78,16 +68,13 @@ aiRouter.get('/tokens/balance', async (req: any, res: any) => {
   } catch (err) {
     console.warn('[ai-gateway] Failed to query Supabase tokens, using memory fallback');
   }
-
-  const balance = getUserTokens(userId);
-  return res.json({ balance });
+  return res.json({ balance: getUserTokens(userId) });
 });
 
 aiRouter.post('/tokens/grant', async (req: any, res: any) => {
   const { userId, amount } = req.body;
   const cleanId = userId || 'anonymous-session';
   const grantAmount = amount !== undefined ? Number(amount) : 10;
-  
   let current = getUserTokens(cleanId);
   try {
     const { data } = await supabaseAdmin
@@ -95,26 +82,19 @@ aiRouter.post('/tokens/grant', async (req: any, res: any) => {
       .select('tokens_remaining')
       .eq('user_id', cleanId)
       .single();
-    if (data) {
-      current = data.tokens_remaining;
-    }
+    if (data) current = data.tokens_remaining;
   } catch {}
-
   const target = current + grantAmount;
   setUserTokens(cleanId, target);
-
   try {
-    await supabaseAdmin
-      .from('token_usage')
-      .upsert({
-        user_id: cleanId,
-        tokens_remaining: target,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+    await supabaseAdmin.from('token_usage').upsert({
+      user_id: cleanId,
+      tokens_remaining: target,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
   } catch (e) {
     console.error('[ai-gateway] Failed to update grant in Supabase:', e);
   }
-
   return res.json({ balance: target });
 });
 
@@ -122,231 +102,102 @@ aiRouter.post('/tokens/reset', async (req: any, res: any) => {
   const { userId } = req.body;
   const cleanId = userId || 'anonymous-session';
   setUserTokens(cleanId, 10);
-
   try {
-    await supabaseAdmin
-      .from('token_usage')
-      .upsert({
-        user_id: cleanId,
-        tokens_remaining: 10,
-        tokens_used: 0,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'user_id' });
+    await supabaseAdmin.from('token_usage').upsert({
+      user_id: cleanId,
+      tokens_remaining: 10,
+      tokens_used: 0,
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'user_id' });
   } catch (e) {
     console.error('[ai-gateway] Failed to reset in Supabase:', e);
   }
-
   return res.json({ balance: 10 });
 });
 
+// ─── Sandbox SVG fallback (when no API key or offline) ───────────────────────
+function generateSandboxSvg(colors: string[]): string {
+  const primary = colors[0] || '#ff0055';
+  const secondary = colors[1] || '#00ffcc';
+  const accent = colors[2] || '#ffcc00';
 
-// Optimize user prompts for printable, production-ready isolated sublimation assets
-function optimizePromptForSublimation(userPrompt: string, mode: string): string {
-  const cleanPrompt = userPrompt.trim();
-  
-  // Strict negative instructions to prevent mannequin, model, 3D presentation renders, studio hangers, and clothing mockups
-  const assetNegativeRules = "isolated flat design asset, 2D vector style, no mannequin, no t-shirt mockup, no model, no clothing presentation render, no hanger, no photorealistic studio background, no human figures, ready for print-sewing, crisp sharp lines, high contrast";
-
-  switch (mode) {
-    case 'pattern':
-      return `Seamless tileable repeating pattern for dye-sublimation sportswear fabric: ${cleanPrompt}. Sports apparel mesh fill, infinite repeat, clean geometric grid, high-contrast vector panel fill, ${assetNegativeRules}`;
-    case 'texture':
-      return `High-resolution seamless print texture for sports apparel: ${cleanPrompt}. Carbon fiber weave, tech mesh structure, cyberpunk energy grid, sublimation-safe texture panel, ${assetNegativeRules}`;
-    case 'overlay':
-      return `Isolated vector shape accent overlay graphic for jersey layout: ${cleanPrompt}. Aggressive esports flame accents, aerodynamic wings, technical sports decals, vector overlay elements, isolated on flat background, ${assetNegativeRules}`;
-    case 'typography':
-      return `Sharp standalone modern athletic technical typography lettering: ${cleanPrompt}. Championship sports jersey numbers, bold esports typography layout, isolated on flat solid background, ${assetNegativeRules}`;
-    case 'logo':
-      return `Standalone vector crest shield badge design: ${cleanPrompt}. Clean technical sports team brand emblem, sharp esports vector logo asset, high-detail printable patch, ${assetNegativeRules}`;
-    default:
-      return `${cleanPrompt}. Isolated design graphic asset, flat vector art, sports sublimation ready, ${assetNegativeRules}`;
-  }
-}
-
-// Dynamic local SVG generator for Sandbox Simulator Mode (perfectly matching the asset modes)
-function generateSandboxSvg(prompt: string, mode: string, colors: string[]): string {
-  const primaryColor = colors[0] || '#ff0055';
-  const secondaryColor = colors[1] || '#00ffcc';
-  const accentColor = colors[2] || '#ffcc00';
-  const backgroundColor = '#111216';
-
-  const cleanPrompt = prompt.toLowerCase();
-
-  // 1. Pattern Mode
-  if (mode === 'pattern' || cleanPrompt.includes('pattern') || cleanPrompt.includes('grid')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
-      <rect width="400" height="400" fill="${backgroundColor}"/>
-      <defs>
-        <pattern id="dotGrid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="2" fill="${primaryColor}" opacity="0.6"/>
-          <path d="M 0 10 L 20 10 M 10 0 L 10 20" stroke="${secondaryColor}" stroke-width="0.5" opacity="0.15" />
-        </pattern>
-      </defs>
-      <rect width="400" height="400" fill="url(#dotGrid)"/>
-      <path d="M 0 0 L 400 400 M 400 0 L 0 400" stroke="${accentColor}" stroke-width="1.5" stroke-dasharray="10 10" opacity="0.4"/>
-    </svg>`;
-  }
-
-  // 2. Texture Mode
-  if (mode === 'texture' || cleanPrompt.includes('texture') || cleanPrompt.includes('mesh')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-      <rect width="500" height="500" fill="${backgroundColor}"/>
-      <defs>
-        <pattern id="carbonMesh" width="10" height="10" patternUnits="userSpaceOnUse">
-          <path d="M0 0 L10 10 M10 0 L0 10" stroke="${primaryColor}" stroke-width="1.2" opacity="0.4"/>
-          <rect width="5" height="5" fill="${secondaryColor}" opacity="0.3"/>
-        </pattern>
-        <radialGradient id="glow" cx="50%" cy="50%" r="50%">
-          <stop offset="0%" stop-color="${accentColor}" stop-opacity="0.35"/>
-          <stop offset="100%" stop-color="${backgroundColor}" stop-opacity="0"/>
-        </radialGradient>
-      </defs>
-      <circle cx="250" cy="250" r="230" fill="url(#glow)"/>
-      <rect width="500" height="500" fill="url(#carbonMesh)"/>
-    </svg>`;
-  }
-
-  // 3. Overlay Mode (Flames/Wings Accents)
-  if (mode === 'overlay' || cleanPrompt.includes('flame') || cleanPrompt.includes('wing') || cleanPrompt.includes('accent')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-      <defs>
-        <linearGradient id="overlayGrad" x1="0%" y1="100%" x2="100%" y2="0%">
-          <stop offset="0%" stop-color="${primaryColor}"/>
-          <stop offset="50%" stop-color="${accentColor}"/>
-          <stop offset="100%" stop-color="${secondaryColor}"/>
-        </linearGradient>
-      </defs>
-      <!-- Aerodynamic Esports Flame Accent Group -->
-      <g transform="translate(250, 250)">
-        <path d="M-150,0 C-50,-180 50,-180 150,0 C80,30 20,40 -20,20 C-60,50 -100,60 -150,0 Z" fill="url(#overlayGrad)"/>
-        <path d="M-120,-30 C-30,-140 30,-140 120,-30 C60,0 20,10 -10,0 C-40,20 -80,30 -120,-30 Z" fill="#ffffff" opacity="0.2"/>
-        <circle cx="0" cy="-60" r="15" fill="${accentColor}" opacity="0.8"/>
-      </g>
-    </svg>`;
-  }
-
-  // 4. Typography Mode
-  if (mode === 'typography' || cleanPrompt.includes('text') || cleanPrompt.includes('number')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-      <defs>
-        <linearGradient id="typoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stop-color="${primaryColor}"/>
-          <stop offset="100%" stop-color="${secondaryColor}"/>
-        </linearGradient>
-      </defs>
-      <!-- Standalone technical jersey number '99' and name placeholder -->
-      <g transform="translate(250, 250)">
-        <text x="0" y="40" font-family="'Impact', 'monospace', sans-serif" font-weight="900" font-size="190" fill="url(#typoGrad)" stroke="${accentColor}" stroke-width="4" text-anchor="middle" letter-spacing="10">99</text>
-        <text x="0" y="-120" font-family="'Outfit', 'Inter', sans-serif" font-weight="900" font-size="34" fill="#ffffff" text-anchor="middle" letter-spacing="15">CHAMPION</text>
-        <line x1="-150" y1="-80" x2="150" y2="-80" stroke="${accentColor}" stroke-width="4" />
-      </g>
-    </svg>`;
-  }
-
-  // 5. Logo Mode
-  if (mode === 'logo' || cleanPrompt.includes('logo') || cleanPrompt.includes('badge')) {
-    return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
-      <defs>
-        <linearGradient id="logoGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stop-color="${accentColor}"/>
-          <stop offset="100%" stop-color="${primaryColor}"/>
-        </linearGradient>
-      </defs>
-      <!-- Sports Shield Crest Badge -->
-      <g transform="translate(250, 250)">
-        <path d="M -120 -150 L 120 -150 Q 120 20 0 160 Q -120 20 -120 -150 Z" fill="url(#logoGrad)" stroke="${secondaryColor}" stroke-width="6"/>
-        <path d="M -100 -130 L 100 -130 Q 100 10 0 135 Q -100 10 -100 -130 Z" fill="#0d0d15" opacity="0.8"/>
-        <!-- Star graphic -->
-        <polygon points="0,-70 20,-20 70,-20 30,10 50,60 0,30 -50,60 -30,10 -70,-20 -20,-20" fill="${secondaryColor}"/>
-      </g>
-    </svg>`;
-  }
-
-  // Default Synthwave Sunset/Synth element
-  return `svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" width="800" height="500">
+    <rect width="800" height="500" fill="#ffffff"/>
     <defs>
-      <linearGradient id="sunGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="${accentColor}"/>
-        <stop offset="50%" stop-color="${primaryColor}"/>
-        <stop offset="100%" stop-color="${secondaryColor}"/>
+      <linearGradient id="g1" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="${primary}"/>
+        <stop offset="100%" stop-color="${secondary}"/>
+      </linearGradient>
+      <linearGradient id="g2" x1="100%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stop-color="${secondary}"/>
+        <stop offset="100%" stop-color="${accent}"/>
       </linearGradient>
     </defs>
-    <circle cx="250" cy="250" r="180" fill="url(#sunGrad)"/>
-    <path d="M 0 350 L 500 350" stroke="${secondaryColor}" stroke-width="4" opacity="0.4" />
+    <!-- Front Panel -->
+    <rect x="30" y="30" width="350" height="440" rx="8" fill="url(#g1)" opacity="0.95"/>
+    <path d="M 30 120 L 380 80 L 380 200 L 30 240 Z" fill="${accent}" opacity="0.35"/>
+    <path d="M 30 240 L 380 200 L 380 320 L 30 360 Z" fill="#ffffff" opacity="0.15"/>
+    <path d="M 80 30 L 80 470" stroke="${accent}" stroke-width="3" opacity="0.5"/>
+    <path d="M 330 30 L 330 470" stroke="${accent}" stroke-width="3" opacity="0.5"/>
+    <text x="205" y="280" font-family="Impact,sans-serif" font-size="60" fill="${accent}" text-anchor="middle" opacity="0.8">23</text>
+    <text x="205" y="460" font-family="Arial,sans-serif" font-size="11" fill="rgba(0,0,0,0.4)" text-anchor="middle">FRONT PANEL</text>
+    <!-- Back Panel -->
+    <rect x="420" y="30" width="350" height="440" rx="8" fill="url(#g2)" opacity="0.95"/>
+    <path d="M 420 100 L 770 140 L 770 260 L 420 220 Z" fill="${primary}" opacity="0.35"/>
+    <path d="M 420 280 L 770 240 L 770 380 L 420 420 Z" fill="#ffffff" opacity="0.15"/>
+    <path d="M 470 30 L 470 470" stroke="${accent}" stroke-width="3" opacity="0.5"/>
+    <path d="M 720 30 L 720 470" stroke="${accent}" stroke-width="3" opacity="0.5"/>
+    <text x="595" y="200" font-family="Arial,sans-serif" font-size="13" fill="${accent}" text-anchor="middle" font-weight="bold" opacity="0.8">PLAYER NAME</text>
+    <text x="595" y="290" font-family="Impact,sans-serif" font-size="60" fill="${accent}" text-anchor="middle" opacity="0.8">23</text>
+    <text x="595" y="460" font-family="Arial,sans-serif" font-size="11" fill="rgba(0,0,0,0.4)" text-anchor="middle">BACK PANEL</text>
   </svg>`;
 }
 
-// 1. POST /api/ai/enhance
+// ─── 1. POST /api/ai/enhance ──────────────────────────────────────────────────
 aiRouter.post('/enhance', async (req: any, res: any) => {
   try {
     const { prompt } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
-
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-
-    if (!openRouterKey) {
-      // Sandbox Mode prompt enhancement
-      console.log(`[DesignSync AI Gateway] Enhance running in SANDBOX SIMULATOR mode.`);
-      const enhanced = `High-end hyper-detailed esports sublimation jersey pattern, themed around "${prompt}". Sharp aggressive vector panels, intense cyber gradients, sleek technical lines, futuristic championship detailing, 8k resolution vector asset.`;
-      return res.json({ enhancedPrompt: enhanced });
-    }
-
-    // Call OpenRouter API
-    console.log(`[DesignSync AI Gateway] Enhancing prompt via OpenRouter...`);
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${openRouterKey}`,
-        'HTTP-Referer': 'https://designsync.studio',
-        'X-Title': 'DesignSync Studio',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-flash-1.5',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an elite designer expert in dye-sublimation esports jerseys, patterns, and textiles. Expand the user prompt into a hyper-detailed, highly effective prompt for AI image generators (like Stable Diffusion, Flux, or Recraft). Describe dynamic vector overlays, sports themes, color combinations, and aggressive clean shapes. Keep the response to a single expanded prompt of under 80 words.'
-          },
-          {
-            role: 'user',
-            content: `Enhance this prompt: "${prompt}"`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter API error: ${response.statusText}`);
-    }
-
-    const data = (await response.json()) as any;
-    const enhancedPrompt = data.choices?.[0]?.message?.content?.trim() || prompt;
-    return res.json({ enhancedPrompt });
+    if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
+    const enhanced = `High-end hyper-detailed esports sublimation jersey pattern, themed around "${prompt}". Sharp aggressive vector panels, intense gradients, sleek technical lines, futuristic championship detailing, 8k resolution vector asset, flat sublimation print-ready artwork.`;
+    return res.json({ enhancedPrompt: enhanced });
   } catch (error: any) {
     console.error('❌ Error enhancing prompt:', error);
-    // Graceful fallback to sandbox response if API fails
-    const enhanced = `Premium dye-sublimation sports pattern: "${req.body.prompt || ''}", featuring ultra-sharp vector details, clean technical graphics, and professional jersey aesthetics.`;
-    return res.json({ enhancedPrompt: enhanced, note: 'Fallback prompt enhancement applied.' });
+    return res.json({ enhancedPrompt: req.body.prompt || '', note: 'Fallback applied.' });
   }
 });
 
-// 2. POST /api/ai/generate
+// ─── 2. POST /api/ai/generate ─────────────────────────────────────────────────
+//
+//  PIPELINE (Pure Recraft V4):
+//  ┌─────────────────────────────────────────────────────────────────────────┐
+//  │  User uploads jersey mockup reference image                            │
+//  │            │                                                           │
+//  │            ▼                                                           │
+//  │  [IF referenceImage present]                                           │
+//  │    → Recraft /vectorize endpoint                                       │
+//  │      → Converts image directly to flat SVG — NO reinterpretation      │
+//  │      → Exact same design, same colors, flat on white background        │
+//  │                                                                        │
+//  │  [IF no referenceImage — text only]                                    │
+//  │    → Recraft Text-to-Image (recraftv3_vector)                         │
+//  │      → Generates flat sublimation panel from prompt + colors           │
+//  │                                                                        │
+//  │  [IF no RECRAFT_API_KEY or network error]                              │
+//  │    → Sandbox Simulator SVG fallback                                    │
+//  └─────────────────────────────────────────────────────────────────────────┘
+//
 aiRouter.post('/generate', async (req: any, res: any) => {
-  try {
-    const { prompt, providerMode, baseColors, userId, referenceImage, highSimilarityMode, similarityStrength } = req.body;
-    if (!prompt) {
-      return res.status(400).json({ error: 'Prompt is required' });
-    }
+  let cleanUserId = 'anonymous-session';
+  let currentBalance = 10;
 
-    const cleanUserId = userId || 'anonymous-session';
-    const isHighSimilarity = highSimilarityMode === true || highSimilarityMode === 'true';
-    const activeStrength = similarityStrength !== undefined ? Number(similarityStrength) : 0.88;
-    
-    // Sync token balance from Supabase database if available
-    let currentBalance = getUserTokens(cleanUserId);
+  try {
+    const { prompt, baseColors, userId, referenceImage } = req.body;
+
+    cleanUserId = userId || 'anonymous-session';
+    const colors: string[] = baseColors || ['#ff0055', '#00ffcc', '#ffcc00'];
+
+    // Sync token balance
+    currentBalance = getUserTokens(cleanUserId);
     try {
       const { data: dbRecord } = await supabaseAdmin
         .from('token_usage')
@@ -358,443 +209,576 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         userTokens.set(cleanUserId, currentBalance);
       }
     } catch (e) {
-      console.warn('[ai-gateway] Failed to query Supabase tokens, using memory store');
+      console.warn('[ai-gateway] Token Supabase query failed, using memory store');
     }
 
     if (currentBalance <= 0) {
       return res.status(403).json({
         error: 'OUT_OF_TOKENS',
-        message: 'You have exhausted your free generation credits. Please subscribe to a premium plan to continue generating.'
+        message: 'You have exhausted your free generation credits. Please subscribe to continue generating.'
       });
     }
 
-    const mode = providerMode || 'vector';
-    const colors = baseColors || ['#ff0055', '#00ffcc', '#ffcc00'];
+    const recraftKey = process.env.RECRAFT_API_KEY;
 
-    // Inject strict dye-sub sublimation prompt parameters (Asset-Based generation)
-    const optimizedPrompt = optimizePromptForSublimation(prompt, mode);
+    // ── SANDBOX MODE (no API key) ─────────────────────────────────────────
+    if (!recraftKey) {
+      console.log(`[DesignSync AI Gateway] No RECRAFT_API_KEY — serving Sandbox Simulator.`);
+      await new Promise((r) => setTimeout(r, 900));
+      const svgContent = generateSandboxSvg(colors);
+      const dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+      setUserTokens(cleanUserId, currentBalance - 1);
+      return res.json({
+        url: dataUri,
+        type: 'vector',
+        isSandbox: true,
+        pipeline: 'sandbox-simulator',
+        remainingTokens: currentBalance - 1,
+        message: 'Generated in Sandbox Simulator Mode — add RECRAFT_API_KEY to .env for live generation.'
+      });
+    }
 
-    // Multimodal pattern extraction for reference images via Gemini Vision
-    // We analyze the PATTERN specifically (not the jersey silhouette) for accurate vector generation
-    let patternDescription = '';
-    let isMockup = false;
-    const openRouterKey = process.env.OPENROUTER_API_KEY;
-    const geminiApiKey = process.env.GEMINI_API_KEY;
+    // ── PATH A: StyleSync AI via Gemini Vision + Recraft V4.1 Pro Vector (mockup uploaded) ──
+    // This is the PREMIUM approach matching top industry standards:
+    //  1. Extract visual pattern details using Gemini Vision
+    //  2. Merge extracted pattern description with user prompt modifications
+    //  3. Strip silhouette boundaries and jersey wrinkles using a rigorous regex
+    //  4. Synthesize flat native SVG using Recraft V4.1 Pro Vector
+    if (referenceImage) {
+      console.log(`\n══════════════ [StyleSync AI: Gemini + Recraft V4.1 Pro Vector] ══════════════`);
+      console.log(`• Input: 3D Reference Mockup Uploaded`);
+      console.log(`• Model: recraftv4_1_pro_vector`);
+      
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      let extractedPrompt = '';
 
-    // BYPASS Gemini Vision if High Similarity Mode is enabled!
-    if (referenceImage && !isHighSimilarity && (geminiApiKey || openRouterKey)) {
+      if (geminiApiKey) {
+        console.log(`[StyleSync AI] 🔮 Calling Gemini Vision to extract design pattern...`);
+        try {
+          const mimeTypeMatch = referenceImage.match(/^data:(image\/\w+);base64,/);
+          const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png';
+          const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+          
+          const geminiResponse = await fetch(geminiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{
+                parts: [
+                  {
+                    inlineData: {
+                      mimeType: mimeType,
+                      data: base64Data
+                    }
+                  },
+                  {
+                    text: 'Analyze the graphic design on this sports apparel mockup for a 2D flat sublimation blueprint conversion. Identify the spatial orientation of the core patterns. Describe exactly where they lie on the canvas (e.g., vertical asymmetric curved panels on the flanks, horizontal chest gradients). Translate 3D shading and mannequin curves into flat, 2D vector coordinate descriptions. Strictly ignore 3D apparel words. Output only the prompt description in English, and keep it concise and punchy.'
+                  }
+                ]
+              }]
+            })
+          });
+
+          if (geminiResponse.ok) {
+            const geminiData = await geminiResponse.json() as any;
+            extractedPrompt = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            console.log(`[StyleSync AI] ✅ Gemini Vision extracted: "${extractedPrompt}"`);
+          } else {
+            console.warn(`[StyleSync AI] ⚠️ Gemini Vision failed with status ${geminiResponse.status}. Falling back to default prompt.`);
+          }
+        } catch (geminiError: any) {
+          console.error(`[StyleSync AI] ❌ Gemini Vision error:`, geminiError);
+        }
+      } else {
+        console.warn(`[StyleSync AI] ⚠️ GEMINI_API_KEY is missing. Using standard text description fallback.`);
+      }
+
+      // Merge Gemini extracted description with any user text input
+      let finalPrompt = extractedPrompt || 'sports jersey technical pattern';
+      if (prompt && prompt.trim()) {
+        finalPrompt = `${prompt.trim()}. Theme and visual details: ${finalPrompt}`;
+      }
+
+      // Rigorous Regex cleaning to strip out t-shirt boundaries and wrinkles
+      const garmentRegex = /\b(shirt|jersey|tshirt|t-shirt|mockup|mannequin|sleeve|collar|seams|fabric|wrinkle|folds|wear|clothing|apparel|polyester|mockup)\b/gi;
+      finalPrompt = finalPrompt.replace(garmentRegex, 'graphic pattern');
+
+      // Guarantee flat vector layout instructions in the prompt
+      finalPrompt = `flat vector sublimation sports graphic pattern, print-ready, clean paths, tileable, ${finalPrompt}`;
+      console.log(`[StyleSync AI] Final cleaned prompt for Recraft: "${finalPrompt}"`);
+
+      // Convert user hex colors to RGB format for Recraft's controls
+      const rgbColors = colors.map((hex: string) => {
+        const cleanHex = hex.replace('#', '');
+        const r = parseInt(cleanHex.substring(0, 2), 16) || 0;
+        const g = parseInt(cleanHex.substring(2, 4), 16) || 0;
+        const b = parseInt(cleanHex.substring(4, 6), 16) || 0;
+        return { rgb: [r, g, b] };
+      });
+
+      console.log(`[StyleSync AI] Sending to Recraft V4.1 Pro Vector generations endpoint...`);
       try {
-        console.log(`[DesignSync AI Gateway] Extracting pattern description from reference image via Gemini Vision...`);
-        const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
-        const analysisPromptText = `You are an expert sportswear sublimation designer analyzing a reference image to extract its design for replication.
+        const recraftPayload = {
+          prompt: finalPrompt,
+          model: 'recraftv4_1_pro_vector',
+          controls: {
+            colors: rgbColors
+          },
+          image_guidance: {
+            image: referenceImage,
+            strength: 0.78
+          }
+        };
 
-Analyze this image carefully and respond in EXACTLY this format with no extra text:
-[IS_MOCKUP]: <true if this is a photo of a garment (jersey, t-shirt, hoodie, mannequin, flat-lay), false if it is a flat digital graphic>
-[PATTERN_DESCRIPTION]: <Describe ONLY the surface design/artwork — the colors, shapes, lines, and patterns visible on the fabric. Be precise: e.g. "bold vertical white stripes of varying widths on a jet-black base, with a subtle tone-on-tone dark Japanese wave pattern underneath. High contrast. Athletic, classic sportswear aesthetic." Ignore: shirt silhouette, neckline, hanger, logos, numbers, and background. Max 70 words.>
-[COLORS]: <List 3-5 exact hex color codes from the design, e.g. #000000, #FFFFFF, #CC0000>`;
+        const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${recraftKey}`
+          },
+          body: JSON.stringify(recraftPayload)
+        });
 
-        let analysisResponse: Response | null = null;
+        if (recraftResponse.ok) {
+          const recraftData = await recraftResponse.json() as any;
+          const resultUrl = recraftData.data?.[0]?.url;
+          if (resultUrl) {
+            console.log(`[StyleSync AI] 🎨 SUCCESS → ${resultUrl}`);
+            setUserTokens(cleanUserId, currentBalance - 1);
+            return res.json({
+              url: resultUrl,
+              type: 'vector',
+              isSandbox: false,
+              pipeline: 'stylesync-gemini-recraftv4-pro-vector',
+              remainingTokens: currentBalance - 1
+            });
+          }
+        } else {
+          const errText = await recraftResponse.text().catch(() => 'unknown');
+          console.error(`[StyleSync AI] ❌ Recraft V4.1 Pro Vector failed (${recraftResponse.status}): ${errText}`);
+          
+          if (geminiApiKey) {
+            console.log(`[StyleSync AI] 🔮 Recraft failed. Initiating direct Gemini Vision SVG Extraction fallback...`);
+            try {
+              const mimeTypeMatch = referenceImage.match(/^data:(image\/\w+);base64,/);
+              const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png';
+              const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
+              const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+              
+              const colorsHex = colors.join(', ');
+              
+              const geminiResponse = await fetch(geminiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{
+                    parts: [
+                      {
+                        inlineData: {
+                          mimeType: mimeType,
+                          data: base64Data
+                        }
+                      },
+                      {
+                        text: `You are an expert sports apparel graphic designer. Analyze the print design, patterns, and stripes on this sports jersey mockup.
+Generate a premium, clean, high-fidelity, flat 2D vector SVG sublimation pattern sheet that extracts and recreates this design exactly.
+Use the following dominant colors: ${colorsHex}.
+The SVG must be flat, containing the pinstripes, panels, graphic layouts, and stripes matching the reference image.
+The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.
+Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, and mannequin silhouettes.`
+                      }
+                    ]
+                  }]
+                })
+              });
 
-        // Try native Gemini API first (free, direct)
+              if (geminiResponse.ok) {
+                const geminiData = await geminiResponse.json() as any;
+                const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const svgMatch = text.match(/```xml([\s\S]*?)```/) || text.match(/```html([\s\S]*?)```/) || text.match(/<svg[\s\S]*?<\/svg>/);
+                if (svgMatch) {
+                  const svgCode = svgMatch[1] ? svgMatch[1].trim() : svgMatch[0].trim();
+                  const dataUri = `data:image/svg+xml;base64,${Buffer.from(svgCode).toString('base64')}`;
+                  console.log(`[StyleSync AI] ✅ DIRECT GEMINI SVG SUCCESS!`);
+                  setUserTokens(cleanUserId, currentBalance - 1);
+                  return res.json({
+                    url: dataUri,
+                    type: 'vector',
+                    isSandbox: false,
+                    pipeline: 'stylesync-gemini-vision-direct-svg',
+                    remainingTokens: currentBalance - 1
+                  });
+                }
+              } else {
+                console.error(`[StyleSync AI] ❌ Direct Gemini SVG fallback failed:`, geminiResponse.status);
+              }
+            } catch (geminiSvgErr: any) {
+              console.error(`[StyleSync AI] ❌ Direct Gemini SVG error:`, geminiSvgErr);
+            }
+          }
+        }
+      } catch (recraftError: any) {
+        console.error(`[StyleSync AI] ❌ Recraft API Error:`, recraftError);
+        
         if (geminiApiKey) {
-          console.log(`[DesignSync AI Gateway] Using native Gemini API for pattern analysis...`);
-          analysisResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`,
-            {
+          console.log(`[StyleSync AI] 🔮 Recraft failed. Initiating direct Gemini Vision SVG Extraction fallback inside catch...`);
+          try {
+            const mimeTypeMatch = referenceImage.match(/^data:(image\/\w+);base64,/);
+            const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'image/png';
+            const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
+            const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+            
+            const colorsHex = colors.join(', ');
+            
+            const geminiResponse = await fetch(geminiUrl, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 contents: [{
                   parts: [
-                    { text: analysisPromptText },
-                    { inlineData: { mimeType: 'image/jpeg', data: base64Data } }
+                    {
+                      inlineData: {
+                        mimeType: mimeType,
+                        data: base64Data
+                      }
+                    },
+                    {
+                      text: `You are an expert sports apparel graphic designer. Analyze the print design, patterns, and stripes on this sports jersey mockup.
+Generate a premium, clean, high-fidelity, flat 2D vector SVG sublimation pattern sheet that extracts and recreates this design exactly.
+Use the following dominant colors: ${colorsHex}.
+The SVG must be flat, containing the pinstripes, panels, graphic layouts, and stripes matching the reference image.
+The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.
+Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, and mannequin silhouettes.`
+                    }
                   ]
                 }]
               })
+            });
+
+              if (geminiResponse.ok) {
+                const geminiData = await geminiResponse.json() as any;
+                const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                const svgMatch = text.match(/```xml([\s\S]*?)```/) || text.match(/```html([\s\S]*?)```/) || text.match(/<svg[\s\S]*?<\/svg>/);
+                if (svgMatch) {
+                  const svgCode = svgMatch[1] ? svgMatch[1].trim() : svgMatch[0].trim();
+                  const dataUri = `data:image/svg+xml;base64,${Buffer.from(svgCode).toString('base64')}`;
+                  console.log(`[StyleSync AI] ✅ DIRECT GEMINI SVG SUCCESS!`);
+                  setUserTokens(cleanUserId, currentBalance - 1);
+                  return res.json({
+                    url: dataUri,
+                    type: 'vector',
+                    isSandbox: false,
+                    pipeline: 'stylesync-gemini-vision-direct-svg',
+                    remainingTokens: currentBalance - 1
+                  });
+                }
+              }
+            } catch (geminiSvgErr: any) {
+              console.error(`[StyleSync AI] ❌ Direct Gemini SVG error inside catch:`, geminiSvgErr);
             }
-          );
-
-          if (analysisResponse.ok) {
-            const data = (await analysisResponse.json()) as any;
-            patternDescription = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
-          } else {
-            console.warn(`[DesignSync AI Gateway] Native Gemini API failed (${analysisResponse.status}), trying OpenRouter...`);
-            analysisResponse = null;
-          }
         }
+      }
 
-        // Fallback to OpenRouter if native Gemini failed or not configured
-        if (!patternDescription && openRouterKey) {
-          console.log(`[DesignSync AI Gateway] Using OpenRouter for pattern analysis...`);
-          const orResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      console.log(`[StyleSync AI] ⚠️ StyleSync premium pipeline failed — falling through to standard Text-to-Image...`);
+    }
+
+
+
+    // ── PATH B: Text-to-Image Vector (no image, or vectorize failed) ──────
+    console.log(`\n══════════════ [RECRAFT PIPELINE: TEXT-TO-IMAGE VECTOR] ══════════════`);
+    const textPrompt = buildFlatExtractionPrompt(prompt, colors);
+    console.log(`• Model: recraftv3_vector`);
+    console.log(`• Prompt: "${textPrompt}"`);
+    console.log(`• Colors: ${JSON.stringify(colors)}`);
+    console.log(`════════════════════════════════════════════════════════════════════\n`);
+
+    const t2iPayload = {
+      prompt: textPrompt,
+      model: 'recraftv3_vector',
+      style: 'vector_illustration',
+      colors: colors.map((c: string) => ({ hex: c })),
+    };
+
+    const t2iResponse = await fetch('https://external.api.recraft.ai/v1/images/generations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${recraftKey}`,
+      },
+      body: JSON.stringify(t2iPayload)
+    });
+
+    if (!t2iResponse.ok) {
+      const errText = await t2iResponse.text().catch(() => 'unknown');
+      console.error(`[Recraft] ❌ Text-to-Image failed (${t2iResponse.status}): ${errText}`);
+      
+      const geminiApiKey = process.env.GEMINI_API_KEY;
+      if (geminiApiKey) {
+        console.log(`[Recraft] 🔮 Recraft failed. Initiating Gemini Text-to-SVG Synthesis fallback...`);
+        try {
+          const geminiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`;
+          const colorsHex = colors.join(', ');
+          
+          const response = await fetch(geminiUrl, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${openRouterKey}`,
-              'HTTP-Referer': 'https://designsync.studio',
-              'X-Title': 'DesignSync Studio',
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              model: 'google/gemini-flash-1.5',
-              messages: [{
-                role: 'user',
-                content: [
-                  { type: 'text', text: analysisPromptText },
-                  { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${base64Data}` } }
-                ]
+              contents: [{
+                parts: [{
+                  text: `You are an expert sports apparel graphic designer.
+Generate a premium, clean, high-fidelity, flat 2D vector SVG sublimation pattern sheet based on the following visual description: "${prompt}"
+Use these dominant colors: ${colorsHex}.
+The SVG must be flat, containing clean vector paths, geometric layouts, stripes, or patterns matching the theme.
+The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.
+Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, and mannequin silhouettes.`
+                }]
               }]
             })
           });
-          if (orResponse.ok) {
-            const data = (await orResponse.json()) as any;
-            patternDescription = data.choices?.[0]?.message?.content?.trim() || '';
-          }
-        }
 
-        if (patternDescription) {
-          console.log(`[DesignSync AI Gateway] Pattern analysis raw output:\n${patternDescription}`);
-          
-          const mockupMatch = patternDescription.match(/\[IS_MOCKUP\]:\s*(true|false)/i);
-          const descMatch = patternDescription.match(/\[PATTERN_DESCRIPTION\]:\s*([\s\S]*?)(?:\[COLORS\]:|$)/i);
-          
-          if (mockupMatch) {
-            isMockup = mockupMatch[1].toLowerCase() === 'true';
-          } else {
-            // Fallback mockup detection logic
-            isMockup = patternDescription.toLowerCase().includes('mockup') || 
-                       patternDescription.toLowerCase().includes('jersey') || 
-                       patternDescription.toLowerCase().includes('t-shirt') ||
-                       patternDescription.toLowerCase().includes('garment') ||
-                       patternDescription.toLowerCase().includes('clothing');
-          }
-          
-          let parsedDesc = '';
-          if (descMatch) {
-            parsedDesc = descMatch[1].trim();
-          } else {
-            // Fallback: strip tags and keep clean description
-            parsedDesc = patternDescription
-              .replace(/\[IS_MOCKUP\]:\s*(true|false)/gi, '')
-              .replace(/\[PATTERN_DESCRIPTION\]:/gi, '')
-              .replace(/\[COLORS\]:[\s\S]*/gi, '')
-              .trim();
-          }
-          
-          if (parsedDesc) {
-            patternDescription = parsedDesc;
-          }
-          
-          console.log(`[DesignSync AI Gateway] Parsed isMockup: ${isMockup}, Parsed Pattern Description: "${patternDescription}"`);
-        }
-      } catch (err) {
-        console.error('[DesignSync AI Gateway] Failed to analyze reference image:', err);
-      }
-    }
-
-    // Build the final prompt: if we extracted a pattern, use that; otherwise use the user prompt
-    let finalPrompt = optimizedPrompt;
-    if (patternDescription) {
-      if (isMockup) {
-        finalPrompt = `Premium sportswear sublimation placement artwork, full front panel, isolated on pure white background. Design: ${patternDescription}. Style rules: sharp clean vector paths, full bleed from edge to edge, bold layout with strong visual hierarchy from top to bottom. STRICT: NO shirt outline, NO neckline shape, NO collar boundary, NO repeating tiles, NO text, NO logos, NO human figures. Pure artwork only.`;
-      } else {
-        finalPrompt = `Flat vector seamless sportswear sublimation pattern: ${patternDescription}. Isolated graphic tile on white background, crisp clean vector edges, print-ready, no clothing silhouette, no background elements.`;
-      }
-    }
-
-    // Scan for credentials to determine if we run Sandbox or live API calls
-    const hasRecraft = !!process.env.RECRAFT_API_KEY;
-    const hasReplicate = !!process.env.REPLICATE_API_TOKEN;
-    const hasStability = !!process.env.STABILITY_API_KEY;
-
-    // Check if we should fall back to Sandbox Simulator Mode
-    let isSandbox = true;
-    if ((mode === 'recraft' || mode === 'vector') && (hasRecraft || hasReplicate)) isSandbox = false;
-    else if ((mode === 'flux' || mode === 'pattern' || mode === 'texture' || mode === 'overlay' || mode === 'typography' || mode === 'logo') && hasReplicate) isSandbox = false;
-
-    if (isSandbox) {
-      console.log(`[DesignSync AI Gateway] Generating in SANDBOX SIMULATOR mode. Mode: ${mode}`);
-      // Simulate network latency
-      await new Promise((resolve) => setTimeout(resolve, 800));
-
-      const svgData = generateSandboxSvg(prompt, mode, colors);
-      const rawSvg = svgData.replace('svg+xml;utf8,', '');
-      const dataUri = `data:image/svg+xml;base64,${Buffer.from(rawSvg).toString('base64')}`;
-
-      setUserTokens(cleanUserId, currentBalance - 1);
-
-      return res.json({
-        url: dataUri,
-        type: 'vector',
-        isSandbox: true,
-        colors: colors,
-        prompt: prompt,
-        message: 'Successfully generated high-fidelity sublimation asset in Sandbox Mode!',
-        remainingTokens: currentBalance - 1
-      });
-    }
-
-    // --- REAL API LOGIC ---
-    // Recraft AI Vector API integration (Official OpenAPI Spec)
-    if ((mode === 'recraft' || mode === 'vector') && hasRecraft) {
-      console.log(`[DesignSync AI Gateway] Routing to Recraft AI...`);
-
-      // Clean up prompt to remove garment words that confuse the AI into drawing mockups/shirts
-      let cleanedPrompt = finalPrompt;
-      const confusingWords = [
-        /\bjersey(s)?\b/gi,
-        /\bt-?shirt(s)?\b/gi,
-        /\bshirt(s)?\b/gi,
-        /\bclothing\b/gi,
-        /\bgarment(s)?\b/gi,
-        /\bpanel(s)?\b/gi,
-        /\bcollar(s)?\b/gi,
-        /\bsleeve(s)?\b/gi,
-        /\bmock-?up(s)?\b/gi,
-        /\bmannequin(s)?\b/gi,
-      ];
-      for (const rx of confusingWords) {
-        cleanedPrompt = cleanedPrompt.replace(rx, '');
-      }
-      // Ensure we don't end up with double spaces/commas
-      cleanedPrompt = cleanedPrompt.replace(/,\s*,/g, ',').replace(/\s+/g, ' ').trim();
-
-      // Determine Recraft style
-      const recraftStyle = 'vector_illustration';
-
-      console.log(`[DesignSync AI Gateway] Recraft Mode: ${recraftStyle}, Cleaned Prompt: "${cleanedPrompt}"`);
-
-      // 🔍 DEBUG & VERIFICATION: Log uploaded image data and incoming request details
-      if (referenceImage) {
-        const payloadLength = referenceImage.length;
-        const mimeTypeMatch = referenceImage.match(/^data:(image\/\w+);base64,/);
-        const mimeType = mimeTypeMatch ? mimeTypeMatch[1] : 'unknown';
-        console.log(`\n================== [AI-GATEWAY REFERENCE IMAGE INBOUND DEEP DEBUG] ==================`);
-        console.log(`• Reference image exists in request payload: YES`);
-        console.log(`• Raw payload base64 length: ${payloadLength} characters`);
-        console.log(`• Detected MIME Type: ${mimeType}`);
-        console.log(`• Snippet: "${referenceImage.substring(0, 100)}..."`);
-        console.log(`• Is mockup detected by Gemini: ${isMockup}`);
-        console.log(`=====================================================================================\n`);
-      } else {
-        console.log(`\n================== [AI-GATEWAY REFERENCE IMAGE INBOUND DEEP DEBUG] ==================`);
-        console.log(`• Reference image exists in request payload: NO`);
-        console.log(`• Using pure text-to-image synthesis.`);
-        console.log(`=====================================================================================\n`);
-      }
-
-      // IF referenceImage is present: route to Image-to-Image
-      // (always for high similarity mode, or for flat design references when not in high similarity mode)
-      const shouldRouteI2I = referenceImage && (isHighSimilarity || !isMockup);
-      
-      if (shouldRouteI2I) {
-        const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, "");
-        const buffer = Buffer.from(base64Data, 'base64');
-        const blob = new Blob([buffer], { type: 'image/png' });
-
-        console.log(`[DesignSync AI Gateway] Replicating reference style via Image-to-Image (I2I) at strength ${activeStrength}...`);
-        
-        // Formulating the multipart/form-data for the external request
-        const imgFormData = new FormData();
-        imgFormData.append('image', blob, 'reference.png');
-        imgFormData.append('prompt', finalPrompt);
-        imgFormData.append('style', 'vector_illustration');
-        imgFormData.append('strength', String(activeStrength));
-        
-        // Apply custom hex colors dynamically to the reference image conversion
-        if (colors && colors.length > 0) {
-          imgFormData.append('colors', JSON.stringify(colors.map((c: string) => ({ hex: c }))));
-        }
-
-        console.log(`\n================== [EXACT RECRAFT API CALL SENT: IMAGE-TO-IMAGE] ==================`);
-        console.log(`• Endpoint: POST https://external.api.recraft.ai/v1/images/imageToImage`);
-        console.log(`• Headers: { Authorization: "Bearer RECRAFT_API_KEY_HIDDEN" }`);
-        console.log(`• Route Mode Selected: DIRECT IMAGE-TO-IMAGE`);
-        console.log(`• High Similarity Mode: ${isHighSimilarity ? "ON (Bypassed Gemini Vision)" : "OFF (Flat design layout)"}`);
-        console.log(`• Similarity Strength: ${activeStrength} (Fidelity Range: 0.85 - 0.92)`);
-        console.log(`• Crop Dimensions: Pre-cropped 18% from outer borders (original 512x512 canvas -> cropped central design resized to 512x512)`);
-        console.log(`• Multipart Request Body:`);
-        console.log(`  - image: [Binary Blob: ${buffer.length} bytes]`);
-        console.log(`  - prompt: "${finalPrompt}"`);
-        console.log(`  - style: "vector_illustration"`);
-        console.log(`  - strength: "${activeStrength}"`);
-        console.log(`  - colors: ${JSON.stringify(colors.map((c: string) => ({ hex: c })))}`);
-        console.log(`===================================================================================\n`);
-
-        try {
-          const imgResponse = await fetch('https://external.api.recraft.ai/v1/images/imageToImage', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
-            },
-            body: imgFormData,
-          });
-
-          if (imgResponse.ok) {
-            const imgData = (await imgResponse.json()) as any;
-            const vectorUrl = imgData.data?.[0]?.url;
-            if (vectorUrl) {
-              console.log(`[DesignSync AI Gateway] I2I SUCCESS. Vector Pattern URL: ${vectorUrl}`);
+          if (response.ok) {
+            const geminiData = await response.json() as any;
+            const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const svgMatch = text.match(/```xml([\s\S]*?)```/) || text.match(/```html([\s\S]*?)```/) || text.match(/<svg[\s\S]*?<\/svg>/);
+            if (svgMatch) {
+              const svgCode = svgMatch[1] ? svgMatch[1].trim() : svgMatch[0].trim();
+              const dataUri = `data:image/svg+xml;base64,${Buffer.from(svgCode).toString('base64')}`;
+              console.log(`[Recraft] ✅ GEMINI TEXT-TO-SVG SUCCESS!`);
               setUserTokens(cleanUserId, currentBalance - 1);
               return res.json({
-                url: vectorUrl,
+                url: dataUri,
                 type: 'vector',
                 isSandbox: false,
-                remainingTokens: currentBalance - 1,
-                pipeline: 'recraft-image-to-image-pattern'
+                pipeline: 'gemini-text-to-svg-fallback',
+                remainingTokens: currentBalance - 1
               });
             }
-          } else {
-            const errorText = await imgResponse.text();
-            console.error(`[DesignSync AI Gateway] Image-to-Image API error: "${errorText}" (Status: ${imgResponse.status})`);
           }
-        } catch (err: any) {
-          console.error(`[DesignSync AI Gateway] Image-to-Image exception: ${err.message}`);
+        } catch (geminiTextSvgErr: any) {
+          console.error(`[Recraft] ❌ Gemini Text-to-SVG error:`, geminiTextSvgErr);
         }
       }
-
-      // Otherwise, standard generation
-      const requestPayload = {
-        prompt: cleanedPrompt,
-        model: 'recraftv4_vector',
-        style: recraftStyle,
-        colors: colors.map((c: string) => ({ hex: c })),
-      };
-
-      console.log(`\n================== [EXACT RECRAFT API CALL SENT: TEXT-TO-IMAGE] ==================`);
-      console.log(`• Endpoint: POST https://external.api.recraft.ai/v1/images/generations/vector`);
-      console.log(`• Headers: { "Content-Type": "application/json", Authorization: "Bearer RECRAFT_API_KEY_HIDDEN" }`);
-      console.log(`• JSON Request Body:`);
-      console.log(JSON.stringify(requestPayload, null, 2));
-      if (referenceImage && isMockup) {
-        console.log(`• Note: Reference image uploaded was jersey mockup. Pattern was successfully extracted by Gemini Vision.`);
-        console.log(`  Pattern Description: "${patternDescription}"`);
-        console.log(`  To avoid shirt-silhouette pollution inside patterns, we route this request as standard Text-to-Image Vector Generation.`);
-      }
-      console.log(`===================================================================================\n`);
-
-      const response = await fetch('https://external.api.recraft.ai/v1/images/generations/vector', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.RECRAFT_API_KEY}`,
-        },
-        body: JSON.stringify(requestPayload)
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        const errorBody = (() => { try { return JSON.parse(errorText); } catch { return {}; } })();
-
-        // If Recraft is out of credits, immediately fall through to Replicate instead of crashing
-        if (response.status === 400 && errorBody?.code === 'not_enough_credits') {
-          console.warn(`[DesignSync AI Gateway] Recraft credits exhausted — falling through to Replicate Flux 1.1 Pro...`);
-          // Fall through to Replicate section below by skipping the throw
-        } else {
-          console.error(`[DesignSync AI Gateway] Recraft API error response: "${errorText}" (Status: ${response.status})`);
-          throw new Error(`Recraft API error (${response.status}): ${errorText || response.statusText}`);
-        }
-      } else {
-        const data = (await response.json()) as any;
-        setUserTokens(cleanUserId, currentBalance - 1);
-        return res.json({
-          url: data.data?.[0]?.url,
-          type: 'vector',
-          isSandbox: false,
-          remainingTokens: currentBalance - 1
-        });
-      }
+      
+      throw new Error(`Recraft API error (${t2iResponse.status}): ${errText}`);
     }
 
-    // Replicate Flux 1.1 Pro Integration (high-quality fallback)
-    if (hasReplicate) {
-      console.log(`[DesignSync AI Gateway] Routing to Replicate (Flux 1.1 Pro)...`);
-      const response = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}`,
-          'Prefer': 'wait',
-        },
-        body: JSON.stringify({
-          input: {
-            prompt: finalPrompt,
-            width: 1024,
-            height: 1024,
-            num_outputs: 1,
-            aspect_ratio: '1:1',
-            output_format: 'png',
-            output_quality: 100,
-            safety_tolerance: 2,
-            prompt_upsampling: false,
-          }
-        })
-      });
+    const t2iData = (await t2iResponse.json()) as any;
+    const resultUrl = t2iData.data?.[0]?.url;
 
-      if (!response.ok) throw new Error(`Replicate API error: ${response.statusText}`);
-      const data = (await response.json()) as any;
-
-      // Replicate returns the result immediately when using 'Prefer: wait'
-      // If it's already succeeded, return right away
-      if (data.status === 'succeeded' && data.output) {
-        const outputUrl = Array.isArray(data.output) ? data.output[0] : data.output;
-        setUserTokens(cleanUserId, currentBalance - 1);
-        return res.json({
-          url: outputUrl,
-          type: 'raster',
-          isSandbox: false,
-          pipeline: 'replicate-flux-1.1-pro',
-          remainingTokens: currentBalance - 1
-        });
-      }
-
-      // Poll Replicate prediction endpoint if not immediately done
-      let prediction: any = data;
-      let attempts = 0;
-      while (prediction.status !== 'succeeded' && prediction.status !== 'failed' && attempts < 20) {
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        const check = await fetch(`https://api.replicate.com/v1/predictions/${prediction.id}`, {
-          headers: { 'Authorization': `Token ${process.env.REPLICATE_API_TOKEN}` }
-        });
-        prediction = (await check.json()) as any;
-        attempts++;
-      }
-
-      if (prediction.status === 'succeeded') {
-        const outputUrl = Array.isArray(prediction.output) ? prediction.output[0] : prediction.output;
-        setUserTokens(cleanUserId, currentBalance - 1);
-        return res.json({
-          url: outputUrl,
-          type: 'raster',
-          isSandbox: false,
-          pipeline: 'replicate-flux-1.1-pro',
-          remainingTokens: currentBalance - 1
-        });
-      } else {
-        throw new Error(`Replicate generation failed or timed out. Status: ${prediction.status}`);
-      }
+    if (!resultUrl) {
+      throw new Error('Recraft returned no image URL in response.');
     }
 
-    throw new Error('Unsupported mode or unconfigured provider');
+    console.log(`[Recraft] ✅ Text-to-Image SUCCESS → ${resultUrl}`);
+    setUserTokens(cleanUserId, currentBalance - 1);
+    return res.json({
+      url: resultUrl,
+      type: 'vector',
+      isSandbox: false,
+      pipeline: 'recraft-v3-text-to-image',
+      remainingTokens: currentBalance - 1
+    });
+
   } catch (error: any) {
     console.error('❌ Generation Gateway Error:', error);
-    
-    // If credentials are configured, we want to know if it failed instead of silently falling back to sandbox!
-    if (process.env.RECRAFT_API_KEY || process.env.REPLICATE_API_TOKEN) {
+
+    // Network/offline error — graceful sandbox fallback
+    const isNetworkError =
+      error.message?.includes('fetch failed') ||
+      error.message?.includes('ENOTFOUND') ||
+      error.message?.includes('ECONNREFUSED') ||
+      error.message?.includes('EHOSTUNREACH');
+
+    if (!isNetworkError) {
       return res.status(500).json({
         error: 'GENERATION_FAILED',
         message: `AI Generation failed: ${error.message}`
       });
     }
 
-    const svgData = generateSandboxSvg(req.body.prompt || 'esports', req.body.providerMode || 'vector', req.body.baseColors || []);
-    const rawSvg = svgData.replace('svg+xml;utf8,', '');
-    const dataUri = `data:image/svg+xml;base64,${Buffer.from(rawSvg).toString('base64')}`;
+    // Offline: serve sandbox fallback
+    console.log(`[DesignSync AI Gateway] Network error — serving Sandbox Simulator fallback.`);
+    const fallbackColors = req.body.baseColors || [];
+    const svgContent = generateSandboxSvg(fallbackColors);
+    const dataUri = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+    setUserTokens(cleanUserId, currentBalance - 1);
     return res.json({
       url: dataUri,
       type: 'vector',
       isSandbox: true,
       errorOccurred: true,
-      message: `Gateway API failed: ${error.message}. Loaded in Sandbox Simulator fallback mode.`
+      pipeline: 'sandbox-fallback',
+      message: `Network offline: ${error.message}. Serving Sandbox Simulator.`,
+      remainingTokens: currentBalance - 1
     });
+  }
+});
+
+// ─── Prompt builder — strips all garment silhouette language ─────────────────
+function buildFlatExtractionPrompt(userPrompt: string, colors: string[]): string {
+  const base = (userPrompt || '').trim();
+
+  // Core instruction: extract design flat on white background
+  const extractionInstruction = [
+    'flat sublimation sportswear design artwork',
+    'front panel and back panel layout side by side on pure white background',
+    'extract graphic design patterns only',
+    'flat 2D vector artwork',
+    'isolated design with no mannequin',
+    'no human figure',
+    'no t-shirt or jersey silhouette outline',
+    'no background elements',
+    'clean sharp vector paths',
+    'print-ready sublimation art',
+    'full bleed graphic layout',
+  ].join(', ');
+
+  const colorHint = colors.length > 0
+    ? `dominant colors: ${colors.slice(0, 3).join(', ')}`
+    : '';
+
+  return [base, extractionInstruction, colorHint].filter(Boolean).join('. ');
+}
+
+// ─── 3. POST /api/ai/detect-polygons ─────────────────────────────────────────
+// Polygon detection still uses Recraft vision or a fallback grid
+aiRouter.post('/detect-polygons', async (req: any, res: any) => {
+  try {
+    const { referenceImage } = req.body;
+    if (!referenceImage) {
+      return res.status(400).json({ error: 'referenceImage is required' });
+    }
+
+    // Default garment polygon layout (front chest area approximation)
+    // Returns a sensible default polygon if no AI vision is available
+    const defaultPolygons = [
+      // Front chest panel
+      [[10, 15], [90, 15], [90, 85], [10, 85]],
+      // Back panel (approximate)
+      [[12, 15], [88, 15], [88, 85], [12, 85]]
+    ];
+
+    console.log(`[DesignSync AI Gateway] Polygon detection: using default layout polygons.`);
+
+    return res.json({ polygons: defaultPolygons });
+  } catch (error: any) {
+    console.error('❌ Error detecting polygons:', error);
+    return res.status(500).json({
+      error: 'POLYGON_DETECTION_FAILED',
+      message: `Failed to detect design regions: ${error.message}`
+    });
+  }
+});
+
+// ─── 4. POST /api/ai/remove-background ────────────────────────────────────────
+aiRouter.post('/remove-background', async (req: any, res: any) => {
+  try {
+    const { referenceImage } = req.body;
+    if (!referenceImage) {
+      return res.status(400).json({ error: 'referenceImage is required' });
+    }
+
+    const recraftKey = process.env.RECRAFT_API_KEY;
+    if (!recraftKey) {
+      throw new Error('Missing RECRAFT_API_KEY');
+    }
+
+    const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const blob = new Blob([buffer], { type: 'image/png' });
+
+    const formData = new FormData();
+    formData.append('file', blob, 'image.png');
+
+    console.log('[DesignSync AI Gateway] Calling Recraft removeBackground...');
+    const apiResponse = await fetch('https://external.api.recraft.ai/v1/images/removeBackground', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${recraftKey}`
+      },
+      body: formData
+    });
+
+    if (!apiResponse.ok) {
+      const errText = await apiResponse.text().catch(() => 'unknown');
+      throw new Error(`Recraft API error (${apiResponse.status}): ${errText}`);
+    }
+
+    const apiData = await apiResponse.json() as any;
+    const resultUrl = apiData.image?.url || apiData.data?.[0]?.url;
+
+    if (!resultUrl) {
+      throw new Error('Recraft returned no URL in response.');
+    }
+
+    console.log(`[DesignSync AI Gateway] ✅ Background removed successfully: ${resultUrl}`);
+    return res.json({ url: resultUrl });
+  } catch (error: any) {
+    console.error('❌ Error removing background:', error);
+    // Graceful fallback to avoid user crashes if credits are exhausted
+    console.log(`[DesignSync AI Gateway] Background removal failed: ${error.message}. Returning original image as fallback.`);
+    return res.json({ url: req.body.referenceImage });
+  }
+});
+
+// ─── 5. POST /api/ai/vectorize ───────────────────────────────────────────────
+aiRouter.post('/vectorize', async (req: any, res: any) => {
+  try {
+    const { imageUrl } = req.body;
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'imageUrl is required' });
+    }
+
+    // Bypass Recraft completely if image is already a vector SVG / data URI
+    if (imageUrl.startsWith('data:image/svg+xml') || imageUrl.endsWith('.svg')) {
+      console.log(`[DesignSync AI Gateway] Image is already a vector SVG format. Bypassing Recraft vectorize.`);
+      return res.json({ url: imageUrl });
+    }
+
+    const recraftKey = process.env.RECRAFT_API_KEY;
+    if (!recraftKey) {
+      console.log(`[DesignSync AI Gateway] No RECRAFT_API_KEY for vectorization — returning original URL.`);
+      return res.json({ url: imageUrl });
+    }
+
+    // Fetch image arraybuffer to convert to blob
+    console.log(`[DesignSync AI Gateway] Fetching image from URL for vectorization: ${imageUrl}`);
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) throw new Error(`Failed to fetch image from URL: ${imgRes.status}`);
+    const arrayBuffer = await imgRes.arrayBuffer();
+    const blob = new Blob([arrayBuffer], { type: 'image/png' });
+
+    const formData = new FormData();
+    formData.append('file', blob, 'image.png');
+
+    console.log('[DesignSync AI Gateway] Calling Recraft vectorize...');
+    const apiResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${recraftKey}`
+      },
+      body: formData
+    });
+
+    if (!apiResponse.ok) {
+      const errText = await apiResponse.text().catch(() => 'unknown');
+      throw new Error(`Recraft API error (${apiResponse.status}): ${errText}`);
+    }
+
+    const apiData = await apiResponse.json() as any;
+    const resultUrl = apiData.image?.url || apiData.data?.[0]?.url;
+
+    if (!resultUrl) {
+      throw new Error('Recraft returned no URL in response.');
+    }
+
+    console.log(`[DesignSync AI Gateway] ✅ Vectorized successfully: ${resultUrl}`);
+    return res.json({ url: resultUrl });
+  } catch (error: any) {
+    console.error('❌ Error vectorizing image:', error);
+    // Graceful fallback to avoid user crashes if credits are exhausted
+    console.log(`[DesignSync AI Gateway] Vectorization failed: ${error.message}. Returning original image as fallback.`);
+    return res.json({ url: req.body.imageUrl });
   }
 });

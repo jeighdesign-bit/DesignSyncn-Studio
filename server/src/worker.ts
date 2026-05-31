@@ -9,7 +9,10 @@ const SUPABASE_URL = process.env.SUPABASE_URL || '';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || '';
 
 // Initialize Supabase client
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabase = createClient(
+  SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_KEY || SUPABASE_KEY
+);
 
 interface ExportJobData {
   projectId: string;
