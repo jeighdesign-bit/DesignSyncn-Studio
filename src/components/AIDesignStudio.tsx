@@ -350,12 +350,33 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
               ...prev,
               [activePanel]: processedDataUrl
             }));
+            onUpdateProject({
+              selectedPresetId: '',
+              baseColors: {
+                primary: '#ffffff',
+                secondary: '#ffffff',
+                accent: '#ffffff',
+                highlight: '#ffffff',
+                baseColor: '#ffffff'
+              }
+            });
             pushLog(`Creative Studio: Reference image for ${activePanel} uploaded and processed preserving aspect ratio`);
           } else {
+            const resultUrl = reader.result as string;
             setPanelReferences(prev => ({
               ...prev,
-              [activePanel]: reader.result as string
+              [activePanel]: resultUrl
             }));
+            onUpdateProject({
+              selectedPresetId: '',
+              baseColors: {
+                primary: '#ffffff',
+                secondary: '#ffffff',
+                accent: '#ffffff',
+                highlight: '#ffffff',
+                baseColor: '#ffffff'
+              }
+            });
             pushLog(`Creative Studio: Reference image for ${activePanel} uploaded`);
           }
         };

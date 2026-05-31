@@ -239,14 +239,27 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       });
     }
 
-    // ── PATH A: StyleSync AI via Gemini Vision + Recraft V4.1 Pro Vector (mockup uploaded) ──
-    // This is the PREMIUM approach matching top industry standards:
-    //  1. Extract visual pattern details using Gemini Vision
-    //  2. Merge extracted pattern description with user prompt modifications
-    //  3. Strip silhouette boundaries and jersey wrinkles using a rigorous regex
-    //  4. Synthesize flat native SVG using Recraft V4.1 Pro Vector
     if (referenceImage) {
-      const isGrabber = req.body.pipeline === 'grabber';
+      // Intent Detection & Copy/Vectorize Overrides
+      const promptText = (prompt || '').trim().toLowerCase();
+      const copyIntentKeywords = [
+        'regenerate this',
+        'regenerate',
+        'copy this',
+        'copy',
+        'vectorize',
+        'vectorise',
+        'remake',
+        'recreate',
+        'clone',
+        'extract',
+        'grab',
+        'trace'
+      ];
+      const hasCopyIntent = copyIntentKeywords.some(keyword => promptText.includes(keyword)) ||
+                            /^(regenerate|copy|vectorize|remake|recreate|clone|extract|grab|trace)(\s+this|\s+logo|\s+design|\s+image)?$/i.test(promptText);
+
+      const isGrabber = req.body.pipeline === 'grabber' || hasCopyIntent;
       const geminiApiKey = process.env.GEMINI_API_KEY;
 
       if (isGrabber) {
@@ -387,8 +400,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       // Parse similarity strength if provided by frontend, default to 0.50 to prevent foreground bleed-through
       const frontendStrength = req.body.similarityStrength;
       const parsedStrength = typeof frontendStrength === 'number' ? frontendStrength : 0.50;
-      // Clamp strength between 0.40 and 0.55 if foreground text/logos might bleed
-      const guidanceStrength = Math.min(Math.max(parsedStrength, 0.40), 0.55);
+      // Allow up to 0.95 strength for maximum control alignment, with a baseline minimum of 0.40
+      const guidanceStrength = Math.min(Math.max(parsedStrength, 0.40), 0.95);
 
       console.log(`[StyleSync AI] Sending to Recraft V4.1 Pro Vector generations endpoint with strength ${guidanceStrength}...`);
       try {
