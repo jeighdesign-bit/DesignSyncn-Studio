@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import FormData from 'form-data';
 dotenv.config();
 
 export const aiRouter = Router();
@@ -261,16 +262,17 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
           const buffer = Buffer.from(base64Data, 'base64');
 
-          // Construct FormData using native Node 18+ global FormData and Blob
+          // Construct FormData using form-data package for high Node compatibility
           const formData = new FormData();
-          formData.append('image', new Blob([buffer], { type: 'image/png' }), 'mockup.png');
+          formData.append('image', buffer, { filename: 'mockup.png', contentType: 'image/png' });
 
           const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
             method: 'POST',
             headers: {
-              'Authorization': `Bearer ${recraftKey}`
+              'Authorization': `Bearer ${recraftKey}`,
+              ...formData.getHeaders()
             },
-            body: formData
+            body: formData as any
           });
 
           if (recraftResponse.ok) {
@@ -744,18 +746,18 @@ aiRouter.post('/remove-background', async (req: any, res: any) => {
 
     const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
     const buffer = Buffer.from(base64Data, 'base64');
-    const blob = new Blob([buffer], { type: 'image/png' });
 
     const formData = new FormData();
-    formData.append('file', blob, 'image.png');
+    formData.append('file', buffer, { filename: 'image.png', contentType: 'image/png' });
 
     console.log('[DesignSync AI Gateway] Calling Recraft removeBackground...');
     const apiResponse = await fetch('https://external.api.recraft.ai/v1/images/removeBackground', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${recraftKey}`
+        'Authorization': `Bearer ${recraftKey}`,
+        ...formData.getHeaders()
       },
-      body: formData
+      body: formData as any
     });
 
     if (!apiResponse.ok) {
@@ -805,18 +807,19 @@ aiRouter.post('/vectorize', async (req: any, res: any) => {
     const imgRes = await fetch(imageUrl);
     if (!imgRes.ok) throw new Error(`Failed to fetch image from URL: ${imgRes.status}`);
     const arrayBuffer = await imgRes.arrayBuffer();
-    const blob = new Blob([arrayBuffer], { type: 'image/png' });
+    const buffer = Buffer.from(arrayBuffer);
 
     const formData = new FormData();
-    formData.append('file', blob, 'image.png');
+    formData.append('file', buffer, { filename: 'image.png', contentType: 'image/png' });
 
     console.log('[DesignSync AI Gateway] Calling Recraft vectorize...');
     const apiResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${recraftKey}`
+        'Authorization': `Bearer ${recraftKey}`,
+        ...formData.getHeaders()
       },
-      body: formData
+      body: formData as any
     });
 
     if (!apiResponse.ok) {
