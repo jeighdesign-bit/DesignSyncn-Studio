@@ -272,7 +272,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
               'Authorization': `Bearer ${recraftKey}`,
               ...formData.getHeaders()
             },
-            body: formData as any
+            body: formData.getBuffer()
           });
 
           if (recraftResponse.ok) {
@@ -757,7 +757,7 @@ aiRouter.post('/remove-background', async (req: any, res: any) => {
         'Authorization': `Bearer ${recraftKey}`,
         ...formData.getHeaders()
       },
-      body: formData as any
+      body: formData.getBuffer()
     });
 
     if (!apiResponse.ok) {
@@ -819,7 +819,7 @@ aiRouter.post('/vectorize', async (req: any, res: any) => {
         'Authorization': `Bearer ${recraftKey}`,
         ...formData.getHeaders()
       },
-      body: formData as any
+      body: formData.getBuffer()
     });
 
     if (!apiResponse.ok) {
