@@ -6,8 +6,8 @@ import {
   Shirt,
   ArrowRight,
   Cpu,
-  ChevronDown, Paperclip,
-  Layers, Download, Trash2, Crop, Play, Grid
+  Paperclip,
+  Layers, Download, Crop, Grid
 } from 'lucide-react';
 import { generateProductionCanvasStates } from '../lib/measurements';
 
@@ -144,13 +144,13 @@ export const STYLE_DNA: StyleDNA[] = [
   }
 ];
 
-const PANEL_PROMPT_CHIPS: Record<GarmentPanel, string[]> = {
-  front: ['Bold geometric centerpiece', 'Gradient fade from collar', 'Sponsor zone clean white', 'Armor-plate pattern overlay'],
-  back: ['Number zone clear white background', 'Full-back graphic with name clearance', 'Diagonal stripe flow', 'Mirror front panel design'],
-  'left-sleeve': ['Vertical stripe accent', 'Team color gradient fade', 'Logo placement zone', 'Diagonal mesh pattern'],
-  'right-sleeve': ['Solid secondary color', 'Piping accent line', 'Match left sleeve mirror', 'Number accent strip'],
-  collar: ['Contrast color binding', 'Sublimation gradient fade', 'Clean white inner collar', 'Pattern continuation']
-};
+// const PANEL_PROMPT_CHIPS: Record<GarmentPanel, string[]> = {
+//   front: ['Bold geometric centerpiece', 'Gradient fade from collar', 'Sponsor zone clean white', 'Armor-plate pattern overlay'],
+//   back: ['Number zone clear white background', 'Full-back graphic with name clearance', 'Diagonal stripe flow', 'Mirror front panel design'],
+//   'left-sleeve': ['Vertical stripe accent', 'Team color gradient fade', 'Logo placement zone', 'Diagonal mesh pattern'],
+//   'right-sleeve': ['Solid secondary color', 'Piping accent line', 'Match left sleeve mirror', 'Number accent strip'],
+//   collar: ['Contrast color binding', 'Sublimation gradient fade', 'Clean white inner collar', 'Pattern continuation']
+// };
 
 const INITIAL_PANELS: PanelConfig[] = [
   { id: 'front', label: 'Front Body', shortLabel: 'Front', prompt: '', status: 'empty', zones: ['sponsor', 'safe', 'seam', 'design'] },
@@ -168,6 +168,7 @@ export const ZONE_COLORS: Record<ZoneType, { fill: string; stroke: string; label
   design: { fill: 'rgba(0,230,118,0.05)', stroke: '#00e676', label: 'Free Design Zone' },
 };
 
+/*
 const GarmentFlat: React.FC<{
   concepts: GeneratedConcept[];
   selectedDNA: StyleDNA | null;
@@ -200,7 +201,7 @@ const GarmentFlat: React.FC<{
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '360px', maxWidth: '640px' } as any}>
       
-      {/* 🌟 MOCKUP IMAGE — always shown */}
+      {/ * 🌟 MOCKUP IMAGE — always shown * /}
       <img
         key={mockupSrc}
         src={mockupSrc}
@@ -217,7 +218,7 @@ const GarmentFlat: React.FC<{
         }}
       />
 
-      {/* 🌟 AI PATTERN OVERLAY — single full-cover over the whole garment */}
+      {/ * 🌟 AI PATTERN OVERLAY — single full-cover over the whole garment * /}
       {concepts.length > 0 && primaryConcept?.patternUrl && (
         <div
           style={{
@@ -246,7 +247,7 @@ const GarmentFlat: React.FC<{
         />
       )}
 
-      {/* Back panel generated — compact indicator chip bottom-right */}
+      {/ * Back panel generated — compact indicator chip bottom-right * /}
       {backConcept?.patternUrl && (
         <div style={{
           position: 'absolute',
@@ -284,6 +285,7 @@ const GarmentFlat: React.FC<{
     </div>
   );
 };
+*/
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
@@ -298,7 +300,6 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 }) => {
   // ── State ──────────────────────────────────────────────────────────────────
   const [activePanel, setActivePanel] = useState<GarmentPanel>('front');
-  const [patternScaleMode, setPatternScaleMode] = useState<'cover' | 'tiled'>('cover');
   const [panels, setPanels] = useState<PanelConfig[]>(() => {
     if (project.panels && project.panels.length > 0) {
       return project.panels;
@@ -365,8 +366,6 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const [loadingMsg, setLoadingMsg] = useState('');
   const [handoffProcessing, setHandoffProcessing] = useState(false);
   const [handoffDone, setHandoffDone] = useState(false);
-
-  const [activePanelDropdown, setActivePanelDropdown] = useState(false);
 
   const LOADING_MSGS = [
     '[PANEL AI] Mapping front body layout zones...',
@@ -741,14 +740,12 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       name: 'REMOVE BACKGROUND',
       tokens: 5,
       description: 'Clears mannequins, hangers, and room backgrounds to isolate the design',
-      action: () => {
-        pushLog('[AI Action] Removing background and isolating flat design layout...');
-        alert('AI Action: Background removed successfully!');
-      },
+      action: handleRemoveBackground,
       icon: <Shirt className="ap-panel-icon" />,
       activeColor: '#ff7b00',
       glowColor: 'rgba(255, 123, 0, 0.4)',
-      isDisabled: generating || vectorizing
+      isDisabled: !panelReferences[activePanel] || generating || vectorizing || backgroundRemoving,
+      reqMsg: !panelReferences[activePanel] ? '⚠️ Requires reference mockup' : ''
     },
     {
       id: 'remix',
