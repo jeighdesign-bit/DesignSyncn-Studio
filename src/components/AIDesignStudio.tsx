@@ -1126,7 +1126,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 border: '1px solid rgba(255,255,255,0.04)',
                 position: 'relative',
                 overflow: 'hidden',
-                minHeight: '240px',
+                minHeight: '480px',
                 padding: '12px'
               }}>
                 {panelReferences[activePanel] ? (
@@ -1143,8 +1143,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       src={panelReferences[activePanel] || ''} 
                       alt="Input Mockup Reference" 
                       style={{
-                        maxWidth: '90%',
-                        maxHeight: '220px',
+                        maxWidth: '95%',
+                        maxHeight: '440px',
+                        width: 'auto',
+                        height: 'auto',
                         objectFit: 'contain',
                         borderRadius: '8px',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
@@ -1298,7 +1300,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                 border: '1px solid rgba(255,255,255,0.04)',
                 position: 'relative',
                 overflow: 'hidden',
-                minHeight: '240px',
+                minHeight: '480px',
                 padding: '12px'
               }}>
                 {concepts.find(c => c.panelId === activePanel)?.patternUrl ? (
@@ -1315,8 +1317,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       src={concepts.find(c => c.panelId === activePanel)?.patternUrl || ''} 
                       alt="Extracted Design Result" 
                       style={{
-                        maxWidth: '90%',
-                        maxHeight: '220px',
+                        maxWidth: '95%',
+                        maxHeight: '440px',
+                        width: 'auto',
+                        height: 'auto',
                         objectFit: 'contain',
                         borderRadius: '8px',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
