@@ -1143,10 +1143,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       src={panelReferences[activePanel] || ''} 
                       alt="Input Mockup Reference" 
                       style={{
-                        maxWidth: '95%',
+                        width: '100%',
+                        height: '100%',
+                        maxWidth: '100%',
                         maxHeight: '440px',
-                        width: 'auto',
-                        height: 'auto',
                         objectFit: 'contain',
                         borderRadius: '8px',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
@@ -1317,10 +1317,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                       src={concepts.find(c => c.panelId === activePanel)?.patternUrl || ''} 
                       alt="Extracted Design Result" 
                       style={{
-                        maxWidth: '95%',
+                        width: '100%',
+                        height: '100%',
+                        maxWidth: '100%',
                         maxHeight: '440px',
-                        width: 'auto',
-                        height: 'auto',
                         objectFit: 'contain',
                         borderRadius: '8px',
                         boxShadow: '0 8px 24px rgba(0,0,0,0.6)',
