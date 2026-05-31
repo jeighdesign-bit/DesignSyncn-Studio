@@ -289,7 +289,8 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
           if (recraftResponse.ok) {
             const recraftData = await recraftResponse.json() as any;
-            const resultUrl = recraftData.url || recraftData.image_url || recraftData.data?.[0]?.url;
+            console.log('[Design Grabber] Recraft raw response data:', JSON.stringify(recraftData));
+            const resultUrl = recraftData.image?.url || recraftData.url || recraftData.image_url || recraftData.data?.[0]?.url;
             if (resultUrl) {
               console.log(`[Design Grabber] ✅ RECRAFT VECTORIZER SUCCESS → ${resultUrl}`);
               setUserTokens(cleanUserId, currentBalance - 1);
