@@ -273,7 +273,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
                     }
                   },
                   {
-                    text: 'Analyze the graphic design on this sports apparel mockup for a 2D flat sublimation blueprint conversion. Identify the spatial orientation of the core patterns. Describe exactly where they lie on the canvas (e.g., vertical asymmetric curved panels on the flanks, horizontal chest gradients). Translate 3D shading and mannequin curves into flat, 2D vector coordinate descriptions. Strictly ignore 3D apparel words. Output only the prompt description in English, and keep it concise and punchy.'
+                    text: 'Analyze the graphic design on this sports apparel mockup for a 2D flat sublimation blueprint conversion. Focus ONLY on the background patterns, colors, and geometric graphics (e.g. stripes, shapes, gradients). ABSOLUTELY IGNORE and EXCLUDE any brand logos, Nike swooshes, sponsor emblems, numbers, and text. Translate 3D shading and mannequin curves into flat, 2D vector coordinate descriptions of the background pattern only. Output only the background pattern description in English, and keep it concise and punchy.'
                   }
                 ]
               }]
@@ -300,12 +300,12 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         finalPrompt = `${prompt.trim()}. Theme and visual details: ${finalPrompt}`;
       }
 
-      // Rigorous Regex cleaning to strip out t-shirt boundaries and wrinkles
+      // Rigorous Regex cleaning to strip out t-shirt boundaries, wrinkles, and common brand elements
       const garmentRegex = /\b(shirt|jersey|tshirt|t-shirt|mockup|mannequin|sleeve|collar|seams|fabric|wrinkle|folds|wear|clothing|apparel|polyester|mockup)\b/gi;
       finalPrompt = finalPrompt.replace(garmentRegex, 'graphic pattern');
 
-      // Guarantee flat vector layout instructions in the prompt
-      finalPrompt = `flat vector sublimation sports graphic pattern, print-ready, clean paths, tileable, ${finalPrompt}`;
+      // Guarantee flat vector layout instructions in the prompt and order logo suppression
+      finalPrompt = `flat vector sublimation sports graphic pattern, pure geometric background texture, print-ready, clean paths, tileable, strictly no logos, no text, no nike swooshes, no brand emblems, ${finalPrompt}`;
       console.log(`[StyleSync AI] Final cleaned prompt for Recraft: "${finalPrompt}"`);
 
       // Convert user hex colors to RGB format for Recraft's controls
@@ -317,7 +317,13 @@ aiRouter.post('/generate', async (req: any, res: any) => {
         return { rgb: [r, g, b] };
       });
 
-      console.log(`[StyleSync AI] Sending to Recraft V4.1 Pro Vector generations endpoint...`);
+      // Parse similarity strength if provided by frontend, default to 0.50 to prevent foreground bleed-through
+      const frontendStrength = req.body.similarityStrength;
+      const parsedStrength = typeof frontendStrength === 'number' ? frontendStrength : 0.50;
+      // Clamp strength between 0.40 and 0.55 if foreground text/logos might bleed
+      const guidanceStrength = Math.min(Math.max(parsedStrength, 0.40), 0.55);
+
+      console.log(`[StyleSync AI] Sending to Recraft V4.1 Pro Vector generations endpoint with strength ${guidanceStrength}...`);
       try {
         const recraftPayload = {
           prompt: finalPrompt,
@@ -327,7 +333,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           },
           image_guidance: {
             image: referenceImage,
-            strength: 0.78
+            strength: guidanceStrength
           }
         };
 
