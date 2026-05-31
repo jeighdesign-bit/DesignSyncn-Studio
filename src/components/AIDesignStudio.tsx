@@ -306,7 +306,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     }
     return INITIAL_PANELS;
   });
-  
+
   // Track reference image per-panel for part-aware uploads
   const [panelReferences, setPanelReferences] = useState<Record<GarmentPanel, string | null>>({
     front: null,
@@ -330,17 +330,27 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
           const canvas = document.createElement('canvas');
           const ctx = canvas.getContext('2d');
           if (ctx) {
+            // Calculate scale to fit within 512x512 while preserving original aspect ratio
+            const scale = Math.min(512 / img.width, 512 / img.height);
+            const w = img.width * scale;
+            const h = img.height * scale;
+            const x = (512 - w) / 2;
+            const y = (512 - h) / 2;
+
             canvas.width = 512;
             canvas.height = 512;
-            
-            // Draw the entire uploaded image to fit the 512x512 canvas, preserving 100% of graphic detail (like side panels)
-            ctx.drawImage(img, 0, 0, img.width, img.height, 0, 0, 512, 512);
+
+            // Clear to transparent
+            ctx.clearRect(0, 0, 512, 512);
+
+            // Draw centered image preserving 100% of the graphic details and aspect ratio
+            ctx.drawImage(img, 0, 0, img.width, img.height, x, y, w, h);
             const processedDataUrl = canvas.toDataURL('image/png');
             setPanelReferences(prev => ({
               ...prev,
               [activePanel]: processedDataUrl
             }));
-            pushLog(`Creative Studio: Reference image for ${activePanel} uploaded and processed`);
+            pushLog(`Creative Studio: Reference image for ${activePanel} uploaded and processed preserving aspect ratio`);
           } else {
             setPanelReferences(prev => ({
               ...prev,
@@ -360,7 +370,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
   const safeZoneRadius = 0.5;
   const seamBleed = 0.5;
-  
+
   const [actionLog, setActionLog] = useState<string[]>([]);
   const [generating, setGenerating] = useState(false);
   const [loadingMsg, setLoadingMsg] = useState('');
@@ -423,7 +433,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     if (!currentRef) return;
     setBackgroundRemoving(true);
     pushLog('[AI Actions] Calling Recraft to remove background from reference image...');
-    
+
     try {
       const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${SERVER_URL}/api/ai/remove-background`, {
@@ -431,10 +441,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ referenceImage: currentRef })
       });
-      
+
       if (!res.ok) throw new Error(`Background removal failed: ${res.statusText}`);
       const data = await res.json();
-      
+
       if (data.url) {
         setPanelReferences(prev => ({ ...prev, [activePanel]: data.url }));
         pushLog('✓ Background removed successfully.');
@@ -452,10 +462,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     const activeConcept = concepts.find(c => c.panelId === activePanel);
     const patternUrl = activeConcept?.patternUrl;
     if (!patternUrl) return;
-    
+
     setVectorizing(true);
     pushLog('[AI Actions] Calling Recraft to convert pattern into high-fidelity SVG paths...');
-    
+
     try {
       const SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
       const res = await fetch(`${SERVER_URL}/api/ai/vectorize`, {
@@ -463,10 +473,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ imageUrl: patternUrl })
       });
-      
+
       if (!res.ok) throw new Error(`Vectorization failed: ${res.statusText}`);
       const data = await res.json();
-      
+
       if (data.url) {
         setConcepts(prev => prev.map(c => c.panelId === activePanel ? { ...c, patternUrl: data.url } : c));
         pushLog('✓ Vectorization completed. High-fidelity SVG active.');
@@ -488,7 +498,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     onUpdateProject({ panels: next });
   };
 
-  const handleGenerate = async (overridePanels?: PanelConfig[]) => {
+  const handleGenerate = async (overridePanels?: PanelConfig[], isGrabber?: boolean) => {
     const panelsToUse = overridePanels || panels;
 
     // Determine which panels should be generated in this run:
@@ -497,12 +507,12 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
     let targetPanels = (['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'] as GarmentPanel[]).filter(pid => {
       const panel = panelsToUse.find(p => p.id === pid);
       if (!panel) return false;
-      
+
       // Always generate the active panel if it has a prompt or reference image
       if (pid === activePanel) {
         return panel.prompt.trim() !== '' || panelReferences[pid] !== null;
       }
-      
+
       // Otherwise, only generate if it is configured (edited) but not yet generated
       return panel.status === 'configured' && (panel.prompt.trim() !== '' || panelReferences[pid] !== null);
     });
@@ -541,7 +551,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       // Generate patterns for targeted panels asynchronously via DesignSync AI Gateway
       for (const pid of targetPanels) {
         const panel = panelsToUse.find(p => p.id === pid);
-        
+
         // Cohesive Design Copying: If generating Front and Back together on the first run,
         // make the unconfigured body panel copy the prompt and reference image of the active one.
         let promptToUse = panel?.prompt.trim();
@@ -571,6 +581,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             userId: userId,
             referenceImage: referenceToUse,
             similarityStrength: 0.85,
+            pipeline: isGrabber ? 'grabber' : undefined,
           })
         });
 
@@ -654,7 +665,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
     setPanels(next);
     onUpdateProject({ panels: next });
-    
+
     // Duplicate concepts so all panels display the pattern in the mockup preview
     setConcepts(prev => {
       const duplicated = (['front', 'back', 'left-sleeve', 'right-sleeve', 'collar'] as GarmentPanel[]).map(pid => {
@@ -681,7 +692,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   const handleHandoff = () => {
     setHandoffProcessing(true);
     pushLog('Initializing Apparel Production AI Mapping Engine...');
-    
+
     let currentStep = 0;
     const steps = [
       'Analyzing generated artwork patterns and dye-sub color mode...',
@@ -698,18 +709,18 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
         currentStep++;
       } else {
         clearInterval(interval);
-        
+
         // Generate Fabric JSON canvas states based on project parameters
         const generatedStates = generateProductionCanvasStates({
           ...project,
           panels
         });
-        
+
         // Save back to project state
         onUpdateProject({
           canvasStates: generatedStates
         });
-        
+
         pushLog('✓ Production mapping completed successfully.');
         setHandoffProcessing(false);
         setHandoffDone(true);
@@ -728,7 +739,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
       name: 'EXTRACT DESIGN',
       tokens: 7,
       description: 'Extracts the flat design pattern directly from your reference image',
-      action: () => handleGenerate(panels),
+      action: () => handleGenerate(panels, true),
       icon: <Layers className="ap-panel-icon" />,
       activeColor: '#00e5ff',
       glowColor: 'rgba(0, 229, 255, 0.4)',
@@ -806,10 +817,10 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
     <div className="ap-engine-layout" style={{ display: 'flex', position: 'relative', width: '100%', height: '100%', overflow: 'hidden' }}>
-      
+
       {/* ═══ CENTER Dominant Viewport & Floating controls ═══════════════════ */}
       <div className="ap-center-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative', background: '#06060c' }}>
-        
+
         {/* Minimal top breadcrumb bar */}
         <div className="ap-center-topbar" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', boxSizing: 'border-box' }}>
           <div className="ap-topbar-breadcrumb">
@@ -939,7 +950,7 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
 
           {/* Floating Left Panel Selector (AI Actions Controller) */}
-          <div 
+          <div
             className="ap-left-floating-toolbar"
             style={{
               position: 'absolute',
@@ -969,12 +980,12 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                   className={`ap-toolbar-btn ${act.isDisabled ? 'disabled' : ''}`}
                   onClick={act.action}
                   disabled={act.isDisabled}
-                  style={{ 
-                    position: 'relative', 
-                    width: '36px', 
-                    height: '36px', 
-                    display: 'flex', 
-                    alignItems: 'center', 
+                  style={{
+                    position: 'relative',
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
                     justifyContent: 'center',
                     borderRadius: '10px',
                     transition: 'all 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -1009,18 +1020,18 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
                   {/* Status glow dot for active/running state */}
                   {isActLoading && (
-                    <span style={{ 
-                      position: 'absolute', 
-                      top: '2px', 
-                      right: '2px', 
-                      width: '6px', 
-                      height: '6px', 
-                      borderRadius: '50%', 
-                      background: act.activeColor, 
-                      boxShadow: `0 0 6px ${act.activeColor}` 
+                    <span style={{
+                      position: 'absolute',
+                      top: '2px',
+                      right: '2px',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: act.activeColor,
+                      boxShadow: `0 0 6px ${act.activeColor}`
                     }} />
                   )}
-                  
+
                   {/* Tooltip labels */}
                   <span style={{
                     position: 'absolute',
@@ -1138,9 +1149,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                     justifyContent: 'center',
                     position: 'relative'
                   }}>
-                    <img 
-                      src={panelReferences[activePanel] || ''} 
-                      alt="Input Mockup Reference" 
+                    <img
+                      src={panelReferences[activePanel] || ''}
+                      alt="Input Mockup Reference"
                       style={{
                         width: 'auto',
                         height: 'auto',
@@ -1270,11 +1281,11 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                     Result
                   </span>
                 </div>
-                
+
                 {/* Result Control Actions */}
                 {concepts.find(c => c.panelId === activePanel)?.patternUrl && (
                   <div style={{ display: 'flex', gap: '5px' }}>
-                    <button 
+                    <button
                       onClick={() => {
                         const url = concepts.find(c => c.panelId === activePanel)?.patternUrl;
                         if (url) window.open(url, '_blank');
@@ -1311,9 +1322,9 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
                     justifyContent: 'center',
                     gap: '16px'
                   }}>
-                    <img 
-                      src={concepts.find(c => c.panelId === activePanel)?.patternUrl || ''} 
-                      alt="Extracted Design Result" 
+                    <img
+                      src={concepts.find(c => c.panelId === activePanel)?.patternUrl || ''}
+                      alt="Extracted Design Result"
                       style={{
                         width: 'auto',
                         height: 'auto',
@@ -1442,17 +1453,17 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
 
 
             {/* Hidden File Input */}
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              accept="image/*" 
-              style={{ display: 'none' }} 
-              onChange={handleFileChange} 
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              style={{ display: 'none' }}
+              onChange={handleFileChange}
             />
 
             {/* Attachment Button */}
-            <button 
-              className="ap-prompt-attachment-btn" 
+            <button
+              className="ap-prompt-attachment-btn"
               title={`Attach reference style image specifically for ${activePanel}`}
               onClick={() => {
                 fileInputRef.current?.click();
@@ -1465,8 +1476,8 @@ export const AIDesignStudio: React.FC<AIDesignStudioProps> = ({
             {panelReferences[activePanel] && (
               <div className="ap-prompt-ref-preview">
                 <img src={panelReferences[activePanel] || ''} alt="reference" />
-                <button 
-                  onClick={() => setPanelReferences(prev => ({ ...prev, [activePanel]: null }))} 
+                <button
+                  onClick={() => setPanelReferences(prev => ({ ...prev, [activePanel]: null }))}
                   className="ap-prompt-ref-remove-btn"
                   title="Remove reference image"
                 >
