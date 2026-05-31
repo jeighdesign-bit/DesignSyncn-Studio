@@ -19,7 +19,7 @@ import {
 // Default Project Settings
 const initialProject: Project = {
   name: 'Esports Championship Jersey',
-  stage: 'brief',
+  stage: 'design',
   apparelType: 'esports_jersey',
   baseColors: {
     primary: '#09090b',
@@ -671,12 +671,12 @@ export default function App() {
     setLogMessages(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev.slice(0, 15)]);
   };
 
-  const stageOrder = ['brief', 'design', 'studio', 'export'] as const;
+  const stageOrder = ['design', 'studio', 'export'] as const;
   const getStageIndex = (s: string) => stageOrder.indexOf(s as any);
 
   const handleUpdateProject = (updates: Partial<Project>) => {
     setProject(prev => {
-      let maxUnlocked = prev.maxUnlockedStage || prev.stage || 'brief';
+      let maxUnlocked = prev.maxUnlockedStage || prev.stage || 'design';
       if (updates.stage) {
         const prevMaxIdx = getStageIndex(maxUnlocked);
         const newStageIdx = getStageIndex(updates.stage);
@@ -1073,234 +1073,64 @@ export default function App() {
                 </div>
 
                 <div className="modal-split-container">
-                  {/* Left Column: Form & Stepper controls */}
-                  <div className="modal-controls-pane">
+                  {/* Left Column: Form controls */}
+                  <div className="modal-controls-pane" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
                     <div>
-                      {/* Stepper progress */}
-                      <div className="modal-stepper">
-                        <div className="modal-stepper-line"></div>
-                        <div 
-                          className="modal-stepper-progress" 
-                          style={{ width: modalStep === 1 ? '0%' : '100%' }}
-                        ></div>
-                        
-                        <div className={`modal-step-node ${modalStep >= 1 ? 'completed' : ''} ${modalStep === 1 ? 'active' : ''}`}>
-                          1
-                          <span className="modal-step-label">Basics</span>
-                        </div>
-                        <div className={`modal-step-node ${modalStep >= 2 ? 'completed' : ''} ${modalStep === 2 ? 'active' : ''}`}>
-                          2
-                          <span className="modal-step-label">Apparel & Style</span>
-                        </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 6px 0' }}>Establish Project Identity</h3>
+                        <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Give your design asset a clear name and set the client context.</p>
                       </div>
 
-                      {/* Step Contents */}
-                      <div style={{ marginTop: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                        {modalStep === 1 && (
-                          <>
-                            <div style={{ marginBottom: '8px' }}>
-                              <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 6px 0' }}>Establish Project Identity</h3>
-                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Give your design asset a clear name and set the client context.</p>
-                            </div>
-
-                            {/* Name */}
-                            <div className="form-group">
-                              <label className="form-label">Project Name</label>
-                              <input 
-                                type="text" 
-                                className="form-input-text" 
-                                placeholder="e.g. Neon Strike Esports Jersey"
-                                value={newProjectName}
-                                onChange={(e) => setNewProjectName(e.target.value)}
-                                style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
-                                autoFocus
-                              />
-                              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>A high-concept name helps the creative AI capture context.</span>
-                            </div>
-
-                            {/* Team / Client Name */}
-                            <div className="form-group">
-                              <label className="form-label">Team / Client Name (Optional)</label>
-                              <input 
-                                type="text" 
-                                className="form-input-text" 
-                                placeholder="e.g. Apex Predators Esports"
-                                value={newTeamName}
-                                onChange={(e) => setNewTeamName(e.target.value)}
-                                style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
-                              />
-                            </div>
-                          </>
-                        )}
-
-                        {modalStep === 2 && (
-                          <>
-                            <div>
-                              <h3 style={{ fontSize: '15px', color: '#fff', fontWeight: 'bold', margin: '0 0 4px 0' }}>Select Apparel & Vibe</h3>
-                              <p style={{ fontSize: '11px', color: 'var(--text-secondary)', margin: 0 }}>Choose a premium base pattern outline and aesthetic direction.</p>
-                            </div>
-
-                            {/* Garment Type Selection */}
-                            <div className="form-group">
-                              <label className="form-label">Select Garment Shape</label>
-                              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                                <div 
-                                  className={`visual-apparel-card ${newGarmentType === 'esports_jersey' ? 'active' : ''}`}
-                                  onClick={() => {
-                                    setNewGarmentType('esports_jersey');
-                                    setNewCanvasSize('2400 x 2400 px');
-                                    setNewDpi(300);
-                                    setNewColorMode('CMYK');
-                                  }}
-                                >
-                                  <img 
-                                    src="/mockups/jersey_round_neck.png" 
-                                    alt="Esports Jersey" 
-                                    style={{ width: '45px', height: '45px', objectFit: 'contain', marginBottom: '8px', filter: newGarmentType === 'esports_jersey' ? 'drop-shadow(0 0 6px var(--accent-blue))' : 'grayscale(0.7) opacity(0.6)', transition: 'all 0.2s' }} 
-                                  />
-                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>Esports Jersey</span>
-                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Standard raglan athletic cut</span>
-                                </div>
-
-                                <div 
-                                  className={`visual-apparel-card ${newGarmentType === 'crewneck_sweatshirt' ? 'active' : ''}`}
-                                  onClick={() => {
-                                    setNewGarmentType('crewneck_sweatshirt');
-                                    setNewCanvasSize('3000 x 3000 px');
-                                    setNewDpi(300);
-                                    setNewColorMode('CMYK');
-                                  }}
-                                >
-                                  <img 
-                                    src="/mockups/hoodie.png" 
-                                    alt="Crewneck Sweatshirt" 
-                                    style={{ width: '45px', height: '45px', objectFit: 'contain', marginBottom: '8px', filter: newGarmentType === 'crewneck_sweatshirt' ? 'drop-shadow(0 0 6px var(--accent-blue))' : 'grayscale(0.7) opacity(0.6)', transition: 'all 0.2s' }} 
-                                  />
-                                  <span style={{ fontSize: '12px', fontWeight: '700', color: '#fff' }}>Crewneck Sweatshirt</span>
-                                  <span style={{ fontSize: '9px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>Loose long sleeve streetwear fit</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Optional Style Presets */}
-                            <div className="form-group">
-                              <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <span>Aesthetic Preset Vibe (Optional)</span>
-                                <span className="recommended-badge">Creative Preset</span>
-                              </label>
-                              <div className="style-chips-grid">
-                                {[
-                                  { id: 'Esports', name: 'Esports', emoji: '🎮' },
-                                  { id: 'Streetwear', name: 'Streetwear', emoji: '🧥' },
-                                  { id: 'Minimalist', name: 'Minimalist', emoji: '🌿' },
-                                  { id: 'Aggressive', name: 'Aggressive', emoji: '⚡' },
-                                  { id: 'Luxury', name: 'Luxury', emoji: '✨' },
-                                  { id: 'Futuristic', name: 'Futuristic', emoji: '🚀' },
-                                ].map((preset) => (
-                                  <div 
-                                    key={preset.id}
-                                    className={`style-preset-chip ${newStylePreference === preset.id ? 'active' : ''}`}
-                                    onClick={() => setNewStylePreference(preset.id)}
-                                  >
-                                    <span className="style-preset-emoji">{preset.emoji}</span>
-                                    <span className="style-preset-name">{preset.name}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Step Navigation Controls */}
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                      {modalStep > 1 ? (
-                        <button 
-                          className="ghost" 
-                          onClick={() => setModalStep(modalStep - 1)}
-                          style={{ padding: '8px 16px', fontSize: '12px' }}
-                        >
-                          Back
-                        </button>
-                      ) : (
-                        <button 
-                          className="ghost" 
-                          onClick={() => setIsModalOpen(false)}
-                          style={{ padding: '8px 16px', fontSize: '12px' }}
-                        >
-                          Cancel
-                        </button>
-                      )}
-
-                      {modalStep < 2 ? (
-                        <button 
-                          className="primary" 
-                          onClick={() => setModalStep(modalStep + 1)}
-                          disabled={modalStep === 1 && !newProjectName.trim()}
-                          style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer' }}
-                        >
-                          Continue
-                        </button>
-                      ) : (
-                        <button 
-                          className="primary" 
-                          onClick={handleCreateProject}
-                          disabled={!newProjectName.trim()}
-                          style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 15px rgba(0, 112, 243, 0.4)' }}
-                        >
-                          Start Designing ➔
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* Right Column: Creative Live Preview */}
-                  <div className="modal-preview-pane">
-                    {/* Render dynamic SVG Silhouette & Details */}
-                    {(() => {
-                      const isJersey = newGarmentType === 'esports_jersey';
-
-
-                      return (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
-                          {/* Clean Mockup Preview */}
-                          <img
-                            src={
-                              newGarmentType === 'esports_jersey' ? '/mockups/jersey_round_neck.png' :
-                              newGarmentType === 'crewneck_sweatshirt' ? '/mockups/hoodie.png' :
-                              newGarmentType === 'tshirt' ? '/mockups/tshirt.png' :
-                              newGarmentType === 'long_sleeve' ? '/mockups/long_sleeve.png' :
-                              newGarmentType === 'pants' ? '/mockups/pants.png' :
-                              newGarmentType === 'shorts' ? '/mockups/shorts.png' :
-                              '/mockups/jersey_round_neck.png'
-                            }
-                            alt="Apparel Mockup"
-                            style={{
-                              width: '75%',
-                              maxHeight: '260px',
-                              objectFit: 'contain',
-                            }}
+                      <div style={{ marginTop: '20px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        {/* Name */}
+                        <div className="form-group">
+                          <label className="form-label">Project Name</label>
+                          <input 
+                            type="text" 
+                            className="form-input-text" 
+                            placeholder="e.g. Neon Strike Esports Jersey"
+                            value={newProjectName}
+                            onChange={(e) => setNewProjectName(e.target.value)}
+                            style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
+                            autoFocus
                           />
-
-                          {/* Quick specs pill */}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', background: 'rgba(0,0,0,0.4)', padding: '10px 14px', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', width: '100%', maxWidth: '230px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
-                              <span style={{ color: 'rgba(255,255,255,0.4)' }}>Garment Type:</span>
-                              <span style={{ color: '#fff', fontWeight: 'bold' }}>{isJersey ? 'Jersey' : 'Sweatshirt'}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
-                              <span style={{ color: 'rgba(255,255,255,0.4)' }}>Fit Profile:</span>
-                              <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>{newTemplateChoice}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', fontSize: '10px' }}>
-                              <span style={{ color: 'rgba(255,255,255,0.4)' }}>Resolution:</span>
-                              <span style={{ color: '#fff', fontWeight: 'bold' }}>{newDpi} DPI ({newColorMode})</span>
-                            </div>
-                          </div>
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', marginTop: '2px' }}>A high-concept name helps the creative AI capture context.</span>
                         </div>
-                      );
-                    })()}
+
+                        {/* Team / Client Name */}
+                        <div className="form-group">
+                          <label className="form-label">Team / Client Name (Optional)</label>
+                          <input 
+                            type="text" 
+                            className="form-input-text" 
+                            placeholder="e.g. Apex Predators Esports"
+                            value={newTeamName}
+                            onChange={(e) => setNewTeamName(e.target.value)}
+                            style={{ background: '#0e0e13', border: '1px solid rgba(255,255,255,0.08)', color: '#fff' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Navigation Controls */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                      <button 
+                        className="ghost" 
+                        onClick={() => setIsModalOpen(false)}
+                        style={{ padding: '8px 16px', fontSize: '12px' }}
+                      >
+                        Cancel
+                      </button>
+
+                      <button 
+                        className="primary" 
+                        onClick={handleCreateProject}
+                        disabled={!newProjectName.trim()}
+                        style={{ padding: '8px 20px', fontSize: '12px', background: 'var(--accent-blue)', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 0 15px rgba(0, 112, 243, 0.4)' }}
+                      >
+                        Start Designing ➔
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -1346,14 +1176,12 @@ export default function App() {
 
             {/* Topbar Center: Segmented Workflow Steps */}
             <div className="topbar-center">
-              {(['brief', 'design', 'studio', 'export'] as const).map((stage) => {
+              {(['design', 'studio', 'export'] as const).map((stage) => {
                 const stageIndex = getStageIndex(stage);
-                const maxUnlocked = project.maxUnlockedStage || project.stage || 'brief';
+                const maxUnlocked = project.maxUnlockedStage || project.stage || 'design';
                 const maxUnlockedIndex = getStageIndex(maxUnlocked);
                 const isLocked = stageIndex > maxUnlockedIndex;
-                const isComplete = stage === 'brief' 
-                  ? (!!project.designVision && !!project.stylePreference)
-                  : stage === 'design'
+                const isComplete = stage === 'design'
                   ? (project.logos.length > 0 || !!project.prompt)
                   : stage === 'studio'
                   ? (project.roster && project.roster.length > 0 && project.roster.every(p => p.status === 'Mapped' || p.status === 'Ready for Export'))
@@ -1375,7 +1203,6 @@ export default function App() {
                     ) : project.stage === stage ? (
                       <span className="status-dot green-pulsing" style={{ width: '4px', height: '4px', display: 'inline-block', margin: 0 }} />
                     ) : null}
-                    {stage === 'brief' && 'Create'}
                     {stage === 'design' && 'Generate'}
                     {stage === 'studio' && 'Refine'}
                     {stage === 'export' && 'Produce'}
@@ -1497,31 +1324,15 @@ export default function App() {
                 >
                   <div className="sidebar-nav-group">
                     {(() => {
-                      const maxUnlocked = project.maxUnlockedStage || project.stage || 'brief';
+                      const maxUnlocked = project.maxUnlockedStage || project.stage || 'design';
                       const maxUnlockedIndex = getStageIndex(maxUnlocked);
 
-                      const briefLocked = getStageIndex('brief') > maxUnlockedIndex;
                       const designLocked = getStageIndex('design') > maxUnlockedIndex;
                       const studioLocked = getStageIndex('studio') > maxUnlockedIndex;
                       const exportLocked = getStageIndex('export') > maxUnlockedIndex;
 
                       return (
                         <>
-                          <button 
-                            className={`sidebar-nav-item ${project.stage === 'brief' ? 'active' : ''} ${briefLocked ? 'locked' : ''}`}
-                            onClick={() => !briefLocked && handleUpdateProject({ stage: 'brief' })}
-                            disabled={briefLocked}
-                            style={buttonStyle}
-                            title={briefLocked ? 'Complete the previous stages to unlock.' : ''}
-                          >
-                            <FileText size={16} />
-                            {showLabels && (
-                              <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
-                                <span className="sidebar-nav-label">1. Create</span>
-                                {!!project.designVision && !!project.stylePreference && <Check size={12} style={{ color: 'var(--color-success)' }} />}
-                              </div>
-                            )}
-                          </button>
                           <button 
                             className={`sidebar-nav-item ${project.stage === 'design' ? 'active' : ''} ${designLocked ? 'locked' : ''}`}
                             onClick={() => !designLocked && handleUpdateProject({ stage: 'design' })}
@@ -1532,7 +1343,7 @@ export default function App() {
                             <Sparkles size={16} />
                             {showLabels && (
                               <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
-                                <span className="sidebar-nav-label">2. Generate</span>
+                                <span className="sidebar-nav-label">1. Generate</span>
                                 {designLocked ? <Lock size={10} style={{ opacity: 0.5 }} /> : (project.logos.length > 0 || !!project.prompt) ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : null}
                               </div>
                             )}
@@ -1547,7 +1358,7 @@ export default function App() {
                             <Layers size={16} />
                             {showLabels && (
                               <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
-                                <span className="sidebar-nav-label">3. Refine</span>
+                                <span className="sidebar-nav-label">2. Refine</span>
                                 {studioLocked ? <Lock size={10} style={{ opacity: 0.5 }} /> : (project.roster && project.roster.length > 0 && project.roster.every(p => p.status === 'Mapped' || p.status === 'Ready for Export')) ? <Check size={12} style={{ color: 'var(--color-success)' }} /> : null}
                               </div>
                             )}
@@ -1562,7 +1373,7 @@ export default function App() {
                             <Download size={16} />
                             {showLabels && (
                               <div style={{ display: 'flex', alignItems: 'center', justifyItems: 'space-between', width: '100%', justifyContent: 'space-between' }}>
-                                <span className="sidebar-nav-label">4. Produce</span>
+                                <span className="sidebar-nav-label">3. Produce</span>
                                 {exportLocked && <Lock size={10} style={{ opacity: 0.5 }} />}
                               </div>
                             )}
@@ -1594,588 +1405,6 @@ export default function App() {
 
             {/* Center Content Workspace - Router based on stages */}
             <main style={{ width: '100%', height: '100%', overflow: 'hidden', position: 'relative' }}>
-              
-              {/* STAGE 1: BRIEF SPECIFICATIONS */}
-              {project.stage === 'brief' && (
-                <div className="brief-workspace-premium">
-                  {/* Backdrop glow atmosphere */}
-                  <div className="atmosphere-glow secondary-glow" style={{ zIndex: 1, opacity: 0.18 }}></div>
-                  <div className="atmosphere-glow primary-glow" style={{ zIndex: 1, opacity: 0.18 }}></div>
-
-                  <div className="brief-wizard-header" style={{ padding: '24px 32px', borderBottom: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 2, position: 'relative' }}>
-                    <div className="wizard-title-area">
-                      <span className="wizard-subtitle" style={{ fontSize: '10px', fontWeight: '800', color: 'var(--accent-blue)', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Apparel Design Setup</span>
-                      <h2 className="wizard-title" style={{ fontSize: '22px', fontWeight: '800', color: '#fff', margin: '4px 0 0 0', letterSpacing: '-0.02em', fontFamily: 'Outfit, sans-serif' }}>Create Design Project</h2>
-                    </div>
-                    <div className="wizard-steps-timeline" style={{ display: 'flex', gap: '24px', alignItems: 'center' }}>
-                      {[
-                        { step: 1, label: '1. Specs & Colors' },
-                        { step: 3, label: '2. Upload Assets' }
-                      ].map(node => (
-                        <div 
-                          key={node.step}
-                          className={`wizard-step-node ${wizardStep === node.step ? 'active' : ''} ${wizardStep > node.step ? 'completed' : ''}`} 
-                          onClick={() => setWizardStep(node.step)}
-                          style={{
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            alignItems: 'flex-start',
-                            position: 'relative',
-                            padding: '4px 8px',
-                            transition: 'all 0.2s',
-                            opacity: wizardStep === node.step ? 1.0 : 0.6
-                          }}
-                        >
-                          <span className="step-label" style={{ fontSize: '11px', fontWeight: '800', color: wizardStep === node.step ? 'var(--accent-blue)' : '#fff', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-                            {node.label}
-                          </span>
-                          <div 
-                            className="step-bar" 
-                            style={{ 
-                              height: '2px', 
-                              width: '100%', 
-                              background: wizardStep === node.step ? 'var(--accent-blue)' : wizardStep > node.step ? 'var(--color-success)' : 'rgba(255,255,255,0.1)', 
-                              marginTop: '6px',
-                              boxShadow: wizardStep === node.step ? '0 0 8px var(--accent-blue)' : 'none',
-                              transition: 'all 0.2s'
-                            }} 
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="brief-grid-layout" style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: '32px', padding: '32px', height: 'calc(100% - 160px)', overflowY: 'auto', boxSizing: 'border-box', zIndex: 2, position: 'relative' }}>
-                    {/* LEFT COLUMN: Inputs & Options */}
-                    <div className="brief-column left-column" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                      
-                      {wizardStep === 1 && (
-                        <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                          <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                            
-                            {/* Visual confirmation of linked project details */}
-                            <div style={{ marginBottom: '24px' }}>
-                              <span style={{ fontSize: '9px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.08em', display: 'block', marginBottom: '8px' }}>LINKED PROJECT IDENTITY</span>
-                              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                <div style={{ background: 'rgba(0, 112, 243, 0.08)', border: '1px solid rgba(0, 112, 243, 0.2)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ color: 'var(--accent-blue)', fontWeight: 'bold' }}>PROJECT:</span> {project.name}
-                                </div>
-                                {project.teamName && (
-                                  <div style={{ background: 'rgba(121, 40, 202, 0.08)', border: '1px solid rgba(121, 40, 202, 0.2)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <span style={{ color: '#a855f7', fontWeight: 'bold' }}>CLIENT:</span> {project.teamName}
-                                  </div>
-                                )}
-                                <div style={{ background: 'rgba(0, 230, 118, 0.08)', border: '1px solid rgba(0, 230, 118, 0.2)', padding: '8px 14px', borderRadius: '8px', fontSize: '12px', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ color: '#10b981', fontWeight: 'bold' }}>GARMENT:</span> <span style={{ textTransform: 'uppercase' }}>{project.apparelType}</span>
-                                </div>
-                              </div>
-                            </div>
-
-                            <h3 className="wizard-section-title" style={{ fontSize: '16px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
-                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 8px var(--accent-blue)' }} />
-                              Team Color Palette
-                            </h3>
-                            <p className="wizard-section-desc" style={{ color: 'var(--text-disabled)', fontSize: '12px', marginBottom: '24px', lineHeight: '1.5' }}>
-                              Define the core dye-sublimation color scheme. These colors will instantly calibrate your active template aesthetics.
-                            </p>
-                            
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                              {/* Color palette picker row */}
-                              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
-                                
-                                {/* Primary Color */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <label style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Primary Color</label>
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input 
-                                      type="color" 
-                                      value={project.baseColors?.primary || '#1a1a24'} 
-                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, primary: e.target.value } })} 
-                                      style={{ width: '42px', height: '40px', border: 'none', borderRadius: '8px', background: 'transparent', cursor: 'pointer', padding: 0 }} 
-                                    />
-                                    <input 
-                                      type="text" 
-                                      value={project.baseColors?.primary || '#1a1a24'} 
-                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, primary: e.target.value } })} 
-                                      style={{ flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', textTransform: 'uppercase' }} 
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Secondary Color */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <label style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Secondary Color</label>
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input 
-                                      type="color" 
-                                      value={project.baseColors?.secondary || '#0070f3'} 
-                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, secondary: e.target.value } })} 
-                                      style={{ width: '42px', height: '40px', border: 'none', borderRadius: '8px', background: 'transparent', cursor: 'pointer', padding: 0 }} 
-                                    />
-                                    <input 
-                                      type="text" 
-                                      value={project.baseColors?.secondary || '#0070f3'} 
-                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, secondary: e.target.value } })} 
-                                      style={{ flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', textTransform: 'uppercase' }} 
-                                    />
-                                  </div>
-                                </div>
-
-                                {/* Accent Color */}
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                  <label style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Accent Color</label>
-                                  <div style={{ display: 'flex', gap: '8px' }}>
-                                    <input 
-                                      type="color" 
-                                      value={project.baseColors?.accent || '#00ff88'} 
-                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, accent: e.target.value } })} 
-                                      style={{ width: '42px', height: '40px', border: 'none', borderRadius: '8px', background: 'transparent', cursor: 'pointer', padding: 0 }} 
-                                    />
-                                    <input 
-                                      type="text" 
-                                      value={project.baseColors?.accent || '#00ff88'} 
-                                      onChange={(e) => handleUpdateProject({ baseColors: { ...project.baseColors, accent: e.target.value } })} 
-                                      style={{ flex: 1, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#fff', fontSize: '13px', textTransform: 'uppercase' }} 
-                                    />
-                                  </div>
-                                </div>
-
-                              </div>
-
-                              {/* Project notes / prompt */}
-                              <div className="tech-input-field" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <label htmlFor="project-notes" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                                  Optional Project Notes
-                                </label>
-                                <textarea
-                                  id="project-notes"
-                                  className="tech-text-input"
-                                  rows={4}
-                                  value={project.prompt || ''}
-                                  onChange={(e) => handleUpdateProject({ prompt: e.target.value })}
-                                  placeholder="Provide any custom design details, color guidelines, branding preferences, or creative guidelines..."
-                                  style={{
-                                    width: '100%',
-                                    background: 'rgba(255, 255, 255, 0.02)',
-                                    border: '1px solid rgba(255, 255, 255, 0.08)',
-                                    borderRadius: '12px',
-                                    padding: '14px 18px',
-                                    color: '#fff',
-                                    fontSize: '14px',
-                                    outline: 'none',
-                                    transition: 'all 0.2s',
-                                    resize: 'none',
-                                    fontFamily: 'inherit',
-                                    boxSizing: 'border-box'
-                                  }}
-                                  onFocus={(e) => {
-                                    e.target.style.borderColor = 'var(--accent-blue)';
-                                    e.target.style.boxShadow = '0 0 10px rgba(0, 112, 243, 0.2)';
-                                    e.target.style.background = 'rgba(255,255,255,0.03)';
-                                  }}
-                                  onBlur={(e) => {
-                                    e.target.style.borderColor = 'rgba(255, 255, 255, 0.08)';
-                                    e.target.style.boxShadow = 'none';
-                                    e.target.style.background = 'rgba(255,255,255,0.02)';
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {wizardStep === 2 && (
-                        <div className="wizard-step-content animate-fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                          <div className="wizard-section-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '32px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                            <h3 className="wizard-section-title" style={{ fontSize: '18px', color: '#fff', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px', fontFamily: 'Outfit, sans-serif' }}>
-                              <span style={{ width: '8px', height: '8px', background: 'var(--accent-blue)', borderRadius: '50%', boxShadow: '0 0 10px var(--accent-blue)' }} />
-                              Upload Design Assets
-                            </h3>
-                            <p className="wizard-section-desc" style={{ color: 'var(--text-secondary)', fontSize: '13px', marginBottom: '24px' }}>
-                              Add your artwork files to stage them in the design studio.
-                            </p>
-                            
-                            {/* Unified Drag and Drop Area */}
-                            <div 
-                              style={{
-                                background: 'rgba(10, 10, 15, 0.4)',
-                                border: '2px dashed rgba(0, 112, 243, 0.25)',
-                                borderRadius: '16px',
-                                padding: '48px 32px',
-                                textAlign: 'center',
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
-                                position: 'relative',
-                                overflow: 'hidden',
-                                boxShadow: 'inset 0 0 20px rgba(0, 112, 243, 0.03)'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.borderColor = 'var(--accent-blue)';
-                                e.currentTarget.style.background = 'rgba(0, 112, 243, 0.03)';
-                                e.currentTarget.style.boxShadow = '0 0 20px rgba(0, 112, 243, 0.1), inset 0 0 20px rgba(0, 112, 243, 0.06)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.borderColor = 'rgba(0, 112, 243, 0.25)';
-                                e.currentTarget.style.background = 'rgba(10, 10, 15, 0.4)';
-                                e.currentTarget.style.boxShadow = 'inset 0 0 20px rgba(0, 112, 243, 0.03)';
-                              }}
-                            >
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                                <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: 'rgba(0, 112, 243, 0.1)', border: '1px solid rgba(0, 112, 243, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '4px' }}>
-                                  <Upload size={24} style={{ color: 'var(--accent-blue)' }} />
-                                </div>
-                                <h3 style={{ fontSize: '16px', fontWeight: '800', color: '#fff', margin: 0 }}>Upload logos, references, inspirations, sponsors, or artwork.</h3>
-                                <p style={{ fontSize: '12px', color: 'var(--text-secondary)', margin: 0, maxWidth: '380px', lineHeight: '1.5' }}>
-                                  Drag & drop your files here or click to browse. <br/>
-                                  Supports <strong style={{ color: 'var(--accent-blue)' }}>PNG, JPG, SVG, PDF, AI</strong>.
-                                </p>
-                                
-                                <div style={{ display: 'flex', gap: '12px', marginTop: '20px' }}>
-                                  <button 
-                                    className="premium-ghost-btn" 
-                                    onClick={(e) => { e.stopPropagation(); loadHighResLogo(); }}
-                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', background: 'rgba(0, 112, 243, 0.08)', border: '1px solid rgba(0, 112, 243, 0.2)', color: '#fff' }}
-                                  >
-                                    Simulate SVG Upload (High-Res)
-                                  </button>
-                                  <button 
-                                    className="premium-ghost-btn" 
-                                    onClick={(e) => { e.stopPropagation(); loadLowResLogo(); }}
-                                    style={{ padding: '8px 16px', borderRadius: '8px', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', background: 'rgba(121, 40, 202, 0.08)', border: '1px solid rgba(121, 40, 202, 0.2)', color: '#fff' }}
-                                  >
-                                    Simulate JPG Upload (Low-Res)
-                                  </button>
-                                </div>
-                              </div>
-                            </div>
- 
-                            {/* User-Friendly Inline Diagnostics / Silenced alerts */}
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '20px' }}>
-                              {project.logos.map(logo => (
-                                <div 
-                                  key={logo.id}
-                                  style={{
-                                    background: logo.resolutionStatus === 'high' ? 'rgba(0, 230, 118, 0.06)' : 'rgba(245, 166, 35, 0.06)',
-                                    border: logo.resolutionStatus === 'high' ? '1px solid rgba(0, 230, 118, 0.2)' : '1px solid rgba(245, 166, 35, 0.2)',
-                                    borderRadius: '10px',
-                                    padding: '12px 16px',
-                                    display: 'flex',
-                                    alignItems: 'flex-start',
-                                    gap: '12px',
-                                    fontSize: '12px',
-                                    lineHeight: '1.4',
-                                    boxShadow: logo.resolutionStatus === 'high' ? 'inset 0 0 10px rgba(0, 230, 118, 0.02)' : 'inset 0 0 10px rgba(245, 166, 35, 0.02)'
-                                  }}
-                                >
-                                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', background: logo.resolutionStatus === 'high' ? 'rgba(0, 230, 118, 0.1)' : 'rgba(245, 166, 35, 0.1)', color: logo.resolutionStatus === 'high' ? 'var(--color-success)' : 'var(--color-warning)', flexShrink: 0 }}>
-                                    {logo.resolutionStatus === 'high' ? <Check size={11} /> : <AlertTriangle size={11} />}
-                                  </div>
-                                  <div style={{ flex: 1 }}>
-                                    <strong style={{ color: '#fff', display: 'block', marginBottom: '2px' }}>
-                                      {logo.resolutionStatus === 'high' ? '✓ Premium Resolution Detected' : '⚠ Action Recommended'}
-                                    </strong>
-                                    <span style={{ color: 'var(--text-secondary)' }}>
-                                      {logo.resolutionStatus === 'high' 
-                                        ? `Asset "${logo.name}" verified at 300 DPI. Optimized for professional direct-to-garment apparel printing.` 
-                                        : `Asset "${logo.name}" has standard resolution (${logo.dpi} DPI). Physical prints may look slightly fuzzy. SVGs/Vectors are recommended.`
-                                      }
-                                    </span>
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
- 
-                            {/* Registered Artwork Vault List */}
-                            <div style={{ marginTop: '24px', borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: '20px' }}>
-                              <h4 style={{ margin: '0 0 12px 0', fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                                Staged Project Assets ({project.logos.length})
-                              </h4>
-                              
-                              {project.logos.length === 0 ? (
-                                <div style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.03)', borderRadius: '10px', padding: '24px', textAlign: 'center', fontSize: '11px', color: 'var(--text-disabled)' }}>
-                                  No assets staged yet. Use the upload simulator controls above to populate.
-                                </div>
-                              ) : (
-                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-                                  {project.logos.map(logo => (
-                                    <div 
-                                      key={logo.id}
-                                      style={{
-                                        background: 'rgba(25, 25, 32, 0.4)',
-                                        border: '1px solid rgba(255, 255, 255, 0.05)',
-                                        borderRadius: '10px',
-                                        padding: '10px 14px',
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: '12px',
-                                        position: 'relative',
-                                        overflow: 'hidden'
-                                      }}
-                                    >
-                                      <div style={{ width: '36px', height: '36px', background: 'rgba(0,0,0,0.3)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.04)', flexShrink: 0 }}>
-                                        {logo.url ? (
-                                          <img src={logo.url} alt={logo.name} style={{ maxWidth: '85%', maxHeight: '85%', objectFit: 'contain' }} />
-                                        ) : (
-                                          <span style={{ fontSize: '9px', fontWeight: '800', color: 'rgba(255,255,255,0.2)' }}>SVG</span>
-                                        )}
-                                      </div>
-                                      <div style={{ flex: 1, minWidth: 0 }}>
-                                        <span style={{ display: 'block', fontSize: '12px', fontWeight: 'bold', color: '#fff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{logo.name}</span>
-                                        <span style={{ fontSize: '10px', color: logo.resolutionStatus === 'high' ? 'var(--color-success)' : 'var(--color-warning)', fontWeight: '600', display: 'block', marginTop: '2px' }}>
-                                          {logo.resolutionStatus === 'high' ? '300 DPI — High Res' : '72 DPI — Low Res'}
-                                        </span>
-                                      </div>
-                                      <button 
-                                        onClick={() => deleteLogo(logo.id)}
-                                        style={{ background: 'transparent', border: 'none', color: 'rgba(255,255,255,0.3)', cursor: 'pointer', padding: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'color 0.2s' }}
-                                        onMouseEnter={(e) => e.currentTarget.style.color = 'var(--color-error)'}
-                                        onMouseLeave={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.3)'}
-                                      >
-                                        <Trash2 size={13} />
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                    </div>
-
-                    {/* RIGHT COLUMN: Highly Simplified Neon Blueprint Preview */}
-                    <div className="brief-column right-column">
-                      <div className="live-preview-panel-premium-tech" style={{ background: 'rgba(10, 10, 15, 0.45)', border: '1px solid rgba(255,255,255,0.04)', borderRadius: '16px', padding: '24px', backdropFilter: 'blur(16px)', boxShadow: '0 8px 32px rgba(0,0,0,0.5)', display: 'flex', flexDirection: 'column', height: '100%', boxSizing: 'border-box' }}>
-                        <div className="tech-preview-header" style={{ display: 'flex', justifyContent: 'space-between', borderBottom: '1px solid rgba(255,255,255,0.05)', paddingBottom: '12px', marginBottom: '16px', alignItems: 'center' }}>
-                          <span className="tech-preview-title" style={{ fontSize: '11px', fontWeight: '800', color: 'rgba(255,255,255,0.6)', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Blueprint schematic</span>
-                          <span className="tech-preview-badge" style={{ fontSize: '9px', fontWeight: 'bold', background: 'rgba(0,112,243,0.1)', color: 'var(--accent-blue)', padding: '2px 8px', borderRadius: '4px', border: '1px solid rgba(0,112,243,0.15)' }}>Active Block</span>
-                        </div>
-                        
-                        {/* Blueprint View Toggle */}
-                        <div className="blueprint-toggle" style={{ display: 'flex', background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '2px', marginBottom: '16px' }}>
-                          <button 
-                            className={`toggle-btn ${blueprintView === 'front' ? 'active' : ''}`}
-                            onClick={() => setBlueprintView('front')}
-                            style={{
-                              flex: 1,
-                              background: blueprintView === 'front' ? 'var(--accent-blue)' : 'transparent',
-                              border: 'none',
-                              borderRadius: '6px',
-                              color: '#fff',
-                              fontSize: '11px',
-                              fontWeight: 'bold',
-                              padding: '6px 12px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            Front View
-                          </button>
-                          <button 
-                            className={`toggle-btn ${blueprintView === 'back' ? 'active' : ''}`}
-                            onClick={() => setBlueprintView('back')}
-                            style={{
-                              flex: 1,
-                              background: blueprintView === 'back' ? 'var(--accent-blue)' : 'transparent',
-                              border: 'none',
-                              borderRadius: '6px',
-                              color: '#fff',
-                              fontSize: '11px',
-                              fontWeight: 'bold',
-                              padding: '6px 12px',
-                              cursor: 'pointer',
-                              transition: 'all 0.2s',
-                            }}
-                          >
-                            Back View
-                          </button>
-                        </div>
-
-                        <div className="tech-blueprint-container" style={{ flex: 1, position: 'relative', background: '#050508', borderRadius: '12px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', minHeight: '260px' }}>
-                          {/* Blueprint background grid lines */}
-                          <div className="blueprint-overlay-grid-lines" />
-                          
-                          {/* Schematic drawing */}
-                          <div className="blueprint-silhouette-box" style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {(() => {
-                              const isFront = blueprintView === 'front';
-                              const strokeColor = 'var(--accent-blue)';
-                              const strokeWidth = 1.8;
-                              
-                              switch (project.apparelType) {
-                                case 'esports_jersey':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 20,20 C 35,10 65,10 80,20 L 92,50 L 78,54 L 79,112 C 60,117 40,117 21,112 L 22,54 L 8,50 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
-                                      <path d="M 20,20 L 33,35 M 80,20 L 67,35" fill="none" stroke={strokeColor} strokeWidth={1.2} strokeDasharray="3,3" />
-                                      {isFront ? (
-                                        <path d="M 40,13 A 10 10 0 0 0 60,13" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
-                                      ) : (
-                                        <path d="M 40,13 A 10 6 0 0 0 60,13" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
-                                      )}
-                                    </svg>
-                                  );
-                                case 'tshirt':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 18,22 C 32,15 68,15 82,22 L 95,48 L 82,51 L 80,110 L 20,110 L 18,51 L 5,48 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      <path d="M 22,30 L 22,46 M 78,30 L 78,46" fill="none" stroke={strokeColor} strokeWidth={1.2} strokeDasharray="2,2" />
-                                      {isFront ? (
-                                        <path d="M 40,15 A 10 10 0 0 0 60,15" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
-                                      ) : (
-                                        <path d="M 40,15 A 10 5 0 0 0 60,15" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
-                                      )}
-                                    </svg>
-                                  );
-                                case 'hoodie':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 18,32 C 32,25 68,25 82,32 L 95,58 L 84,60 L 80,112 L 20,112 L 16,60 L 5,58 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      <path d="M 32,29 C 30,10 70,10 68,29 Z" fill="none" stroke={strokeColor} strokeWidth={1.5} />
-                                      {isFront ? (
-                                        <>
-                                          <path d="M 38,70 L 62,70 L 67,88 L 33,88 Z" fill="none" stroke={strokeColor} strokeWidth={1.2} />
-                                          <path d="M 46,29 L 46,42 M 54,29 L 54,42" fill="none" stroke={strokeColor} strokeWidth={1.0} />
-                                        </>
-                                      ) : (
-                                        <path d="M 32,29 L 50,48 L 68,29" fill="none" stroke={strokeColor} strokeWidth={1.0} strokeDasharray="3,3" />
-                                      )}
-                                    </svg>
-                                  );
-                                case 'polo_shirt':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 18,25 C 32,17 68,17 82,25 L 92,45 L 82,47 L 80,110 L 20,110 L 18,47 L 8,45 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      {isFront ? (
-                                        <>
-                                          <path d="M 38,20 L 50,32 L 62,20" fill="none" stroke={strokeColor} strokeWidth={1.5} />
-                                          <line x1="50" y1="32" x2="50" y2="48" stroke={strokeColor} strokeWidth="1.5" />
-                                        </>
-                                      ) : (
-                                        <path d="M 38,20 C 45,17 55,17 62,20" fill="none" stroke={strokeColor} strokeWidth={1.5} />
-                                      )}
-                                    </svg>
-                                  );
-                                case 'longsleeve':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 20,25 C 35,15 65,15 80,25 L 95,80 L 88,83 L 78,110 L 22,110 L 12,83 L 5,80 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      {isFront ? (
-                                        <path d="M 40,20 C 45,26 55,26 60,20" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
-                                      ) : (
-                                        <path d="M 40,20 C 45,22 55,22 60,20" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} />
-                                      )}
-                                    </svg>
-                                  );
-                                case 'cycling_jersey':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 18,22 C 32,14 68,14 82,22 L 92,45 L 80,48 L 78,110 L 22,110 L 20,48 L 8,45 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      {isFront ? (
-                                        <line x1="50" y1="14" x2="50" y2="110" stroke={strokeColor} strokeWidth="1.5" />
-                                      ) : (
-                                        <>
-                                          <path d="M 22,80 L 78,80" stroke={strokeColor} strokeWidth="1.5" fill="none" />
-                                          <line x1="40" y1="80" x2="40" y2="110" stroke={strokeColor} strokeWidth="1.2" />
-                                          <line x1="60" y1="80" x2="60" y2="110" stroke={strokeColor} strokeWidth="1.2" />
-                                        </>
-                                      )}
-                                    </svg>
-                                  );
-                                case 'compression_wear':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 22,15 C 32,12 68,12 78,15 L 85,85 L 15,85 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      {isFront ? (
-                                        <path d="M 30,14 C 40,40 40,65 30,85 M 70,14 C 60,40 60,65 70,85" fill="none" stroke={strokeColor} strokeWidth="1.2" strokeDasharray="3,3" />
-                                      ) : (
-                                        <line x1="50" y1="14" x2="50" y2="85" stroke={strokeColor} strokeWidth="1.5" strokeDasharray="3,3" />
-                                      )}
-                                    </svg>
-                                  );
-                                case 'basketball_jersey':
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px', filter: 'drop-shadow(0 0 12px rgba(0, 112, 243, 0.25))' }}>
-                                      <path d="M 25,20 C 35,12 65,12 75,20 L 80,40 L 76,88 C 60,91 40,91 24,88 L 20,40 Z" fill="none" stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" />
-                                      {isFront ? (
-                                        <path d="M 32,14 A 18 18 0 0 0 68,14" fill="none" stroke={strokeColor} strokeWidth="1.5" />
-                                      ) : (
-                                        <path d="M 32,14 A 18 10 0 0 0 68,14" fill="none" stroke={strokeColor} strokeWidth="1.5" />
-                                      )}
-                                    </svg>
-                                  );
-                                default:
-                                  return (
-                                    <svg viewBox="0 0 100 120" className="preview-garment-svg-tech" style={{ width: '100%', maxHeight: '200px' }}>
-                                      <path d="M 22,27 C 35,17 65,17 78,27 L 89,48 L 78,50 L 76,107 L 24,107 L 22,50 L 11,48 Z" fill="none" stroke={strokeColor} strokeWidth="1.5" />
-                                    </svg>
-                                  );
-                              }
-                            })()}
-                          </div>
-                        </div>
-
-                        {/* Garment details text */}
-                        <div style={{ marginTop: '16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 'bold', color: '#fff', textTransform: 'capitalize', fontFamily: 'Outfit, sans-serif' }}>
-                            {project.apparelType ? project.apparelType.replace('_', ' ') : 'Apparel Block'}
-                          </span>
-                          <span style={{ fontSize: '11px', color: 'var(--text-disabled)' }}>
-                            {blueprintView === 'front' ? 'Front' : 'Back'} View Blueprint Schematic
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Sticky Cinematic Action Bar */}
-                  <div className="sticky-action-bar-premium" style={{ padding: '20px 32px', borderTop: '1px solid rgba(255,255,255,0.04)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, zIndex: 10, background: 'rgba(10, 10, 15, 0.8)', backdropFilter: 'blur(10px)' }}>
-                    <div className="action-bar-left">
-                      {wizardStep > 1 ? (
-                        <button 
-                          className="premium-ghost-btn" 
-                          onClick={() => setWizardStep(1)}
-                          style={{ padding: '8px 16px', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '8px', color: '#fff', fontWeight: 'bold', fontSize: '12px' }}
-                        >
-                          <ArrowLeft size={14} /> Back
-                        </button>
-                      ) : (
-                        <div className="readiness-status-badge" style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '11px', color: 'var(--text-disabled)' }}>
-                          <div className="status-dot green-pulsing" style={{ width: '6px', height: '6px', background: 'var(--color-success)', borderRadius: '50%', boxShadow: '0 0 6px var(--color-success)' }} />
-                          <span>System Active</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="action-bar-right">
-                      {wizardStep < 3 ? (
-                        <button 
-                          className="continue-btn-premium"
-                          onClick={() => setWizardStep(3)}
-                          style={{ cursor: 'pointer', background: 'var(--accent-blue)', color: '#fff', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 10px rgba(0, 112, 243, 0.3)' }}
-                        >
-                          Next Step <ArrowRight size={14} />
-                        </button>
-                      ) : (
-                        <button 
-                          className="continue-btn-premium"
-                          onClick={() => {
-                            addLog("Project setup complete. Launching design workbench.");
-                            handleUpdateProject({ stage: 'design' });
-                          }}
-                          style={{ cursor: 'pointer', background: 'var(--color-success)', color: '#000', border: 'none', padding: '10px 20px', borderRadius: '8px', fontSize: '13px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 0 10px rgba(0, 230, 118, 0.3)' }}
-                        >
-                          Start Designing <ArrowRight size={14} />
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                </div>
-              )}
 
 
               {/* STAGE 2: AI DESIGN STUDIO — FULL PIPELINE */}

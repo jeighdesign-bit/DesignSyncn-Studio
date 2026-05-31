@@ -415,7 +415,7 @@
 
 .modal-card {
   width: 100%;
-  max-width: 920px;
+  max-width: 500px;
   background: #09090c;
   border: 1px solid rgba(0, 112, 243, 0.3);
   border-radius: 16px;
@@ -460,8 +460,8 @@
 /* Responsive Split-Screen Layout */
 .modal-split-container {
   display: flex;
-  flex-direction: row;
-  height: 580px;
+  flex-direction: column;
+  height: auto;
   background: #09090c;
 }
 
@@ -481,7 +481,6 @@
   flex-direction: column;
   justify-content: space-between;
   overflow-y: auto;
-  border-right: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 .modal-preview-pane {
