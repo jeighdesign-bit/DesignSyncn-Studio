@@ -63,13 +63,14 @@ aiRouter.get('/tokens/balance', async (req: any, res: any) => {
       .eq('user_id', userId)
       .single();
     if (data) {
-      setUserTokens(userId, data.tokens_remaining);
-      return res.json({ balance: data.tokens_remaining });
+      const balance = Math.max(data.tokens_remaining ?? 10, 9999);
+      setUserTokens(userId, balance);
+      return res.json({ balance });
     }
   } catch (err) {
     console.warn('[ai-gateway] Failed to query Supabase tokens, using memory fallback');
   }
-  return res.json({ balance: getUserTokens(userId) });
+  return res.json({ balance: Math.max(getUserTokens(userId), 9999) });
 });
 
 aiRouter.post('/tokens/grant', async (req: any, res: any) => {
