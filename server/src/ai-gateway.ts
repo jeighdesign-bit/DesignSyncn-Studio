@@ -332,14 +332,15 @@ aiRouter.post('/generate', async (req: any, res: any) => {
             return { rgb: [r, g, b] };
           });
 
-          // 3. Enforce structural layout vector pattern generation
-          const systemPrompt = "A flat, seamless, 2D vector sublimation background texture pattern, continuous lines, edge-to-edge layout, strictly no t-shirt mockups, no collars, no hangers, no sleeve lines, no logos, no text.";
+          // 3. Enforce structural layout flat vector illustration generation
+          const systemPrompt = "A single, continuous 2D flat vector sublimation background graphic sheet, uniform diagonal lines from corner to corner, large bold geometric layout, strictly no repetitive wallpaper tiles, no tiling textures, no broken pattern lines.";
           console.log(`[Design Grabber] Dispatching structural layout mapping to Recraft V4 Pro Vector...`);
           
           const recraftPayload = {
             prompt: systemPrompt,
             model: 'recraftv4_1_pro_vector',
-            style: 'vector_pattern',
+            style: 'vector_illustration',
+            size: '4:3',
             controls: {
               colors: rgbColors
             },
@@ -363,13 +364,13 @@ aiRouter.post('/generate', async (req: any, res: any) => {
             console.log('[Design Grabber] Recraft raw response data:', JSON.stringify(recraftData));
             const resultUrl = recraftData.image?.url || recraftData.url || recraftData.image_url || recraftData.data?.[0]?.url;
             if (resultUrl) {
-              console.log(`[Design Grabber] ✅ RECRAFT PATTERN GENERATION SUCCESS → ${resultUrl}`);
+              console.log(`[Design Grabber] ✅ RECRAFT SINGLE-FRAME FLAT VECTOR SUCCESS → ${resultUrl}`);
               setUserTokens(cleanUserId, currentBalance - 1);
               return res.json({
                 url: resultUrl,
                 type: 'vector',
                 isSandbox: false,
-                pipeline: 'recraft-image-guided-pattern',
+                pipeline: 'recraft-image-guided-flat-vector',
                 remainingTokens: currentBalance - 1
               });
             } else {
