@@ -333,7 +333,26 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           });
 
           // 3. Enforce structural layout flat vector illustration generation
-          const systemPrompt = "A single, continuous 2D flat vector sublimation background graphic sheet, uniform diagonal lines from corner to corner, large bold geometric layout, strictly no repetitive wallpaper tiles, no tiling textures, no broken pattern lines.";
+          const systemPrompt = `Extract the artwork only Do not redesign, reinterpret, enhance, simplify, recreate, or regenerate anything.
+Preserve the original artwork geometry exactly as shown.
+Maintain all stripe positions, panel placements, spacing, proportions, curvature, scale, texture distribution, and visual hierarchy.
+Treat the front, back, sleeves, and side graphics as separate artwork regions.
+Do not merge multiple garment panels into a single composition.
+Output each detected artwork region independently on a clean flat canvas.
+Remove only:
+- garment silhouette
+- collar
+- sleeves
+- cuffs
+- seams
+- mannequin
+- hanger
+- shadows
+- logos
+- names
+- numbers
+- text
+Keep only the original graphic artwork. The output must be a clean flat production artwork layout, preserving the exact original design structure.`;
           console.log(`[Design Grabber] Dispatching structural layout mapping to Recraft V4 Pro Vector...`);
           
           const recraftPayload = {
