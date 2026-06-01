@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import FormData from 'form-data';
-import sharp from 'sharp';
+import { Jimp } from 'jimp';
 dotenv.config();
 
 export const aiRouter = Router();
@@ -267,7 +267,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       if (isGrabber) {
         console.log(`\n══════════════ [Design Grabber: Deterministic Pixel-Tiling Pipeline] ══════════════`);
         console.log(`• Input: Cropped Reference Patch Uploaded`);
-        console.log(`• Method: Sharp Programmatic Center Isolation + Canvas Tiling Grid + Strict Vectorize`);
+        console.log(`• Method: Jimp Pure-JS Center Isolation + Canvas Tiling Grid + Strict Vectorize`);
         
         if (!recraftKey) {
           return res.status(500).json({ error: 'RECRAFT_API_KEY is missing. Grabber requires Recraft API.' });
@@ -290,20 +290,17 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           console.log(`[Design Grabber] Decoded cropped buffer size: ${buffer.length} bytes.`);
           
           // ─── STEP 1: Programmatic Texture Isolation (Auto-Crop 70% Center) ───
-          console.log(`[Design Grabber] ✂️ Step 1: Isolating center texture patch to avoid border artifacts...`);
-          const originalImage = sharp(buffer);
-          const metadata = await originalImage.metadata();
-          const width = metadata.width || 800;
-          const height = metadata.height || 600;
+          console.log(`[Design Grabber] ✂️ Step 1: Isolating center texture patch to avoid border artifacts using Jimp 1.x...`);
+          const originalImage = await Jimp.read(buffer);
+          const width = originalImage.bitmap.width;
+          const height = originalImage.bitmap.height;
 
           const patchWidth = Math.round(width * 0.7);
           const patchHeight = Math.round(height * 0.7);
           const patchLeft = Math.round((width - patchWidth) / 2);
           const patchTop = Math.round((height - patchHeight) / 2);
 
-          const patchBuffer = await originalImage
-            .extract({ left: patchLeft, top: patchTop, width: patchWidth, height: patchHeight })
-            .toBuffer();
+          originalImage.crop({ x: patchLeft, y: patchTop, w: patchWidth, h: patchHeight });
           console.log(`[Design Grabber] isolated patch dimensions: ${patchWidth}x${patchHeight}`);
 
           // ─── STEP 2: Mathematical Tiling / Mirroring (Grid Compositing to 1600x1200) ───
@@ -313,30 +310,17 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
           const cols = Math.ceil(targetWidth / patchWidth);
           const rows = Math.ceil(targetHeight / patchHeight);
-          const composites: any[] = [];
+
+          // Create a new blank white canvas using Jimp 1.x configuration object
+          const canvas = new Jimp({ width: targetWidth, height: targetHeight, color: 0xFFFFFFFF });
 
           for (let r = 0; r < rows; r++) {
             for (let c = 0; c < cols; c++) {
-              composites.push({
-                input: patchBuffer,
-                left: c * patchWidth,
-                top: r * patchHeight
-              });
+              canvas.composite(originalImage, c * patchWidth, r * patchHeight);
             }
           }
 
-          const tiledBuffer = await sharp({
-            create: {
-              width: targetWidth,
-              height: targetHeight,
-              channels: 4,
-              background: { r: 255, g: 255, b: 255, alpha: 1 }
-            }
-          })
-          .composite(composites)
-          .png()
-          .toBuffer();
-
+          const tiledBuffer = await canvas.getBuffer("image/png");
           console.log(`[Design Grabber] Programmatic tiling completed. Bounding canvas size: 1600x1200.`);
 
           // ─── STEP 3: Final Vectorizer Pass (Strict mechanical tracing of clean pixels) ───
