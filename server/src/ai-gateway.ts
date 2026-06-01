@@ -287,9 +287,50 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
           console.log(`[Design Grabber] Decoded buffer size: ${buffer.length} bytes.`);
 
+          let bufferToVectorize = buffer;
+
+          try {
+            console.log(`[Design Grabber] 🧼 Pre-processing: stripping background first...`);
+            const bgFormData = new FormData();
+            bgFormData.append('file', buffer, { filename: 'mockup.png', contentType: 'image/png' });
+
+            const bgResponse = await fetch('https://external.api.recraft.ai/v1/images/removeBackground', {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${recraftKey}`,
+                ...bgFormData.getHeaders()
+              },
+              body: bgFormData.getBuffer()
+            });
+
+            if (bgResponse.ok) {
+              const bgData = await bgResponse.json() as any;
+              const bgResultUrl = bgData.image?.url || bgData.data?.[0]?.url;
+              if (bgResultUrl) {
+                console.log(`[Design Grabber] 🧼 Background removed successfully → ${bgResultUrl}`);
+                // Download the background-removed image buffer
+                const dlRes = await fetch(bgResultUrl);
+                if (dlRes.ok) {
+                  const bgArrayBuffer = await dlRes.arrayBuffer();
+                  bufferToVectorize = Buffer.from(bgArrayBuffer);
+                  console.log(`[Design Grabber] 🧼 Downloaded background-removed buffer (${bufferToVectorize.length} bytes)`);
+                } else {
+                  console.warn(`[Design Grabber] ⚠️ Failed to download background-removed image. Vectorizing original buffer.`);
+                }
+              } else {
+                console.warn(`[Design Grabber] ⚠️ No image URL returned from removeBackground. Vectorizing original buffer.`);
+              }
+            } else {
+              const bgErrText = await bgResponse.text().catch(() => 'unknown');
+              console.warn(`[Design Grabber] ⚠️ removeBackground failed with status ${bgResponse.status}: ${bgErrText}. Vectorizing original buffer.`);
+            }
+          } catch (bgErr: any) {
+            console.warn(`[Design Grabber] ⚠️ Pre-processing background removal failed: ${bgErr.message}. Vectorizing original buffer.`);
+          }
+
           // Construct FormData using form-data package for high Node compatibility
           const formData = new FormData();
-          formData.append('file', buffer, { filename: 'mockup.png', contentType: 'image/png' });
+          formData.append('file', bufferToVectorize, { filename: 'mockup.png', contentType: 'image/png' });
 
           const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
             method: 'POST',
