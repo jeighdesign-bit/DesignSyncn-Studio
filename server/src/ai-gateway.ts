@@ -358,7 +358,6 @@ Keep only the original graphic artwork. The output must be a clean flat producti
           const recraftPayload = {
             prompt: systemPrompt,
             model: 'recraftv4_1_pro_vector',
-            size: '4:3',
             controls: {
               colors: rgbColors
             },
