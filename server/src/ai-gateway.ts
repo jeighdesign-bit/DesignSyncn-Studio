@@ -264,9 +264,9 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       const geminiApiKey = process.env.GEMINI_API_KEY;
 
       if (isGrabber) {
-        console.log(`\n══════════════ [Design Grabber: Image-Guided Pattern Generation] ══════════════`);
-        console.log(`• Input: 3D Reference Mockup Uploaded (Design Grabber Mode)`);
-        console.log(`• Method: Recraft V4 Pro Vector Image-Guided Pattern (Layout mapping)`);
+        console.log(`\n══════════════ [Design Grabber: Strict Mechanical Vectorizer Tracing] ══════════════`);
+        console.log(`• Input: Cropped Reference Patch Uploaded`);
+        console.log(`• Method: Recraft /v1/images/vectorize (Strict Pixel-to-Vector Path Tracing)`);
         
         if (!recraftKey) {
           return res.status(500).json({ error: 'RECRAFT_API_KEY is missing. Grabber requires Recraft API.' });
@@ -278,59 +278,27 @@ aiRouter.post('/generate', async (req: any, res: any) => {
             return res.status(400).json({ error: 'Invalid or empty referenceImage payload.' });
           }
 
-          const referenceToUse = referenceImage;
+          const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
+          const buffer = Buffer.from(base64Data, 'base64');
 
-          // 2. Map colors to RGB for Recraft color controls
-          const rgbColors = colors.map((hex: string) => {
-            const cleanHex = hex.replace('#', '');
-            const r = parseInt(cleanHex.substring(0, 2), 16) || 0;
-            const g = parseInt(cleanHex.substring(2, 4), 16) || 0;
-            const b = parseInt(cleanHex.substring(4, 6), 16) || 0;
-            return { rgb: [r, g, b] };
-          });
+          if (buffer.length === 0) {
+            console.error(`[Design Grabber] ❌ referenceImage decoded to an empty buffer.`);
+            return res.status(400).json({ error: 'Decoded reference image is empty.' });
+          }
 
-          // 3. Enforce structural layout flat vector illustration generation
-          const systemPrompt = `Extract the artwork only Do not redesign, reinterpret, enhance, simplify, recreate, or regenerate anything.
-Preserve the original artwork geometry exactly as shown.
-Maintain all stripe positions, panel placements, spacing, proportions, curvature, scale, texture distribution, and visual hierarchy.
-Treat the front, back, sleeves, and side graphics as separate artwork regions.
-Do not merge multiple garment panels into a single composition.
-Output each detected artwork region independently on a clean flat canvas.
-Remove only:
-- garment silhouette
-- collar
-- sleeves
-- cuffs
-- seams
-- mannequin
-- hanger
-- shadows
-- logos
-- names
-- numbers
-- text
-Keep only the original graphic artwork. The output must be a clean flat production artwork layout, preserving the exact original design structure.`;
-          console.log(`[Design Grabber] Dispatching structural layout mapping to Recraft V4 Pro Vector...`);
-          
-          const recraftPayload = {
-            prompt: systemPrompt,
-            model: 'recraftv4_1_pro_vector',
-            controls: {
-              colors: rgbColors
-            },
-            image_guidance: {
-              image: referenceToUse,
-              strength: 0.85
-            }
-          };
+          console.log(`[Design Grabber] Decoded cropped buffer size: ${buffer.length} bytes.`);
+          console.log(`[Design Grabber] Executing strict structural vector tracing...`);
 
-          const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/generations', {
+          const formData = new FormData();
+          formData.append('file', buffer, { filename: 'cropped.png', contentType: 'image/png' });
+
+          const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${recraftKey}`
+              'Authorization': `Bearer ${recraftKey}`,
+              ...formData.getHeaders()
             },
-            body: JSON.stringify(recraftPayload)
+            body: formData.getBuffer()
           });
 
           if (recraftResponse.ok) {
@@ -338,13 +306,13 @@ Keep only the original graphic artwork. The output must be a clean flat producti
             console.log('[Design Grabber] Recraft raw response data:', JSON.stringify(recraftData));
             const resultUrl = recraftData.image?.url || recraftData.url || recraftData.image_url || recraftData.data?.[0]?.url;
             if (resultUrl) {
-              console.log(`[Design Grabber] ✅ RECRAFT SINGLE-FRAME FLAT VECTOR SUCCESS → ${resultUrl}`);
+              console.log(`[Design Grabber] ✅ STRICT VECTORIZER SUCCESS → ${resultUrl}`);
               setUserTokens(cleanUserId, currentBalance - 1);
               return res.json({
                 url: resultUrl,
                 type: 'vector',
                 isSandbox: false,
-                pipeline: 'recraft-image-guided-flat-vector',
+                pipeline: 'recraft-strict-vectorizer',
                 remainingTokens: currentBalance - 1
               });
             } else {
@@ -352,10 +320,10 @@ Keep only the original graphic artwork. The output must be a clean flat producti
             }
           } else {
             const errText = await recraftResponse.text().catch(() => 'unknown');
-            throw new Error(`Recraft Generations API failed (${recraftResponse.status}): ${errText}`);
+            throw new Error(`Recraft Vectorize API failed (${recraftResponse.status}): ${errText}`);
           }
         } catch (grabberErr: any) {
-          console.error(`[Design Grabber] ❌ Recraft Pattern Generation failed:`, grabberErr);
+          console.error(`[Design Grabber] ❌ Strict Vectorizer Tracing failed:`, grabberErr);
           return res.status(500).json({ error: `Design Grabber failed: ${grabberErr.message}` });
         }
       }
