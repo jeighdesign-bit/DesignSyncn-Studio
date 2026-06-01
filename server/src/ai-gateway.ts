@@ -287,40 +287,81 @@ aiRouter.post('/generate', async (req: any, res: any) => {
           }
 
           console.log(`[Design Grabber] Decoded cropped buffer size: ${buffer.length} bytes.`);
-          console.log(`[Design Grabber] Executing strict structural vector tracing...`);
+          
+          // ─── STEP 1: Image-to-Image Outpainting / Texture Bounding Box Expansion ───
+          console.log(`[Design Grabber] 📈 Step 1: Dispatching Image-to-Image Outpainting / Texture Fill...`);
+          const outpaintFormData = new FormData();
+          outpaintFormData.append('image', buffer, { filename: 'mockup.png', contentType: 'image/png' });
+          outpaintFormData.append('prompt', "A single continuous flat 2D sublimation background graphic sheet, uniform diagonal lines, large bold geometric layout, seamless texture fill");
+          outpaintFormData.append('negative_prompt', "garment silhouette, collar, sleeves, cuffs, seams, mannequin, hanger, shadows, logos, names, numbers, text, nike swoosh, brand insignia");
+          outpaintFormData.append('size', "4:3");
+          outpaintFormData.append('model', "recraftv3");
 
-          const formData = new FormData();
-          formData.append('file', buffer, { filename: 'cropped.png', contentType: 'image/png' });
-
-          const recraftResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
+          const outpaintResponse = await fetch('https://external.api.recraft.ai/v1/images/outpaint', {
             method: 'POST',
             headers: {
               'Authorization': `Bearer ${recraftKey}`,
-              ...formData.getHeaders()
+              ...outpaintFormData.getHeaders()
             },
-            body: formData.getBuffer()
+            body: outpaintFormData.getBuffer()
           });
 
-          if (recraftResponse.ok) {
-            const recraftData = await recraftResponse.json() as any;
-            console.log('[Design Grabber] Recraft raw response data:', JSON.stringify(recraftData));
-            const resultUrl = recraftData.image?.url || recraftData.url || recraftData.image_url || recraftData.data?.[0]?.url;
-            if (resultUrl) {
-              console.log(`[Design Grabber] ✅ STRICT VECTORIZER SUCCESS → ${resultUrl}`);
+          if (!outpaintResponse.ok) {
+            const errText = await outpaintResponse.text().catch(() => 'unknown');
+            throw new Error(`Recraft Outpainting API failed (${outpaintResponse.status}): ${errText}`);
+          }
+
+          const outpaintData = await outpaintResponse.json() as any;
+          const outpaintUrl = outpaintData.image?.url || outpaintData.url || outpaintData.image_url || outpaintData.data?.[0]?.url;
+          if (!outpaintUrl) {
+            throw new Error('No valid URL returned from Recraft Outpainting API.');
+          }
+          console.log(`[Design Grabber] 📈 Outpainting success → ${outpaintUrl}`);
+
+          // ─── STEP 2: Download expanded flat composition composition buffer ───
+          console.log(`[Design Grabber] 📥 Downloading expanded raster buffer...`);
+          const dlRes = await fetch(outpaintUrl);
+          if (!dlRes.ok) {
+            throw new Error(`Failed to download outpainted image buffer from ${outpaintUrl}`);
+          }
+          const expandedArrayBuffer = await dlRes.arrayBuffer();
+          const expandedBuffer = Buffer.from(expandedArrayBuffer);
+          console.log(`[Design Grabber] 📥 Downloaded expanded buffer size: ${expandedBuffer.length} bytes.`);
+
+          // ─── STEP 3: Final Vectorizer Pass (1:1 Strict mechanical tracing) ───
+          console.log(`[Design Grabber] 🪄 Step 2: Calling strict mechanical vectorizer tracing on flat sheet...`);
+          const vectorizeFormData = new FormData();
+          vectorizeFormData.append('file', expandedBuffer, { filename: 'expanded.png', contentType: 'image/png' });
+
+          const vectorizeResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
+            method: 'POST',
+            headers: {
+              'Authorization': `Bearer ${recraftKey}`,
+              ...vectorizeFormData.getHeaders()
+            },
+            body: vectorizeFormData.getBuffer()
+          });
+
+          if (vectorizeResponse.ok) {
+            const vectorizeData = await vectorizeResponse.json() as any;
+            console.log('[Design Grabber] Vectorizer raw response data:', JSON.stringify(vectorizeData));
+            const finalUrl = vectorizeData.image?.url || vectorizeData.url || vectorizeData.image_url || vectorizeData.data?.[0]?.url;
+            if (finalUrl) {
+              console.log(`[Design Grabber] ✅ STRICT MECHANICAL OUTPAINT + VECTORIZER SUCCESS → ${finalUrl}`);
               setUserTokens(cleanUserId, currentBalance - 1);
               return res.json({
-                url: resultUrl,
+                url: finalUrl,
                 type: 'vector',
                 isSandbox: false,
-                pipeline: 'recraft-strict-vectorizer',
+                pipeline: 'recraft-outpaint-vectorizer',
                 remainingTokens: currentBalance - 1
               });
             } else {
-              throw new Error('No valid URL found in Recraft response data.');
+              throw new Error('No valid URL found in Recraft vectorizer response.');
             }
           } else {
-            const errText = await recraftResponse.text().catch(() => 'unknown');
-            throw new Error(`Recraft Vectorize API failed (${recraftResponse.status}): ${errText}`);
+            const errText = await vectorizeResponse.text().catch(() => 'unknown');
+            throw new Error(`Recraft Vectorize API failed (${vectorizeResponse.status}): ${errText}`);
           }
         } catch (grabberErr: any) {
           console.error(`[Design Grabber] ❌ Strict Vectorizer Tracing failed:`, grabberErr);
