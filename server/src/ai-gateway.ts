@@ -278,51 +278,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
             return res.status(400).json({ error: 'Invalid or empty referenceImage payload.' });
           }
 
-          let referenceToUse = referenceImage;
-
-          // 1. Auto-Background Removal Pre-processing to isolate shirt graphics from backgrounds
-          try {
-            console.log(`[Design Grabber] 🧼 Pre-processing: stripping background first...`);
-            const base64Data = referenceImage.replace(/^data:image\/\w+;base64,/, '');
-            const buffer = Buffer.from(base64Data, 'base64');
-
-            const bgFormData = new FormData();
-            bgFormData.append('file', buffer, { filename: 'mockup.png', contentType: 'image/png' });
-
-            const bgResponse = await fetch('https://external.api.recraft.ai/v1/images/removeBackground', {
-              method: 'POST',
-              headers: {
-                'Authorization': `Bearer ${recraftKey}`,
-                ...bgFormData.getHeaders()
-              },
-              body: bgFormData.getBuffer()
-            });
-
-            if (bgResponse.ok) {
-              const bgData = await bgResponse.json() as any;
-              const bgResultUrl = bgData.image?.url || bgData.data?.[0]?.url;
-              if (bgResultUrl) {
-                console.log(`[Design Grabber] 🧼 Background removed successfully → ${bgResultUrl}`);
-                // Download the background-removed image buffer and convert back to base64 data URI
-                const dlRes = await fetch(bgResultUrl);
-                if (dlRes.ok) {
-                  const bgArrayBuffer = await dlRes.arrayBuffer();
-                  const base64Bg = Buffer.from(bgArrayBuffer).toString('base64');
-                  referenceToUse = `data:image/png;base64,${base64Bg}`;
-                  console.log(`[Design Grabber] 🧼 Clean base64 reference generated successfully.`);
-                } else {
-                  console.warn(`[Design Grabber] ⚠️ Failed to download background-removed image. Using original reference.`);
-                }
-              } else {
-                console.warn(`[Design Grabber] ⚠️ No image URL returned from removeBackground. Using original reference.`);
-              }
-            } else {
-              const bgErrText = await bgResponse.text().catch(() => 'unknown');
-              console.warn(`[Design Grabber] ⚠️ removeBackground failed with status ${bgResponse.status}: ${bgErrText}. Using original reference.`);
-            }
-          } catch (bgErr: any) {
-            console.warn(`[Design Grabber] ⚠️ Pre-processing background removal failed: ${bgErr.message}. Using original reference.`);
-          }
+          const referenceToUse = referenceImage;
 
           // 2. Map colors to RGB for Recraft color controls
           const rgbColors = colors.map((hex: string) => {
