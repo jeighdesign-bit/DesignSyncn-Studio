@@ -390,7 +390,11 @@ aiRouter.post('/generate', async (req: any, res: any) => {
                     }
                   },
                   {
-                    text: 'Analyze the graphic design on this sports apparel mockup for a 2D flat sublimation blueprint conversion. Focus ONLY on the background patterns, colors, and geometric graphics (e.g. stripes, shapes, gradients). ABSOLUTELY IGNORE and EXCLUDE any brand logos, Nike swooshes, sponsor emblems, numbers, and text. Translate 3D shading and mannequin curves into flat, 2D vector coordinate descriptions of the background pattern only. Output only the background pattern description in English, and keep it concise and punchy.'
+                    text: `Analyze the graphic design on this sports apparel mockup.
+Extract the jersey artwork only. Remove all text, logos, numbers, names, garment shapes, collars, sleeves, shadows, folds, mockup elements, and background. 
+Preserve the original colors, patterns, textures, and layout exactly as shown. 
+Do not redesign, enhance, stylize, vectorize creatively, or generate new graphics. No creative interpretation. 
+Focus only on recovering the original printable sublimation artwork. Output a detailed, exact description of the background pattern, geometry, and stripes.`
                   }
                 ]
               }]
@@ -422,7 +426,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       finalPrompt = finalPrompt.replace(garmentRegex, 'graphic pattern');
 
       // Guarantee flat vector layout instructions in the prompt and order logo suppression
-      finalPrompt = `flat vector sublimation sports graphic pattern, pure geometric background texture, print-ready, clean paths, tileable, strictly no logos, no text, no nike swooshes, no brand emblems, ${finalPrompt}`;
+      finalPrompt = `Extract the jersey artwork only. Remove all text, logos, numbers, names, garment shapes, collars, sleeves, shadows, folds, mockup elements, and background. Preserve the original colors, patterns, textures, and layout exactly as shown. Output clean front and back design panels on a white background. Do not redesign, enhance, stylize, vectorize creatively, or generate new graphics. No creative interpretation. Focus only on recovering the original printable sublimation artwork. Original details: ${finalPrompt}`;
       console.log(`[StyleSync AI] Final cleaned prompt for Recraft: "${finalPrompt}"`);
 
       // Convert user hex colors to RGB format for Recraft's controls
@@ -504,12 +508,13 @@ aiRouter.post('/generate', async (req: any, res: any) => {
                         }
                       },
                       {
-                        text: `You are an expert sports apparel graphic designer. Analyze the print design, patterns, and stripes on this sports jersey mockup.
-Generate a premium, clean, high-fidelity, flat 2D vector SVG sublimation pattern sheet that extracts and recreates this design exactly.
-Use the following dominant colors: ${colorsHex}.
-The SVG must be flat, containing the pinstripes, panels, graphic layouts, and stripes matching the reference image.
-The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.
-Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, and mannequin silhouettes.`
+                        text: `You are a deterministic sports apparel mechanical graphic extractor. Analyze this sports jersey mockup image.
+Extract the jersey artwork only. Remove all text, logos, numbers, names, garment shapes, collars, sleeves, shadows, folds, mockup elements, and background. 
+Preserve the original colors, patterns, textures, and layout exactly as shown. 
+Do not redesign, enhance, stylize, vectorize creatively, or generate new graphics. No creative interpretation. 
+Output a clean, valid, production-ready, flat 2D vector SVG sublimation pattern sheet containing only the original printable graphic design.
+Use these dominant colors: ${colorsHex}.
+The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.`
                       }
                     ]
                   }]
@@ -567,12 +572,13 @@ Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, 
                       }
                     },
                     {
-                      text: `You are an expert sports apparel graphic designer. Analyze the print design, patterns, and stripes on this sports jersey mockup.
-Generate a premium, clean, high-fidelity, flat 2D vector SVG sublimation pattern sheet that extracts and recreates this design exactly.
-Use the following dominant colors: ${colorsHex}.
-The SVG must be flat, containing the pinstripes, panels, graphic layouts, and stripes matching the reference image.
-The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.
-Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, and mannequin silhouettes.`
+                      text: `You are a deterministic sports apparel mechanical graphic extractor. Analyze this sports jersey mockup image.
+Extract the jersey artwork only. Remove all text, logos, numbers, names, garment shapes, collars, sleeves, shadows, folds, mockup elements, and background. 
+Preserve the original colors, patterns, textures, and layout exactly as shown. 
+Do not redesign, enhance, stylize, vectorize creatively, or generate new graphics. No creative interpretation. 
+Output a clean, valid, production-ready, flat 2D vector SVG sublimation pattern sheet containing only the original printable graphic design.
+Use these dominant colors: ${colorsHex}.
+The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.`
                     }
                   ]
                 }]
@@ -649,12 +655,14 @@ Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, 
             body: JSON.stringify({
               contents: [{
                 parts: [{
-                  text: `You are an expert sports apparel graphic designer.
-Generate a premium, clean, high-fidelity, flat 2D vector SVG sublimation pattern sheet based on the following visual description: "${prompt}"
+                  text: `You are a deterministic sports apparel mechanical graphic extractor.
+Extract the jersey artwork only based on this description: "${prompt}".
+Remove all text, logos, numbers, names, garment shapes, collars, sleeves, shadows, folds, mockup elements, and background. 
+Preserve the original colors, patterns, textures, and layout exactly as described.
+Do not redesign, enhance, stylize, vectorize creatively, or generate new graphics. No creative interpretation. 
+Output a clean, valid, production-ready, flat 2D vector SVG sublimation pattern sheet containing only the original printable graphic design.
 Use these dominant colors: ${colorsHex}.
-The SVG must be flat, containing clean vector paths, geometric layouts, stripes, or patterns matching the theme.
-The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.
-Absolutely ignore all shirt borders, necklines, sleeves, hangers, fabric folds, and mannequin silhouettes.`
+The output must be pure, valid SVG code only, enclosed in \`\`\`xml ... \`\`\` blocks.`
                 }]
               }]
             })
