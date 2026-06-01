@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import FormData from 'form-data';
+import sharp from 'sharp';
 dotenv.config();
 
 export const aiRouter = Router();
@@ -264,9 +265,9 @@ aiRouter.post('/generate', async (req: any, res: any) => {
       const geminiApiKey = process.env.GEMINI_API_KEY;
 
       if (isGrabber) {
-        console.log(`\n══════════════ [Design Grabber: Strict Mechanical Vectorizer Tracing] ══════════════`);
+        console.log(`\n══════════════ [Design Grabber: Deterministic Pixel-Tiling Pipeline] ══════════════`);
         console.log(`• Input: Cropped Reference Patch Uploaded`);
-        console.log(`• Method: Recraft /v1/images/vectorize (Strict Pixel-to-Vector Path Tracing)`);
+        console.log(`• Method: Sharp Programmatic Center Isolation + Canvas Tiling Grid + Strict Vectorize`);
         
         if (!recraftKey) {
           return res.status(500).json({ error: 'RECRAFT_API_KEY is missing. Grabber requires Recraft API.' });
@@ -288,50 +289,60 @@ aiRouter.post('/generate', async (req: any, res: any) => {
 
           console.log(`[Design Grabber] Decoded cropped buffer size: ${buffer.length} bytes.`);
           
-          // ─── STEP 1: Image-to-Image Outpainting / Texture Bounding Box Expansion ───
-          console.log(`[Design Grabber] 📈 Step 1: Dispatching Image-to-Image Outpainting / Texture Fill...`);
-          const outpaintFormData = new FormData();
-          outpaintFormData.append('image', buffer, { filename: 'mockup.png', contentType: 'image/png' });
-          outpaintFormData.append('prompt', "A single continuous flat 2D sublimation background graphic sheet, uniform diagonal lines, large bold geometric layout, seamless texture fill");
-          outpaintFormData.append('negative_prompt', "garment silhouette, collar, sleeves, cuffs, seams, mannequin, hanger, shadows, logos, names, numbers, text, nike swoosh, brand insignia");
-          outpaintFormData.append('size', "4:3");
-          outpaintFormData.append('model', "recraftv3");
+          // ─── STEP 1: Programmatic Texture Isolation (Auto-Crop 70% Center) ───
+          console.log(`[Design Grabber] ✂️ Step 1: Isolating center texture patch to avoid border artifacts...`);
+          const originalImage = sharp(buffer);
+          const metadata = await originalImage.metadata();
+          const width = metadata.width || 800;
+          const height = metadata.height || 600;
 
-          const outpaintResponse = await fetch('https://external.api.recraft.ai/v1/images/outpaint', {
-            method: 'POST',
-            headers: {
-              'Authorization': `Bearer ${recraftKey}`,
-              ...outpaintFormData.getHeaders()
-            },
-            body: outpaintFormData.getBuffer()
-          });
+          const patchWidth = Math.round(width * 0.7);
+          const patchHeight = Math.round(height * 0.7);
+          const patchLeft = Math.round((width - patchWidth) / 2);
+          const patchTop = Math.round((height - patchHeight) / 2);
 
-          if (!outpaintResponse.ok) {
-            const errText = await outpaintResponse.text().catch(() => 'unknown');
-            throw new Error(`Recraft Outpainting API failed (${outpaintResponse.status}): ${errText}`);
+          const patchBuffer = await originalImage
+            .extract({ left: patchLeft, top: patchTop, width: patchWidth, height: patchHeight })
+            .toBuffer();
+          console.log(`[Design Grabber] isolated patch dimensions: ${patchWidth}x${patchHeight}`);
+
+          // ─── STEP 2: Mathematical Tiling / Mirroring (Grid Compositing to 1600x1200) ───
+          console.log(`[Design Grabber] 🧱 Step 2: Programmatically repeating isolated texture patch to 4:3 grid...`);
+          const targetWidth = 1600;
+          const targetHeight = 1200;
+
+          const cols = Math.ceil(targetWidth / patchWidth);
+          const rows = Math.ceil(targetHeight / patchHeight);
+          const composites: any[] = [];
+
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              composites.push({
+                input: patchBuffer,
+                left: c * patchWidth,
+                top: r * patchHeight
+              });
+            }
           }
 
-          const outpaintData = await outpaintResponse.json() as any;
-          const outpaintUrl = outpaintData.image?.url || outpaintData.url || outpaintData.image_url || outpaintData.data?.[0]?.url;
-          if (!outpaintUrl) {
-            throw new Error('No valid URL returned from Recraft Outpainting API.');
-          }
-          console.log(`[Design Grabber] 📈 Outpainting success → ${outpaintUrl}`);
+          const tiledBuffer = await sharp({
+            create: {
+              width: targetWidth,
+              height: targetHeight,
+              channels: 4,
+              background: { r: 255, g: 255, b: 255, alpha: 1 }
+            }
+          })
+          .composite(composites)
+          .png()
+          .toBuffer();
 
-          // ─── STEP 2: Download expanded flat composition composition buffer ───
-          console.log(`[Design Grabber] 📥 Downloading expanded raster buffer...`);
-          const dlRes = await fetch(outpaintUrl);
-          if (!dlRes.ok) {
-            throw new Error(`Failed to download outpainted image buffer from ${outpaintUrl}`);
-          }
-          const expandedArrayBuffer = await dlRes.arrayBuffer();
-          const expandedBuffer = Buffer.from(expandedArrayBuffer);
-          console.log(`[Design Grabber] 📥 Downloaded expanded buffer size: ${expandedBuffer.length} bytes.`);
+          console.log(`[Design Grabber] Programmatic tiling completed. Bounding canvas size: 1600x1200.`);
 
-          // ─── STEP 3: Final Vectorizer Pass (1:1 Strict mechanical tracing) ───
-          console.log(`[Design Grabber] 🪄 Step 2: Calling strict mechanical vectorizer tracing on flat sheet...`);
+          // ─── STEP 3: Final Vectorizer Pass (Strict mechanical tracing of clean pixels) ───
+          console.log(`[Design Grabber] 🪄 Step 3: Calling strict mechanical vectorizer tracing on flat cloned canvas...`);
           const vectorizeFormData = new FormData();
-          vectorizeFormData.append('file', expandedBuffer, { filename: 'expanded.png', contentType: 'image/png' });
+          vectorizeFormData.append('file', tiledBuffer, { filename: 'tiled_flat.png', contentType: 'image/png' });
 
           const vectorizeResponse = await fetch('https://external.api.recraft.ai/v1/images/vectorize', {
             method: 'POST',
@@ -347,13 +358,13 @@ aiRouter.post('/generate', async (req: any, res: any) => {
             console.log('[Design Grabber] Vectorizer raw response data:', JSON.stringify(vectorizeData));
             const finalUrl = vectorizeData.image?.url || vectorizeData.url || vectorizeData.image_url || vectorizeData.data?.[0]?.url;
             if (finalUrl) {
-              console.log(`[Design Grabber] ✅ STRICT MECHANICAL OUTPAINT + VECTORIZER SUCCESS → ${finalUrl}`);
+              console.log(`[Design Grabber] ✅ DETERMINISTIC TILING + VECTORIZER SUCCESS → ${finalUrl}`);
               setUserTokens(cleanUserId, currentBalance - 1);
               return res.json({
                 url: finalUrl,
                 type: 'vector',
                 isSandbox: false,
-                pipeline: 'recraft-outpaint-vectorizer',
+                pipeline: 'recraft-tiling-vectorizer',
                 remainingTokens: currentBalance - 1
               });
             } else {
@@ -364,7 +375,7 @@ aiRouter.post('/generate', async (req: any, res: any) => {
             throw new Error(`Recraft Vectorize API failed (${vectorizeResponse.status}): ${errText}`);
           }
         } catch (grabberErr: any) {
-          console.error(`[Design Grabber] ❌ Strict Vectorizer Tracing failed:`, grabberErr);
+          console.error(`[Design Grabber] ❌ Programmatic Texture Tiling/Vectorize failed:`, grabberErr);
           return res.status(500).json({ error: `Design Grabber failed: ${grabberErr.message}` });
         }
       }
